@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 
 
 library PaymentConfirmations {
@@ -24,7 +24,7 @@ library PaymentConfirmations {
      */
     function confirmIncomingPayment(
         State storage _state,
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         internal
     {
@@ -37,7 +37,7 @@ library PaymentConfirmations {
      */
     function confirmSourceDecreasingTransaction(
         State storage _state,
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         internal
     {
@@ -51,7 +51,7 @@ library PaymentConfirmations {
      */
     function transactionConfirmed(
         State storage _state,
-        BalanceDecreasingTransaction.Proof calldata _transaction
+        IBalanceDecreasingTransaction.Proof calldata _transaction
     )
         internal view
         returns (bool)

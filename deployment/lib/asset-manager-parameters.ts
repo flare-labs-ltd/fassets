@@ -1,3 +1,5 @@
+import { int } from "hardhat/internal/core/params/argumentTypes";
+
 // Mapped to integer in JSON schema.
 type integer = number;
 
@@ -71,7 +73,7 @@ export interface AssetManagerParameters {
     // Common parameters (for all f-assets in this network)
 
     /**
-     * Address for burning native currency (e.g. for collateral reservation fee afetr successful minting).
+     * Address for burning native currency (e.g. for collateral reservation fee after successful minting).
      * @pattern ^0x[0-9a-fA-F]{40}$
      */
     burnAddress: string;
@@ -112,17 +114,17 @@ export interface AssetManagerParameters {
     collateralPoolTokenFactory?: string;
 
     /**
-     * The proof verifier contract for state connector prrofs.
+     * The proof verifier contract for Flare data connector proofs.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * Optional, default is 'FdcVerification' in contracts.json.
      * @pattern ^\w+$
      */
-    scProofVerifier?: string;
+    fdcVerification?: string;
 
     /**
      * Price reader contract is a simple abstraction of FTSO system.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * Optional, default is 'FdcVerification' in contracts.json.
      * @pattern ^\w+$
      */
     priceReader?: string;
@@ -148,7 +150,7 @@ export interface AssetManagerParameters {
     // F-asset (chain) specific parameters
 
     /**
-     * Chain name; must match the state connector chainId, when encoded as bytes.
+     * Chain name; must match the Flare data connector chainId, when encoded as bytes.
      * @minimum 0
      */
     chainName: string;
@@ -386,8 +388,8 @@ export interface AssetManagerParameters {
 
     /**
      * Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
-     * Any value is ok, but higher values give more security agains multiple announcement attack by a miner.
-     * Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
+     * Any value is ok, but higher values give more security against multiple announcement attack by a miner.
+     * Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
      * extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
      * @minimum 0
      */
@@ -395,7 +397,7 @@ export interface AssetManagerParameters {
 
     /**
      * Ratio at which the agents can buy back their collateral when f-asset is terminated.
-     * Typically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.
+     * Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
      * @minimum 0
      */
     buybackCollateralFactorBIPS: integer;
@@ -461,7 +463,7 @@ export interface AssetManagerParameters {
 
     /**
      * When there are many redemption requests in short time, agent gets
-     * up to this amount of extra payment time per redemeption.
+     * up to this amount of extra payment time per redemption.
      */
     redemptionPaymentExtensionSeconds: integer;
 
@@ -482,4 +484,39 @@ export interface AssetManagerParameters {
      * will reset automatically.
      */
     emergencyPauseDurationResetAfterSeconds: integer;
+
+    /**
+     * The amount of time after which the collateral reservation can be cancelled if the
+     * hand-shake is not completed.
+     * @minimum 1
+     */
+    cancelCollateralReservationAfterSeconds: integer;
+
+    /**
+     * Time window inside which the agent can reject the redemption request.
+     * @minimum 1
+     */
+    rejectRedemptionRequestWindowSeconds: integer;
+
+    /**
+     * Time window inside which the agent can take over the redemption request from another agent
+     * that has rejected it.
+     * @minimum 1
+     */
+    takeOverRedemptionRequestWindowSeconds: integer;
+
+    /**
+     * On redemption rejection, without take over, redeemer is compensated with
+     * redemption value recalculated in flare/sgb times redemption failure factor.
+     * Expressed in BIPS, e.g. 12000 for factor of 1.2.
+     * This is the part of factor paid from agent's vault collateral.
+     * @minimum 0
+     */
+    rejectedRedemptionDefaultFactorVaultCollateralBIPS: integer;
+
+    /**
+     * This is the part of rejected redemption factor paid from agent's pool collateral.
+     * @minimum 0
+     */
+    rejectedRedemptionDefaultFactorPoolBIPS: integer;
 }

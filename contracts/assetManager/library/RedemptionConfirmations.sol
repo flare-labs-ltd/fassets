@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "./data/AssetManagerState.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";
@@ -14,7 +14,7 @@ library RedemptionConfirmations {
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function confirmRedemptionPayment(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint64 _redemptionRequestId
     )
         internal
@@ -27,6 +27,7 @@ library RedemptionConfirmations {
         bool isAgent = Agents.isOwner(agent, msg.sender);
         require(isAgent || _othersCanConfirmPayment(agent, request, _payment),
             "only agent vault owner");
+        require(request.rejectionTimestamp == 0, "rejected redemption cannot be confirmed");
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match
@@ -88,7 +89,7 @@ library RedemptionConfirmations {
     function _othersCanConfirmPayment(
         Agent.State storage _agent,
         Redemption.Request storage _request,
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         private view
         returns (bool)
@@ -108,7 +109,7 @@ library RedemptionConfirmations {
 
     function _validatePayment(
         Redemption.Request storage request,
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         private view
         returns (bool _paymentValid, string memory _failureReason)
@@ -128,7 +129,7 @@ library RedemptionConfirmations {
             return (false, "redemption payment too late");
         } else if (request.status == Redemption.Status.DEFAULTED) {
             // Redemption is already defaulted, although the payment was not too late.
-            // This indicates a problem in state connector, which gives proofs of both valid payment and nonpayment,
+            // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
             // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
             return (false, "redemption payment too late");
         }

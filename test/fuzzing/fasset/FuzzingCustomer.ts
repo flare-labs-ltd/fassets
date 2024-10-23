@@ -23,8 +23,8 @@ export class RedemptionPaymentReceiver extends FuzzingActor {
         super(runner);
     }
 
-    static create(runner: FuzzingRunner, address: string, undeerlyingAddress: string) {
-        const redeemer = new Redeemer(runner.context, address, undeerlyingAddress);
+    static create(runner: FuzzingRunner, address: string, underlyingAddress: string) {
+        const redeemer = new Redeemer(runner.context, address, underlyingAddress);
         return new RedemptionPaymentReceiver(runner, redeemer);
     }
 
@@ -56,7 +56,7 @@ export class RedemptionPaymentReceiver extends FuzzingActor {
                 if (!redemptionDefault.resolved) { // do this only if the agent has not already submitted failed payment and defaulted
                     await this.redemptionDefault(scope, request);
                 }
-                const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call
+                const result = await redemptionDefaultPromise; // now it must be fulfilled, by agent or by customer's default call
                 this.comment(`${this.name}, req=${request.requestId}: default received vault=${formatBN(result.redeemedVaultCollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
             }
         } else {

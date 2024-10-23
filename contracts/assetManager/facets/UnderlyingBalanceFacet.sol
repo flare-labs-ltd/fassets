@@ -16,7 +16,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase {
      * @param _agentVault agent vault address
      */
     function confirmTopupPayment(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault
     )
         external
@@ -50,7 +50,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase {
      * @param _agentVault agent vault address
      */
     function confirmUnderlyingWithdrawal(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault
     )
         external

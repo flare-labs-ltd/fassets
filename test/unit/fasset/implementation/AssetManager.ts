@@ -11,7 +11,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
@@ -48,7 +48,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let usdt: ERC20MockInstance;
 
@@ -188,7 +188,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
         chain.skipTimeTo(Number(lastUnderlyingTimestamp));
         chain.mine(Number(lastUnderlyingBlock) - chain.blockHeight() + 1);
-        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.skipTime(flareDataConnectorClient.queryWindowSeconds + 1);
         chain.mine(chain.finalizationBlocks);
     }
 
@@ -205,17 +205,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -425,6 +425,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
+        });
+
+        it("should correctly update agent setting hand-shake type", async () => {
+            const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "handShakeType", 1, { from: agentOwner1 });
+            await time.increase(agentFeeChangeTimelockSeconds);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "handShakeType", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.handShakeType.toString(), "1");
         });
     });
 
@@ -848,6 +858,27 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings22.underlyingBlocksForPayment = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
             let res22 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings22, collaterals);
             await expectRevert(res22, "value too high");
+
+            let newSettings23 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings23.cancelCollateralReservationAfterSeconds = 0;
+            let res23 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings23, collaterals);
+            await expectRevert(res23, "cannot be zero");
+
+            let newSettings24 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings24.rejectRedemptionRequestWindowSeconds = 0;
+            let res24 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings24, collaterals);
+            await expectRevert(res24, "cannot be zero");
+
+            let newSettings25 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings25.takeOverRedemptionRequestWindowSeconds = 0;
+            let res25 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings25, collaterals);
+            await expectRevert(res25, "cannot be zero");
+
+            let newSettings26 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings26.rejectedRedemptionDefaultFactorVaultCollateralBIPS = 9999;
+            newSettings26.rejectedRedemptionDefaultFactorPoolBIPS = 0;
+            let res26 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings26, collaterals);
+            await expectRevert(res26, "bips value too low");
         });
 
         it("should validate settings - other validators", async () => {
@@ -1073,7 +1104,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             const executorFee = toWei(0.1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor, [],
                 { from: minter, value: reservationFee.add(executorFee) });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // make and prove the payment transaction
@@ -1105,7 +1136,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             const executorFee = toWei(0.1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor, [],
                 { from: minter, value: reservationFee.add(executorFee) });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // make and prove the payment transaction
@@ -1132,7 +1163,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             const totalFee = reservationFee.add(toWei(0.1));    // 0.1 for executor fee
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, accounts[81],
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, accounts[81], [],
                 { from: minter, value: totalFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             assertWeb3Equal(crt.valueUBA, lotsToUBA(1));
@@ -1167,7 +1198,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)
@@ -1661,7 +1692,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not attached");
         });
@@ -1680,11 +1711,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             // Try to reserve collateral from non whitelisted address
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not whitelisted");
             //Whitelisted account should be able to reserve collateral
-            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: whitelistedAccount, value: reservationFee });
             expectEvent(res,"CollateralReserved");
         });
@@ -1887,13 +1918,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "zero collateralPoolTokenFactory address");
         });
 
-        it("validate settings scProofVerifier address cannot be zero", async () => {
+        it("validate settings fdcVerification address cannot be zero", async () => {
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.scProofVerifier = constants.ZERO_ADDRESS;
+            Settings.fdcVerification = constants.ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
-            await expectRevert(res, "zero scProofVerifier address");
+            await expectRevert(res, "zero fdcVerification address");
         });
 
         it("validate settings priceReader address cannot be zero", async () => {
@@ -1990,7 +2021,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)

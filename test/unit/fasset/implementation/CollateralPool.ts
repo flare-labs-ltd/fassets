@@ -1557,12 +1557,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectEvent.inTransaction(resp.tx, distributionToDelegators, "OptedOutOfAirdrop", { account: collateralPool.address });
         });
 
-        it("should claim rewards from ftso reward manager", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
-            await wNat.mintAmount(distributionToDelegators.address, ETH(1));
-            await collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: agent });
-            const collateralPoolBalance = await wNat.balanceOf(collateralPool.address);
-            assertEqualBN(collateralPoolBalance, ETH(1));
+        it("should claim rewards from reward manager", async () => {
+            const rewardManagerMock = await MockContract.new();
+            await collateralPool.claimDelegationRewards(rewardManagerMock.address, 5, [], { from: agent });
+            const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim",
+                inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
+                    {components: [{name: "merkleProof", type: "bytes32[]"}, {components: [{name: "rewardEpochId", type: "uint24"}, {name: "beneficiary", type: "bytes20"},
+                    {name: "amount",type: "uint120"}, {name: "claimType", type: "uint8"}], name: "body", type: "tuple"}], name: "_proofs",type: "tuple[]"}]} as AbiItem,
+                [collateralPool.address, collateralPool.address, 5, true, []] as any[]);
+            const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
+            assert.equal(invocationCount.toNumber(), 1);
         });
 
     });
@@ -1676,10 +1680,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(res, "only asset manager");
         });
 
-        it("random address shouldn't be able to claim rewards from ftso reward manager", async () => {
+        it("random address shouldn't be able to claim rewards from reward manager", async () => {
             const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
-            let res = collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: accounts[5] });
+            let res = collateralPool.claimDelegationRewards(distributionToDelegators.address, 0, [], { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
 

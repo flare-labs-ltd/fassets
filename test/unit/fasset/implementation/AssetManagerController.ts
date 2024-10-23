@@ -7,7 +7,7 @@ import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControl
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
@@ -31,7 +31,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
     let addressUpdatableMock : AddressUpdatableInstance;
@@ -50,8 +50,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create whitelist
         whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
@@ -63,11 +63,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol, { governanceSettings, updateExecutor });
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
             await loadFixtureCopyVars(initialize));
     });
 
@@ -496,10 +496,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should revert redemption default factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
-            let redemptionDefaultFactorVaultCollateralBIPS_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorVaultCollateralBIPS_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000).addn(1000);
             let redemptionDefaultFactorVaultCollateralBIPS_low = MAX_BIPS;
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000).addn(1000);
             let redemptionDefaultFactorAgentPool_low = 100;
             let redemptionDefaultFactorBIPS_new = 1_3000;
 
@@ -895,16 +895,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting proof verifier after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setSCProofVerifier([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setFdcVerification([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
 
-        it("should set state connector proof verifier after timelock", async () => {
+        it("should set Flare data connector proof verifier after timelock", async () => {
             const addr = randomAddress();
-            const res = await assetManagerController.setSCProofVerifier([assetManager.address], addr, { from: governance });
+            const res = await assetManagerController.setFdcVerification([assetManager.address], addr, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
+            expectEvent(timelock_info, "ContractChanged", { name: "fdcVerification", value: addr });
         });
 
         it("should set cleaner contract", async () => {
@@ -928,7 +928,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(timelock_info, "address zero");
         });
 
-        it("should set state connector proof verifier after timelock", async () => {
+        it("should set Flare data connector proof verifier after timelock", async () => {
             const FAsset = artifacts.require('FAsset');
             const impl = await FAsset.new();
             const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
@@ -1008,6 +1008,166 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_new, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
             expectEvent(timelock_info, "SettingChanged", { name: "minUnderlyingBackingBIPS", value: minUnderlyingBackingBIPS_new });
+        });
+
+        // cancel collateral reservation after seconds
+        it("should set cancel collateral reservation after seconds", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let cancelCollateralReservationAfterSec_new = toBN(currentSettings.cancelCollateralReservationAfterSeconds).muln(2);
+            let res = await assetManagerController.setCancelCollateralReservationAfterSeconds([assetManager.address], cancelCollateralReservationAfterSec_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "cancelCollateralReservationAfterSeconds", value: toBN(cancelCollateralReservationAfterSec_new) });
+        });
+
+        it("should not set cancel collateral reservation after seconds if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let cancelCollateralReservationAfterSec_new = toBN(currentSettings.cancelCollateralReservationAfterSeconds).muln(2);
+            let res = assetManagerController.setCancelCollateralReservationAfterSeconds([assetManager.address], cancelCollateralReservationAfterSec_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("should not set cancel collateral reservation after seconds if increase is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let cancelCollateralReservationAfterSec_new = toBN(currentSettings.cancelCollateralReservationAfterSeconds).muln(5).addn(MINUTES);
+            let res = assetManagerController.setCancelCollateralReservationAfterSeconds([assetManager.address], cancelCollateralReservationAfterSec_new, { from: governance });
+            await expectRevert(res, "increase too big");
+        });
+
+        it("should not set cancel collateral reservation after seconds if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let cancelCollateralReservationAfterSec_new = toBN(currentSettings.cancelCollateralReservationAfterSeconds).divn(5);
+            let res = assetManagerController.setCancelCollateralReservationAfterSeconds([assetManager.address], cancelCollateralReservationAfterSec_new, { from: governance });
+            await expectRevert(res, "decrease too big");
+        });
+
+        it("should not set cancel collateral reservation after seconds if value is 0", async () => {
+            let cancelCollateralReservationAfterSec_zero = toBN(0);
+            let res = assetManagerController.setCancelCollateralReservationAfterSeconds([assetManager.address], cancelCollateralReservationAfterSec_zero, { from: governance });
+            await expectRevert(res, "cannot be zero");
+        });
+
+        // reject redemption request window
+        it("should set reject redemption request window seconds", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectRedemptionRequestWindowSeconds_new = toBN(currentSettings.rejectRedemptionRequestWindowSeconds).muln(2);
+            let res = await assetManagerController.setRejectRedemptionRequestWindowSeconds([assetManager.address], rejectRedemptionRequestWindowSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "rejectRedemptionRequestWindowSeconds", value: toBN(rejectRedemptionRequestWindowSeconds_new) });
+        });
+
+        it("should not set reject redemption request window seconds if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectRedemptionRequestWindowSeconds_new = toBN(currentSettings.rejectRedemptionRequestWindowSeconds).muln(2);
+            let res = assetManagerController.setRejectRedemptionRequestWindowSeconds([assetManager.address], rejectRedemptionRequestWindowSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("should not set reject redemption request window seconds if increase is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectRedemptionRequestWindowSeconds_new = toBN(currentSettings.rejectRedemptionRequestWindowSeconds).muln(5).addn(MINUTES);
+            let res = assetManagerController.setRejectRedemptionRequestWindowSeconds([assetManager.address], rejectRedemptionRequestWindowSeconds_new, { from: governance });
+            await expectRevert(res, "increase too big");
+        });
+
+        it("should not set reject redemption request windows seconds if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectRedemptionRequestWindowSeconds_new = toBN(currentSettings.rejectRedemptionRequestWindowSeconds).divn(5);
+            let res = assetManagerController.setRejectRedemptionRequestWindowSeconds([assetManager.address], rejectRedemptionRequestWindowSeconds_new, { from: governance });
+            await expectRevert(res, "decrease too big");
+        });
+
+        it("should not set reject redemption request window seconds if value is 0", async () => {
+            let rejectRedemptionRequestWindowSeconds_new = toBN(0);
+            let res = assetManagerController.setRejectRedemptionRequestWindowSeconds([assetManager.address], rejectRedemptionRequestWindowSeconds_new, { from: governance });
+            await expectRevert(res, "cannot be zero");
+        });
+
+        // take over redemption request window
+        it("should set take over redemption request window seconds", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let takeOverRedemptionRequestWindowSeconds_new = toBN(currentSettings.takeOverRedemptionRequestWindowSeconds).muln(2);
+            let res = await assetManagerController.setTakeOverRedemptionRequestWindowSeconds([assetManager.address], takeOverRedemptionRequestWindowSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "takeOverRedemptionRequestWindowSeconds", value: toBN(takeOverRedemptionRequestWindowSeconds_new) });
+        });
+
+        it("should not set take over redemption request window seconds if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let takeOverRedemptionRequestWindowSeconds_new = toBN(currentSettings.takeOverRedemptionRequestWindowSeconds).muln(2);
+            let res = assetManagerController.setTakeOverRedemptionRequestWindowSeconds([assetManager.address], takeOverRedemptionRequestWindowSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("should not set take over redemption request window seconds if increase is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let takeOverRedemptionRequestWindowSeconds_new = toBN(currentSettings.takeOverRedemptionRequestWindowSeconds).muln(5).addn(MINUTES);
+            let res = assetManagerController.setTakeOverRedemptionRequestWindowSeconds([assetManager.address], takeOverRedemptionRequestWindowSeconds_new, { from: governance });
+            await expectRevert(res, "increase too big");
+        });
+
+        it("should not set take over redemption request windows seconds if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let takeOverRedemptionRequestWindowSeconds_new = toBN(currentSettings.takeOverRedemptionRequestWindowSeconds).divn(5);
+            let res = assetManagerController.setTakeOverRedemptionRequestWindowSeconds([assetManager.address], takeOverRedemptionRequestWindowSeconds_new, { from: governance });
+            await expectRevert(res, "decrease too big");
+        });
+
+        it("should not set take over redemption request window seconds if value is 0", async () => {
+            let takeOverRedemptionRequestWindowSeconds_new = toBN(0);
+            let res = assetManagerController.setTakeOverRedemptionRequestWindowSeconds([assetManager.address], takeOverRedemptionRequestWindowSeconds_new, { from: governance });
+            await expectRevert(res, "cannot be zero");
+        });
+
+        // rejected redemption default factor bips
+        it("should set rejected redemption default factor bips", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectedRedemptionDefaultFactorPoolBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS).muln(11000).divn(10000);
+            let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorVaultCollateralBIPS).muln(10900).divn(10000);
+            let res = await assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "rejectedRedemptionDefaultFactorVaultCollateralBIPS", value: toBN(rejectedRedemptionDefaultFactorVaultCollateralBIPS_new) });
+            expectEvent(res, "SettingChanged", { name: "rejectedRedemptionDefaultFactorPoolBIPS", value: toBN(rejectedRedemptionDefaultFactorPoolBIPS_new) });
+        });
+
+        it("should not set rejected redemption default factor bips if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectedRedemptionDefaultFactorPoolBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS).muln(11000).divn(10000);
+            let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorVaultCollateralBIPS).muln(10900).divn(10000);
+            let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("should not set rejected redemption default factor bips if increase of vault collateral BIPS is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectedRedemptionDefaultFactorPoolBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS).muln(5);
+            let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], currentSettings.rejectedRedemptionDefaultFactorVaultCollateralBIPS, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: governance });
+            await expectRevert(res, "fee increase too big");
+        });
+
+        it("should not set rejected redemption default factor bips if increase of factor pool BIPS is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorVaultCollateralBIPS).muln(13000).divn(10000);
+            let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, currentSettings.rejectedRedemptionDefaultFactorPoolBIPS, { from: governance });
+            await expectRevert(res, "fee increase too big");
+        });
+
+        it("should not set rejected redemption default factor bips if decrease of vault collateral BIPS is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectedRedemptionDefaultFactorPoolBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS).muln(8319).divn(10000);
+            console.log(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS)
+            let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], currentSettings.rejectedRedemptionDefaultFactorVaultCollateralBIPS, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: governance });
+            await expectRevert(res, "fee decrease too big");
+        });
+
+        it("should not set rejected redemption default factor bips if decrease of factor pool BIPS is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = toBN(currentSettings.rejectedRedemptionDefaultFactorVaultCollateralBIPS).muln(8319).divn(10000);
+            console.log(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS.toString(), rejectedRedemptionDefaultFactorVaultCollateralBIPS_new.toString())
+            let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, toBN(currentSettings.rejectedRedemptionDefaultFactorPoolBIPS).muln(3), { from: governance });
+            await expectRevert(res, "fee decrease too big");
+        });
+
+        it("should not set rejected redemption default factor bips if bips value too low", async () => {
+            let rejectedRedemptionDefaultFactorPoolBIPS_new = 5000;
+            let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = 5000;
+            let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: governance });
+            await expectRevert(res, "bips value too low");
         });
 
         it("should add Collateral token", async () => {

@@ -79,6 +79,7 @@ library FullAgentInfo {
         _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();
         _info.poolTopupCollateralRatioBIPS = agent.collateralPool.topupCollateralRatioBIPS();
         _info.poolTopupTokenPriceFactorBIPS = agent.collateralPool.topupTokenPriceFactorBIPS();
+        _info.handShakeType = agent.handShakeType;
     }
 
     function getAgentStatus(

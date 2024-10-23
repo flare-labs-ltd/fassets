@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
-import { AttestationNotProved, AttestationProof, AttestationRequestId, IStateConnectorClient, OptionalAttestationProof } from "./interfaces/IStateConnectorClient";
+import { AttestationNotProved, AttestationProof, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "./interfaces/IFlareDataConnectorClient";
 
 export class AttestationHelperError extends Error {
     constructor(message: string) {
@@ -26,7 +26,7 @@ export class AttestationHelper {
     static deepCopyWithObjectCreate = true;
 
     constructor(
-        public client: IStateConnectorClient,
+        public client: IFlareDataConnectorClient,
         public chain: IBlockChain,
         public chainId: SourceId,
     ) {}
@@ -84,7 +84,7 @@ export class AttestationHelper {
         return await this.client.submitRequest(request);
     }
 
-    async requestReferencedPaymentNonexistenceProof(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): Promise<AttestationRequestId | null> {
+    async requestReferencedPaymentNonexistenceProof(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, sourceAddressesRoot?: string): Promise<AttestationRequestId | null> {
         let overflowBlock = await this.chain.getBlockAt(endBlock + 1);
         while (overflowBlock != null && overflowBlock.timestamp <= endTimestamp) {
             overflowBlock = await this.chain.getBlockAt(overflowBlock.number + 1);
@@ -107,6 +107,8 @@ export class AttestationHelper {
                 destinationAddressHash: web3.utils.keccak256(destinationAddress),
                 amount: String(amount),
                 standardPaymentReference: paymentReference,
+                checkSourceAddresses: sourceAddressesRoot ? true : false,
+                sourceAddressesRoot: sourceAddressesRoot ?? constants.ZERO_BYTES32,
             },
         };
         return await this.client.submitRequest(request);
@@ -188,8 +190,8 @@ export class AttestationHelper {
         return result;
     }
 
-    async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): Promise<ReferencedPaymentNonexistence.Proof> {
-        const request = await this.requestReferencedPaymentNonexistenceProof(destinationAddress, paymentReference, amount, startBlock, endBlock, endTimestamp);
+    async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, sourceAddressesRoot?: string): Promise<ReferencedPaymentNonexistence.Proof> {
+        const request = await this.requestReferencedPaymentNonexistenceProof(destinationAddress, paymentReference, amount, startBlock, endBlock, endTimestamp, sourceAddressesRoot);
         if (request == null) {
             throw new AttestationHelperError("referencedPaymentNonexistence: not proved")
         }

@@ -13,7 +13,7 @@ import "../interfaces/IIAssetManager.sol";
 contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     using SafeERC20 for IERC20;
 
-    IIAssetManager public assetManager; // practicaly immutable
+    IIAssetManager public assetManager; // practically immutable
 
     bool private initialized;
 
@@ -149,17 +149,18 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         _token.governanceVotePower().undelegate();
     }
 
-    // Claim ftso rewards. Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256 _lastRewardEpoch,
-        address payable _recipient
+    // Claim delegation rewards. Alternatively, you can set claim executor and then claim directly from RewardManager.
+    function claimDelegationRewards(
+        IRewardManager _rewardManager,
+        uint24 _lastRewardEpoch,
+        address payable _recipient,
+        IRewardManager.RewardClaimWithProof[] calldata _proofs
     )
         external override
         onlyOwner
         returns (uint256)
     {
-        return _ftsoRewardManager.claim(address(this), _recipient, _lastRewardEpoch, false);
+        return _rewardManager.claim(address(this), _recipient, _lastRewardEpoch, false, _proofs);
     }
 
     function claimAirdropDistribution(
@@ -196,7 +197,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
             if ((useFlags & TOKEN_DELEGATE_GOVERNANCE) != 0) {
                 IWNat(address(token)).governanceVotePower().undelegate();
             }
-            // undelegate all FTSO delegation
+            // undelegate all WNat delegation
             if ((useFlags & TOKEN_DELEGATE) != 0) {
                 IVPToken(address(token)).undelegateAll();
             }

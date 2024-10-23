@@ -133,7 +133,7 @@ export function convertCollateralType(contracts: FAssetContractStore, parameters
 }
 
 export function createAssetManagerSettings(contracts: FAssetContractStore, parameters: AssetManagerParameters, fAsset: FAssetInstance): AssetManagerSettings {
-    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
+    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.FdcVerification || !contracts.CollateralPoolFactory) {
         throw new Error("Missing contracts");
     }
     const ten = new BN(10);
@@ -145,7 +145,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         agentVaultFactory: contracts.getAddress(parameters.agentVaultFactory ?? 'AgentVaultFactory'),
         collateralPoolFactory: contracts.getAddress(parameters.collateralPoolFactory ?? 'CollateralPoolFactory'),
         collateralPoolTokenFactory: contracts.getAddress(parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
-        scProofVerifier: contracts.getAddress(parameters.scProofVerifier ?? 'SCProofVerifier'),
+        fdcVerification: contracts.getAddress(parameters.fdcVerification ?? 'FdcVerification'),
         priceReader: contracts.getAddress(parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? contracts.getAddress(parameters.userWhitelist) : ZERO_ADDRESS,
         agentOwnerRegistry: contracts.getAddress(parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
@@ -194,6 +194,11 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
+        cancelCollateralReservationAfterSeconds: parameters.cancelCollateralReservationAfterSeconds,
+        rejectRedemptionRequestWindowSeconds: parameters.rejectRedemptionRequestWindowSeconds,
+        takeOverRedemptionRequestWindowSeconds: parameters.takeOverRedemptionRequestWindowSeconds,
+        rejectedRedemptionDefaultFactorVaultCollateralBIPS: parameters.rejectedRedemptionDefaultFactorVaultCollateralBIPS,
+        rejectedRedemptionDefaultFactorPoolBIPS: parameters.rejectedRedemptionDefaultFactorPoolBIPS,
     };
 }
 

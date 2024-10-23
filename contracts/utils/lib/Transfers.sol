@@ -7,8 +7,8 @@ library Transfers {
      *
      * **Warning**: ALWAYS guard with nonReentrant, otherwise this is subject to reentrancy vulnerability.
      *
-     * **Warning 2**: may fail, so only use when the toplevel transaction sender controls recipient address
-     * (and therefore excpects to fail if there is something strange at that address).
+     * **Warning 2**: may fail, so only use when the top-level transaction sender controls recipient address
+     * (and therefore expects to fail if there is something strange at that address).
      *
      * @param _recipient the recipient address
      * @param _amount the amount in NAT Wei

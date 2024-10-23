@@ -1,4 +1,4 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -14,7 +14,7 @@ import { precomputeContractAddress } from "../../../utils/contract-test-helpers"
 import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -32,7 +32,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     // addresses
@@ -61,11 +61,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
-    async function reserveCollateral(agentVault: string, lots: BNish) {
+    async function reserveCollateral(agentVault: string, lots: BNish, underlyingAddresses?: string[]) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const crFee = await assetManager.collateralReservationFee(lots);
         const totalNatFee = crFee.add(toWei(0.1));
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1,
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1, underlyingAddresses ?? [],
             { from: minterAddress1, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
@@ -92,7 +92,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
         chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);
         chain.mineTo(Number(lastUnderlyingBlock) + 1);
-        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.skipTime(flareDataConnectorClient.queryWindowSeconds + 1);
         chain.mine(chain.finalizationBlocks);
     }
 
@@ -107,17 +107,17 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     };
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should execute minting (minter)", async () => {
@@ -304,6 +304,29 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
         await expectRevert(promise, "minting payment too small");
+    });
+
+    it("should not execute minting if collateral reservation is not approved", async () => {
+        // init
+        const feeBIPS = toBIPS("50%");
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handShakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
+        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const crt = await reserveCollateral(agentVault1.address, 1);
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
+        chain.mint(underlyingMinter1, paymentAmount);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        // it doesn't matter what kind of proof we provide, the transaction should fail
+        const promise = assetManager.executeMinting(proof, args.collateralReservationId, { from: minterAddress1 });
+        // assert
+        await expectRevert(promise, "collateral reservation not approved");
     });
 
     it("should unstick minting", async () => {

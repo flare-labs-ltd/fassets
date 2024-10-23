@@ -48,11 +48,11 @@ library AssetManagerSettings {
         address agentOwnerRegistry;
 
         // Attestation client verifies and decodes attestation proofs.
-        // Type: ISCProofVerifier
+        // Type: IFdcVerification
         // changed via address updater
-        address scProofVerifier;
+        address fdcVerification;
 
-        // The address where bunrned NAt is sent.
+        // The address where burned NAt is sent.
         // (E.g. collateral reservation fee is burned on successful minting.)
         // immutable
         address payable burnAddress;
@@ -208,7 +208,7 @@ library AssetManagerSettings {
 
         // Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
         // Any value is ok, but higher values give more security against multiple announcement attack by a miner.
-        // Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
+        // Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         // rate-limited
         uint64 announcedUnderlyingConfirmationMinSeconds;
@@ -279,5 +279,30 @@ library AssetManagerSettings {
         // The amount of time since last emergency pause after which the total pause duration counter
         // will reset automatically.
         uint64 emergencyPauseDurationResetAfterSeconds;
+
+        // The amount of time after which the collateral reservation can be cancelled if the
+        // hand-shake is not completed.
+        // rate-limited
+        uint64 cancelCollateralReservationAfterSeconds;
+
+        // Time window inside which the agent can reject the redemption request.
+        // rate-limited
+        uint64 rejectRedemptionRequestWindowSeconds;
+
+        // Time window inside which the agent can take over the redemption request from another agent
+        // that has rejected it.
+        // rate-limited
+        uint64 takeOverRedemptionRequestWindowSeconds;
+
+        // On redemption rejection, without take over, redeemer is compensated with
+        // redemption value recalculated in flare/sgb times redemption failure factor.
+        // Expressed in BIPS, e.g. 12000 for factor of 1.2.
+        // This is the part of factor paid from agent's vault collateral.
+        // rate-limited
+        uint32 rejectedRedemptionDefaultFactorVaultCollateralBIPS;
+
+        // This is the part of rejected redemption factor paid from agent's pool collateral.
+        // rate-limited
+        uint32 rejectedRedemptionDefaultFactorPoolBIPS;
     }
 }

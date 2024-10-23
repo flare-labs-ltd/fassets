@@ -29,11 +29,11 @@ export class Minter extends AssetContextClient {
         return new Minter(ctx, address, underlyingAddress, wallet);
     }
 
-    async reserveCollateral(agent: string, lots: BNish, executorAdddress?: string, executorFeeNatWei?: BNish) {
+    async reserveCollateral(agent: string, lots: BNish, executorAddress?: string, executorFeeNatWei?: BNish, underlyingAddresses?: string[]) {
         const agentInfo = await this.assetManager.getAgentInfo(agent);
         const crFee = await this.getCollateralReservationFee(lots);
-        const totalNatFee = executorAdddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
-        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAdddress ?? ZERO_ADDRESS,
+        const totalNatFee = executorAddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
+        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAddress ?? ZERO_ADDRESS, underlyingAddresses ?? [],
             { from: this.address, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }

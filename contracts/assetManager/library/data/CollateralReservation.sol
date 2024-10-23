@@ -14,5 +14,7 @@ library CollateralReservation {
         address minter;
         address payable executor;
         uint64 executorFeeNatGWei;
+        uint64 handShakeStartTimestamp;
+        bytes32 sourceAddressesRoot;
     }
 }

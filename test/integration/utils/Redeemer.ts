@@ -20,9 +20,9 @@ export class Redeemer extends AssetContextClient {
         return new Redeemer(ctx, address, underlyingAddress);
     }
 
-    async requestRedemption(lots: number, executorAdddress?: string, executorFeeNatWei?: BNish): Promise<[requests: EventArgs<RedemptionRequested>[], remainingLots: BN, dustChanges: EventArgs<DustChanged>[]]> {
-        const executorFee = executorAdddress ? toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used")) : undefined;
-        const res = await this.assetManager.redeem(lots, this.underlyingAddress, executorAdddress ?? ZERO_ADDRESS,
+    async requestRedemption(lots: number, executorAddress?: string, executorFeeNatWei?: BNish): Promise<[requests: EventArgs<RedemptionRequested>[], remainingLots: BN, dustChanges: EventArgs<DustChanged>[]]> {
+        const executorFee = executorAddress ? toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used")) : undefined;
+        const res = await this.assetManager.redeem(lots, this.underlyingAddress, executorAddress ?? ZERO_ADDRESS,
             { from: this.address, value: executorFee });
         const redemptionRequests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
         const redemptionIncomplete = eventArgs(res, 'RedemptionRequestIncomplete');

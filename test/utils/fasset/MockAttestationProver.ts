@@ -43,6 +43,7 @@ export class MockAttestationProver {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
+            sourceAddressesRoot: Web3.utils.soliditySha3Raw(sourceAddressHash),
             receivingAddressHash: receivingAddressHash,
             intendedReceivingAddressHash: receivingAddressHash,
             standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,

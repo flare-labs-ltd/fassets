@@ -106,6 +106,15 @@ library Agents {
         _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
+    function setHandShakeType(
+        Agent.State storage _agent,
+        uint256 _handShakeType
+    )
+        internal
+    {
+        _agent.handShakeType = _handShakeType.toUint32();
+    }
+
     function allocateMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG

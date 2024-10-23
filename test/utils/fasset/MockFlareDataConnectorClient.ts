@@ -1,15 +1,15 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "@flarenetwork/state-connector-protocol";
 import { SourceId } from "../../../lib/underlying-chain/SourceId";
-import { AttestationNotProved, AttestationRequestId, IStateConnectorClient, OptionalAttestationProof } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
+import { AttestationNotProved, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "../../../lib/underlying-chain/interfaces/IFlareDataConnectorClient";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { filterStackTrace, sleep, toBN, toNumber } from "../../../lib/utils/helpers";
 import { stringifyJson } from "../../../lib/utils/json-bn";
 import { ILogger } from "../../../lib/utils/logging";
-import { StateConnectorMockInstance } from "../../../typechain-truffle";
-import { AttestationRequest } from "../../../typechain-truffle/IStateConnector";
+import { AttestationRequest } from "../../../typechain-truffle/IFdcHub";
 import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
+import { FdcHubMockInstance, RelayMockInstance } from "../../../typechain-truffle";
 
 interface RoundProof {
     response: ARESBase;
@@ -21,7 +21,7 @@ interface FinalizedRound {
     tree: MerkleTree;
 }
 
-export class StateConnectorClientError extends Error {
+export class FlareDataConnectorClientError extends Error {
     constructor(message: string) {
         super(message);
     }
@@ -33,11 +33,12 @@ export class StateConnectorClientError extends Error {
 // manual - user must manually call finalizeRound()
 export type AutoFinalizationType = 'auto' | 'on_wait' | 'timed' | 'manual';
 
-export class MockStateConnectorClient implements IStateConnectorClient {
+export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
     static deepCopyWithObjectCreate = true;
 
     constructor(
-        public stateConnector: StateConnectorMockInstance,
+        public fdcHub: FdcHubMockInstance,
+        public relay: RelayMockInstance,
         public supportedChains: { [chainId: string]: MockChain },
         public finalizationType: AutoFinalizationType,
     ) {
@@ -64,7 +65,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
 
     async waitForRoundFinalization(round: number): Promise<void> {
         if (round >= this.rounds.length) {
-            throw new StateConnectorClientError(`StateConnectorClient: round doesn't exist yet (${round} >= ${this.rounds.length})`);
+            throw new FlareDataConnectorClientError(`FlareDataConnectorClient: round doesn't exist yet (${round} >= ${this.rounds.length})`);
         }
         while (this.finalizedRounds.length <= round) {
             if (this.finalizationType == 'on_wait') {
@@ -81,11 +82,11 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         if (responseData == null) return null;  // cannot prove request (yet)
         const mic = this.definitionStore.attestationResponseHash(responseData, MIC_SALT);
         if (mic == null) {
-            throw new StateConnectorClientError(`StateConnectorClient: invalid attestation data`);
+            throw new FlareDataConnectorClientError(`FlareDataConnectorClient: invalid attestation data`);
         }
         const data = this.definitionStore.encodeRequest({ ...request, messageIntegrityCode: mic });
         // submit request and mock listening to event
-        const res = await this.stateConnector.requestAttestations(data);
+        const res = await this.fdcHub.requestAttestation(data);
         const event = findRequiredEvent(res, 'AttestationRequest');
         return await this.handleAttestationRequest(event);
     }
@@ -99,7 +100,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // add request
         const round = this.rounds.length - 1;
         this.rounds[round].push(data);
-        this.logger?.log(`STATE CONNECTOR SUBMIT round=${round} data=${data}`);
+        this.logger?.log(`FDC SUBMIT round=${round} data=${data}`);
         // auto finalize?
         if (this.finalizationType === 'auto') {
             await this.finalizeRound();
@@ -151,33 +152,33 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // build merkle tree
         const hashes = Object.values(proofs).map(proof => proof.hash);
         const tree = new MerkleTree(hashes);
-        await this.stateConnector.setMerkleRoot(round, tree.root ?? constants.ZERO_BYTES32);
+        await this.relay.setMerkleRoot(200, round, tree.root ?? constants.ZERO_BYTES32);
         // add new finalized round
         this.finalizedRounds.push({ proofs, tree });
         // log
         if (this.logger) {
-            this.logger.log(`STATE CONNECTOR ROUND ${round} FINALIZED`);
+            this.logger.log(`FDC ROUND ${round} FINALIZED`);
             for (const [data, proof] of Object.entries(proofs)) {
                 this.logger.log(`    ${data}  ${stringifyJson(proof)}`);
             }
         }
     }
 
-    private proveRequest(requestData: string, stateConnectorRound: number): RoundProof | null {
+    private proveRequest(requestData: string, flareDataConnectorRound: number): RoundProof | null {
         const request = this.definitionStore.parseRequest<ARBase>(requestData);
         const response = this.proveParsedRequest(request);
         if (response == null) return null;
-        // verify MIC (message integrity code) - stateConnectorRound field must be 0
+        // verify MIC (message integrity code) - flareDataConnectorRound field must be 0
         const mic = this.definitionStore.attestationResponseHash(response, MIC_SALT);
         if (mic == null || mic !== request.messageIntegrityCode) {
-            throw new StateConnectorClientError(`StateConnectorClient: invalid message integrity code`);
+            throw new FlareDataConnectorClientError(`FlareDataConnectorClient: invalid message integrity code`);
         }
         // now set correct voting round
-        response.votingRound = String(stateConnectorRound);
-        // calculate hash for Merkle tree - requires correct stateConnectorRound field
+        response.votingRound = String(flareDataConnectorRound);
+        // calculate hash for Merkle tree - requires correct flareDataConnectorRound field
         const hash = this.definitionStore.attestationResponseHash(response);
         if (hash == null) {
-            throw new StateConnectorClientError(`StateConnectorClient: invalid attestation reponse`);
+            throw new FlareDataConnectorClientError(`FlareDataConnectorClient: invalid attestation reponse`);
         }
         return { response, hash };
     }
@@ -185,7 +186,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     private proveParsedRequest(parsedRequest: ARBase): ARESBase | null {
         try {
             const chain = this.supportedChains[parsedRequest.sourceId];
-            if (chain == null) throw new StateConnectorClientError(`StateConnectorClient: unsupported chain ${parsedRequest.sourceId}`);
+            if (chain == null) throw new FlareDataConnectorClientError(`FlareDataConnectorClient: unsupported chain ${parsedRequest.sourceId}`);
             const responseBody = this.proveParsedRequestBody(chain, parsedRequest);
             return {
                 attestationType: parsedRequest.attestationType,
@@ -231,7 +232,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
                 return prover.addressValidity(request.addressStr);
             }
             default: {
-                throw new StateConnectorClientError(`StateConnectorClient: unsupported attestation request ${decodeAttestationName(parsedRequest.attestationType)} (${parsedRequest.attestationType})`);
+                throw new FlareDataConnectorClientError(`FlareDataConnectorClient: unsupported attestation request ${decodeAttestationName(parsedRequest.attestationType)} (${parsedRequest.attestationType})`);
             }
         }
     }

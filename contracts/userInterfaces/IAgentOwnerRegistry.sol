@@ -31,7 +31,7 @@ interface IAgentOwnerRegistry is IWhitelist {
         returns (string memory);
 
     /**
-     * Return agent owner's decription.
+     * Return agent owner's description.
      * @param _managementAddress agent owner's management address
      */
     function getAgentDescription(address _managementAddress)

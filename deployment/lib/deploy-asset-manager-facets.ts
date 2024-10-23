@@ -12,6 +12,7 @@ export const assetManagerFacets = [
     'DiamondLoupeFacet',
     'AgentInfoFacet',
     'AvailableAgentsFacet',
+    'CollateralReservationsFacet',
     'MintingFacet',
     'RedemptionRequestsFacet',
     'RedemptionConfirmationsFacet',
