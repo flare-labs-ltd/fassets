@@ -15,16 +15,19 @@ library Redemptions {
     function closeTickets(
         Agent.State storage _agent,
         uint64 _amountAMG,
-        bool _immediatelyReleaseMinted
+        bool _immediatelyReleaseMinted,
+        bool _skipDust
     )
         internal
         returns (uint64 _closedAMG, uint256 _closedUBA)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        // dust first
-        _closedAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
-        if (_closedAMG > 0) {
-            Agents.decreaseDust(_agent, _closedAMG);
+        if (!_skipDust) {
+            // dust first
+            _closedAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
+            if (_closedAMG > 0) {
+                Agents.decreaseDust(_agent, _closedAMG);
+            }
         }
         // redemption tickets
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;

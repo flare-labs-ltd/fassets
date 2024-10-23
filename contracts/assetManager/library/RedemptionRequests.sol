@@ -85,7 +85,7 @@ library RedemptionRequests {
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false, false);
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
@@ -106,7 +106,7 @@ library RedemptionRequests {
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
         // pay in collateral
         uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
@@ -167,7 +167,7 @@ library RedemptionRequests {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds > block.timestamp,
             "take over redemption request window closed");
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(newAgent, request.valueAMG, false);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(newAgent, request.valueAMG, false, true);
         require(closedAMG > 0, "no tickets");
         uint256 executorFeeNatGWei = uint256(request.executorFeeNatGWei) * closedAMG / request.valueAMG;
         // create redemption request
@@ -209,7 +209,7 @@ library RedemptionRequests {
         Agents.requireAgentVaultOwner(agent);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
+        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
         // burn the self-closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
         // try to pull agent out of liquidation
