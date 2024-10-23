@@ -48,7 +48,9 @@ library Liquidation {
         }
         // upgrade liquidation based on CR and time
         CRData memory cr = getCollateralRatiosBIPS(agent);
-        _liquidationPhase = _upgradeLiquidationPhase(agent, cr);
+        bool liquidationUpgraded;
+        (_liquidationPhase, liquidationUpgraded) = _upgradeLiquidationPhase(agent, cr);
+        require(liquidationUpgraded, "liquidation not started");
         _liquidationStartTs = getLiquidationStartTimestamp(agent);
     }
 
@@ -67,7 +69,7 @@ library Liquidation {
         // calculate both CRs
         CRData memory cr = getCollateralRatiosBIPS(agent);
         // allow one-step liquidation (without calling startLiquidation first)
-        Agent.LiquidationPhase currentPhase = _upgradeLiquidationPhase(agent, cr);
+        (Agent.LiquidationPhase currentPhase,) = _upgradeLiquidationPhase(agent, cr);
         require(currentPhase == Agent.LiquidationPhase.LIQUIDATION, "not in liquidation");
         // liquidate redemption tickets
         (uint64 liquidatedAmountAMG, uint256 payoutC1Wei, uint256 payoutPoolWei) =
@@ -81,13 +83,17 @@ library Liquidation {
             uint256 agentResponsibilityWei = _agentResponsibilityWei(agent, payoutPoolWei);
             _amountPaidPool = Agents.payoutFromPool(agent, msg.sender, payoutPoolWei, agentResponsibilityWei);
         }
+        // if the agent was already safe due to price changes, there should be no LiquidationPerformed event
+        // we do not revert, because it still marks agent as healthy (so there will still be a LiquidationEnded event)
+        if (_liquidatedAmountUBA > 0) {
+            // burn liquidated fassets
+            Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
+            // notify about liquidation
+            emit IAssetManagerEvents.LiquidationPerformed(_agentVault, msg.sender,
+                _liquidatedAmountUBA, _amountPaidC1, _amountPaidPool);
+        }
         // try to pull agent out of liquidation
         endLiquidationIfHealthy(agent);
-        // burn liquidated fassets
-        Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
-        // notify about liquidation
-        emit IAssetManagerEvents.LiquidationPerformed(_agentVault, msg.sender,
-            _liquidatedAmountUBA, _amountPaidC1, _amountPaidPool);
     }
 
     // Cancel liquidation, requires that agent is healthy.
@@ -256,7 +262,7 @@ library Liquidation {
         CRData memory _cr
     )
         private
-        returns (Agent.LiquidationPhase)
+        returns (Agent.LiquidationPhase, bool)
     {
         Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
         // calculate new phase for both collaterals and if any is underwater, set its flag
@@ -283,9 +289,22 @@ library Liquidation {
             } else {
                 emit IAssetManagerEvents.LiquidationStarted(_agent.vaultAddress(), block.timestamp);
             }
-            return newPhase;
+            return (newPhase, true);
+        } else if (
+            _agent.status == Agent.Status.LIQUIDATION &&
+            _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB &&
+            currentPhase == Agent.LiquidationPhase.LIQUIDATION
+        ) {
+            // If the liquidation starts because CCB time expired and CR didn't go up, then we still want
+            // the LiquidationStarted event to be sent, but it has to be sent just once.
+            // So we reset the initial phase to liquidation and send events.
+            uint256 liquidationStartedAt = _agent.liquidationStartedAt + Globals.getSettings().ccbTimeSeconds;
+            _agent.liquidationStartedAt = liquidationStartedAt.toUint64();
+            _agent.initialLiquidationPhase = Agent.LiquidationPhase.LIQUIDATION;
+            emit IAssetManagerEvents.LiquidationStarted(_agent.vaultAddress(), liquidationStartedAt);
+            return (currentPhase, true);
         }
-        return currentPhase;
+        return (currentPhase, false);
     }
 
     function _performLiquidation(

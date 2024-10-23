@@ -551,8 +551,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
             assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
             // Should not be able to start liquidation before time passes
-            const { 0: liquidationPhase } = await assetManager.startLiquidation.call(agentVault.address, { from: liquidator });
-            assertWeb3Equal(liquidationPhase, 0);
+            await expectRevert(assetManager.startLiquidation.call(agentVault.address, { from: liquidator }), "liquidation not started");
             //Wait until you can swtich vault collateral token
             await time.increase(settings.tokenInvalidationTimeMinSeconds);
             await time.increase(settings.tokenInvalidationTimeMinSeconds);

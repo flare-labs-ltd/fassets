@@ -167,7 +167,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info3.status, 3);
     });
 
-    it("should not do anything if callig startLiquidation twice", async () => {
+    it("should revert if callig startLiquidation twice", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
@@ -181,7 +181,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await fAsset.transfer(liquidatorAddress1, minted.mintedAmountUBA.divn(2), { from: minterAddress1 });
         await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
         await ftsos.asset.setCurrentPrice(toBNExp(3521, 5), 0);
-        await assetManager.startLiquidation(agentVault.address);
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         await assetManager.endLiquidation(agentVault.address);
         const info3 = await assetManager.getAgentInfo(agentVault.address);
@@ -198,8 +198,8 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
-        //Starting liquidation now should not do anything
-        await assetManager.startLiquidation(agentVault.address);
+        //Starting liquidation now should revert, because it can't change status
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 0);
         // act
@@ -317,7 +317,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // act
         await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
         await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 0);
-        await assetManager.startLiquidation(agentVault.address);
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         assertWeb3Equal(info1.status, AgentStatus.NORMAL);

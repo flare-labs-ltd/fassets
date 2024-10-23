@@ -34,13 +34,15 @@ export class Liquidator extends AssetContextClient {
     async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationEnded>, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
         expectEvent.notEmitted(res, 'AgentInCCB');
-        const liquidationPerformed = requiredEventArgs(res, 'LiquidationPerformed');
+        const liquidationPerformed = eventArgs(res, 'LiquidationPerformed');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
-        assert.equal(liquidationPerformed.agentVault, agent.agentVault.address);
-        assert.equal(liquidationPerformed.liquidator, this.address);
+        if (liquidationPerformed) {
+            assert.equal(liquidationPerformed.agentVault, agent.agentVault.address);
+            assert.equal(liquidationPerformed.liquidator, this.address);
+        }
         const tr = await web3.eth.getTransaction(res.tx);
         const block = await web3.eth.getBlock(tr.blockHash!);
-        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
+        return [liquidationPerformed?.valueUBA ?? BN_ZERO, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
     }
 
     async endLiquidation(agent: Agent) {
