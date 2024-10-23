@@ -36,6 +36,7 @@ export class MockAttestationProver {
     payment(transactionHash: string, inUtxo: number, utxo: number): Payment.ResponseBody {
         const { transaction, block } = this.findTransaction('payment', transactionHash);
         const sourceAddressHash = Web3.utils.soliditySha3Raw(transaction.inputs[Number(inUtxo)][0]);
+        const add = Web3.utils.soliditySha3(Web3.utils.soliditySha3("underlyingAddr1")!);
         const receivingAddressHash = Web3.utils.soliditySha3Raw(transaction.outputs[Number(utxo)][0]);
         const spent = totalSpentValue(transaction, sourceAddressHash);
         const received = totalReceivedValue(transaction, receivingAddressHash);
@@ -43,7 +44,7 @@ export class MockAttestationProver {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
-            sourceAddressesRoot: Web3.utils.soliditySha3Raw(sourceAddressHash),
+            sourceAddressesRoot: add!,
             receivingAddressHash: receivingAddressHash,
             intendedReceivingAddressHash: receivingAddressHash,
             standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
