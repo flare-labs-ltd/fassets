@@ -13,6 +13,7 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     mapping(address => string) private agentName;
     mapping(address => string) private agentDescription;
     mapping(address => string) private agentIconUrl;
+    mapping(address => string) private agentTouUrl;
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportRevoke)
         Whitelist(_governanceSettings, _initialGovernance, _supportRevoke)
@@ -25,20 +26,22 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
      * @param _managementAddress the agent owner's address
      * @param _name agent owner's name
      * @param _description agent owner's description
-     * @param _iconUrl url of the agent owner's icon image; governance should check it is in correct format
+     * @param _iconUrl url of the agent owner's icon image; governance or manager should check it is in correct format
      *      and size and it is on a server where it cannot change or be deleted
+     * @param _touUrl url of the agent's page with terms of use; similar considerations appli as for icon url
      */
     function whitelistAndDescribeAgent(
         address _managementAddress,
         string memory _name,
         string memory _description,
-        string memory _iconUrl
+        string memory _iconUrl,
+        string memory _touUrl
     )
         external
         onlyGovernanceOrManager
     {
         _addAddressToWhitelist(_managementAddress);
-        _setAgentData(_managementAddress, _name, _description, _iconUrl);
+        _setAgentData(_managementAddress, _name, _description, _iconUrl, _touUrl);
     }
 
     /**
@@ -65,6 +68,58 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
             workToMgmtAddress[_ownerWorkAddress] = msg.sender;
         }
         emit WorkAddressChanged(msg.sender, oldWorkAddress, _ownerWorkAddress);
+    }
+
+    /**
+     * Set agent owner's name.
+     * @param _managementAddress agent owner's management address
+     * @param _name new agent owner's name
+     */
+    function setAgentName(address _managementAddress, string memory _name)
+        external
+        onlyGovernanceOrManager
+    {
+        agentName[_managementAddress] = _name;
+        _emitDataChanged(_managementAddress);
+    }
+
+    /**
+     * Set agent owner's description.
+     * @param _managementAddress agent owner's management address
+     * @param _description new agent owner's description
+     */
+    function setAgentDescription(address _managementAddress, string memory _description)
+        external
+        onlyGovernanceOrManager
+    {
+        agentDescription[_managementAddress] = _description;
+        _emitDataChanged(_managementAddress);
+    }
+
+    /**
+     * Set url of the agent owner's icon.
+     * @param _managementAddress agent owner's management address
+     * @param _iconUrl new url of the agent owner's icon
+     */
+    function setAgentIconUrl(address _managementAddress, string memory _iconUrl)
+        external
+        onlyGovernanceOrManager
+    {
+        agentIconUrl[_managementAddress] = _iconUrl;
+        _emitDataChanged(_managementAddress);
+    }
+
+    /**
+     * Set url of the agent's page with terms of use.
+     * @param _managementAddress agent owner's management address
+     * @param _touUrl new url of the agent's page with terms of use
+     */
+    function setAgentTermsOfUseUrl(address _managementAddress, string memory _touUrl)
+        external
+        onlyGovernanceOrManager
+    {
+        agentTouUrl[_managementAddress] = _touUrl;
+        _emitDataChanged(_managementAddress);
     }
 
     /**
@@ -101,6 +156,17 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     }
 
     /**
+     * Return url of the agent's page with terms of use.
+     * @param _managementAddress agent owner's management address
+     */
+    function getAgentTermsOfUseUrl(address _managementAddress)
+        external view override
+        returns (string memory)
+    {
+        return agentTouUrl[_managementAddress];
+    }
+
+    /**
      * Get the (unique) work address for the given management address.
      */
     function getWorkAddress(address _managementAddress)
@@ -124,12 +190,22 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
         address _managementAddress,
         string memory _name,
         string memory _description,
-        string memory _iconUrl
+        string memory _iconUrl,
+        string memory _touUrl
     ) private {
         agentName[_managementAddress] = _name;
         agentDescription[_managementAddress] = _description;
         agentIconUrl[_managementAddress] = _iconUrl;
-        emit AgentDataChanged(_managementAddress, _name, _description, _iconUrl);
+        agentTouUrl[_managementAddress] = _touUrl;
+        emit AgentDataChanged(_managementAddress, _name, _description, _iconUrl, _touUrl);
+    }
+
+    function _emitDataChanged(address _managementAddress) private {
+        emit AgentDataChanged(_managementAddress,
+            agentName[_managementAddress],
+            agentDescription[_managementAddress],
+            agentIconUrl[_managementAddress],
+            agentTouUrl[_managementAddress]);
     }
 
     /**

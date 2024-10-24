@@ -79,7 +79,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         const { deployer } = loadDeployAccounts(hre);
         const managers = await assetManagerController.getAssetManagers();
         const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
-        await agentOwnerRegistry.whitelistAndDescribeAgent(owner, "TestAgent", "Agent in deploy test", "", { from: deployer });
+        await agentOwnerRegistry.whitelistAndDescribeAgent(owner, "TestAgent", "Agent in deploy test", "", "", { from: deployer });
         // create Flare data connector client (only really needed for address validation)
         const relay = await artifacts.require('RelayMock').at(contracts.Relay.address);
         const fdcHub = await artifacts.require('FdcHubMock').at(contracts.FdcHub.address);

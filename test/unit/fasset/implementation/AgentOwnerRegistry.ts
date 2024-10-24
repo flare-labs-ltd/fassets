@@ -12,6 +12,7 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
@@ -219,34 +220,68 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
-            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: governance });
+            const touUrl = "https://some.address/tos.html";
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
             expectEvent(res, "Whitelisted", { value: agentOwner1 });
-            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
             assert.equal(await agentOwnerRegistry.isWhitelisted(agentOwner1), true);
             assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), name);
             assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), description);
             assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrl);
+            assert.equal(await agentOwnerRegistry.getAgentTermsOfUseUrl(agentOwner1), touUrl);
         });
 
         it("should set owner data for already whitelisted agent", async () => {
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
+            const touUrl = "https://some.address/tos.html";
             await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
-            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: governance });
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
             expectEvent.notEmitted(res, "Whitelisted");
-            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
             assert.equal(await agentOwnerRegistry.isWhitelisted(agentOwner1), true);
             assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), name);
             assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), description);
             assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrl);
+            assert.equal(await agentOwnerRegistry.getAgentTermsOfUseUrl(agentOwner1), touUrl);
+        });
+
+        it("should update separate pieces of owner data", async () => {
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            const touUrl = "https://some.address/tos.html";
+            const nameU = "Agent 1 updated";
+            const descriptionU = "This is first agent updated";
+            const iconUrlU = "https://some.address/icon-updated.jpg";
+            const touUrlU = "https://some.address/tos-updated.html";
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
+
+            const res1 = await agentOwnerRegistry.setAgentName(agentOwner1, nameU, { from: governance });
+            expectEvent(res1, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description, iconUrl, termsOfUseUrl: touUrl });
+            assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), nameU);
+
+            const res2 = await agentOwnerRegistry.setAgentDescription(agentOwner1, descriptionU, { from: governance });
+            expectEvent(res2, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description: descriptionU, iconUrl, termsOfUseUrl: touUrl });
+            assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), descriptionU);
+
+            const res3 = await agentOwnerRegistry.setAgentIconUrl(agentOwner1, iconUrlU, { from: governance });
+            expectEvent(res3, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description: descriptionU, iconUrl: iconUrlU, termsOfUseUrl: touUrl });
+            assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrlU);
+
+            const res4 = await agentOwnerRegistry.setAgentTermsOfUseUrl(agentOwner1, touUrlU, { from: governance });
+            expectEvent(res4, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description: descriptionU, iconUrl: iconUrlU, termsOfUseUrl: touUrlU });
+            assert.equal(await agentOwnerRegistry.getAgentTermsOfUseUrl(agentOwner1), touUrlU);
         });
 
         it("only governance can set agent data", async () => {
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: accounts[1] }), "only governance or manager");
+            const touUrl = "https://some.address/tos.html";
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: accounts[1] }), "only governance or manager");
         });
 
         it("manager can also set agent data", async () => {
@@ -254,12 +289,13 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
+            const touUrl = "https://some.address/tos.html";
             // cannot whitelist before being set
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: manager }), "only governance or manager");
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager }), "only governance or manager");
             //
             await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
             // now it should work
-            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: manager });
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager });
             expectEvent(res, "AgentDataChanged");
         });
     });
