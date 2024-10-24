@@ -27,7 +27,7 @@ interface IISettingsManagement {
     function setPriceReader(address _value)
         external;
 
-    function setSCProofVerifier(address _value)
+    function setFdcVerification(address _value)
         external;
 
     function setCleanerContract(address _value)
@@ -132,5 +132,17 @@ interface IISettingsManagement {
         external;
 
     function setEmergencyPauseDurationResetAfterSeconds(uint256 _value)
+        external;
+
+    function setCancelCollateralReservationAfterSeconds(uint256 _value)
+        external;
+
+    function setRejectRedemptionRequestWindowSeconds(uint256 _value)
+        external;
+
+    function setTakeOverRedemptionRequestWindowSeconds(uint256 _value)
+        external;
+
+    function setRejectedRedemptionDefaultFactorBips(uint256 _vaultF, uint256 _poolF)
         external;
 }

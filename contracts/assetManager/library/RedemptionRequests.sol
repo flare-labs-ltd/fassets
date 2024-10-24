@@ -145,7 +145,8 @@ library RedemptionRequests {
             Redemptions.deleteRedemptionRequest(_redemptionRequestId);
         } else {
             // emit event
-            emit AMEvents.RedemptionRequestRejected(request.agentVault, request.redeemer, _redemptionRequestId);
+            emit IAssetManagerEvents.RedemptionRequestRejected(request.agentVault, request.redeemer,
+                _redemptionRequestId);
             // keep redemption request for take over or default
         }
     }
@@ -175,7 +176,7 @@ library RedemptionRequests {
         uint64 newRedemptionRequestId = _createRedemptionRequest(redemption, request.redeemer,
             request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64());
         // emit event
-        emit AMEvents.RedemptionRequestTakenOver(request.agentVault, request.redeemer, _redemptionRequestId,
+        emit IAssetManagerEvents.RedemptionRequestTakenOver(request.agentVault, request.redeemer, _redemptionRequestId,
             closedUBA, _agentVault, newRedemptionRequestId);
         // set the take over timestamp, so that new request cannot be rejected again
         Redemption.Request storage newRequest = Redemptions.getRedemptionRequest(newRedemptionRequestId);

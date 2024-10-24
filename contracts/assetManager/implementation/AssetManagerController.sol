@@ -197,7 +197,7 @@ contract AssetManagerController is
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setSCProofVerifier.selector, _value);
+            IISettingsManagement.setFdcVerification.selector, _value);
     }
 
     function setCleanerContract(IIAssetManager[] memory _assetManagers, address _value)
@@ -482,7 +482,7 @@ contract AssetManagerController is
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS, abi.encode(_value));
+            IISettingsManagement.setCancelCollateralReservationAfterSeconds.selector, _value);
     }
 
     function setRejectRedemptionRequestWindowSeconds(
@@ -493,7 +493,7 @@ contract AssetManagerController is
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_REJECT_REDEMPTION_REQUEST_WINDOW_SECONDS, abi.encode(_value));
+            IISettingsManagement.setRejectRedemptionRequestWindowSeconds.selector, _value);
     }
 
     function setTakeOverRedemptionRequestWindowSeconds(
@@ -504,7 +504,7 @@ contract AssetManagerController is
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_TAKE_OVER_REDEMPTION_REQUEST_WINDOW_SECONDS, abi.encode(_value));
+            IISettingsManagement.setTakeOverRedemptionRequestWindowSeconds.selector, _value);
     }
 
     function setRejectedRedemptionDefaultFactorBips(
@@ -515,8 +515,8 @@ contract AssetManagerController is
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_REJECTED_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_vaultF, _poolF));
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IISettingsManagement.setRejectedRedemptionDefaultFactorBips, (_vaultF, _poolF)));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

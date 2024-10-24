@@ -110,7 +110,7 @@ library CollateralReservations {
         Agents.requireAgentVaultOwner(agent);
         require(crt.handShakeStartTimestamp != 0,
             "hand-shake not required or collateral reservation already approved");
-        emit AMEvents.CollateralReservationRejected(crt.agentVault, crt.minter, _crtId);
+        emit IAssetManagerEvents.CollateralReservationRejected(crt.agentVault, crt.minter, _crtId);
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
 
@@ -125,7 +125,7 @@ library CollateralReservations {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(crt.handShakeStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
             block.timestamp, "collateral reservation cancellation too early");
-        emit AMEvents.CollateralReservationCancelled(crt.agentVault, crt.minter, _crtId);
+        emit IAssetManagerEvents.CollateralReservationCancelled(crt.agentVault, crt.minter, _crtId);
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
 
@@ -260,7 +260,7 @@ library CollateralReservations {
     )
         private
     {
-        emit AMEvents.HandShakeRequired(
+        emit IAssetManagerEvents.HandShakeRequired(
             _agent.vaultAddress(),
             _cr.minter,
             _crtId,

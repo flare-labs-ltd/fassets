@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../fassetToken/interfaces/IITransparentProxy.sol";
 import "../../utils/lib/SafePct.sol";
+import "../interfaces/IISettingsManagement.sol";
 import "../library/Globals.sol";
 import "../library/CollateralTypes.sol";
 import "../library/SettingsUpdater.sol";
@@ -13,7 +14,7 @@ import "../library/SettingsValidators.sol";
 import "./AssetManagerBase.sol";
 
 
-contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents {
+contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISettingsManagement {
     using SafeCast for uint256;
     using SafePct for *;
 
@@ -126,7 +127,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents {
         emit ContractChanged("priceReader", _value);
     }
 
-    function setSCProofVerifier(address _value)
+    function setFdcVerification(address _value)
         external
         onlyAssetManagerController
         rateLimited
@@ -135,8 +136,8 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents {
         // validate
         require(_value != address(0), "address zero");
         // update
-        settings.scProofVerifier = _value;
-        emit ContractChanged("scProofVerifier", _value);
+        settings.fdcVerification = _value;
+        emit IAssetManagerEvents.ContractChanged("fdcVerification", _value);
     }
 
     function setCleanerContract(address _value)
@@ -317,11 +318,11 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents {
         // validate
         require(_vaultFactor + _poolFactor > SafePct.MAX_BIPS,
             "bips value too low");
-        require(_vaultFactor <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000),
+        require(_vaultFactor <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
             "fee increase too big");
         require(_vaultFactor >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
             "fee decrease too big");
-        require(_poolFactor <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000),
+        require(_poolFactor <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000) + 1000,
             "fee increase too big");
         require(_poolFactor >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333),
             "fee decrease too big");
@@ -643,5 +644,79 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents {
         settings.emergencyPauseDurationResetAfterSeconds = _value.toUint64();
         // emit events
         emit SettingChanged("emergencyPauseDurationResetAfterSeconds", _value);
+    }
+
+    function setCancelCollateralReservationAfterSeconds(uint256 _value)
+        external
+        onlyAssetManagerController
+        rateLimited
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // validate
+        require(_value > 0, "cannot be zero");
+        require(_value <= settings.cancelCollateralReservationAfterSeconds * 4 + 1 minutes,
+            "increase too big");
+        require(_value >= settings.cancelCollateralReservationAfterSeconds / 4,
+            "decrease too big");
+        // update
+        settings.cancelCollateralReservationAfterSeconds = _value.toUint64();
+        emit IAssetManagerEvents.SettingChanged("cancelCollateralReservationAfterSeconds", _value);
+    }
+
+    function setRejectRedemptionRequestWindowSeconds(uint256 _value)
+        external
+        onlyAssetManagerController
+        rateLimited
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // validate
+        require(_value > 0, "cannot be zero");
+        require(_value <= settings.rejectRedemptionRequestWindowSeconds * 4 + 1 minutes,
+            "increase too big");
+        require(_value >= settings.rejectRedemptionRequestWindowSeconds / 4,
+            "decrease too big");
+        // update
+        settings.rejectRedemptionRequestWindowSeconds = _value.toUint64();
+        emit IAssetManagerEvents.SettingChanged("rejectRedemptionRequestWindowSeconds", _value);
+    }
+
+    function setTakeOverRedemptionRequestWindowSeconds(uint256 _value)
+        external
+        onlyAssetManagerController
+        rateLimited
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // validate
+        require(_value > 0, "cannot be zero");
+        require(_value <= settings.takeOverRedemptionRequestWindowSeconds * 4 + 1 minutes,
+            "increase too big");
+        require(_value >= settings.takeOverRedemptionRequestWindowSeconds / 4,
+            "decrease too big");
+        // update
+        settings.takeOverRedemptionRequestWindowSeconds = _value.toUint64();
+        emit IAssetManagerEvents.SettingChanged("takeOverRedemptionRequestWindowSeconds", _value);
+    }
+
+    function setRejectedRedemptionDefaultFactorBips(uint256 _vaultF, uint256 _poolF)
+        external
+        onlyAssetManagerController
+        rateLimited
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // validate
+        require(_vaultF + _poolF > SafePct.MAX_BIPS, "bips value too low");
+        require(_vaultF <= settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
+            "fee increase too big");
+        require(_vaultF >= settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
+            "fee decrease too big");
+        require(_poolF <= settings.rejectedRedemptionDefaultFactorPoolBIPS.mulBips(12000) + 1000,
+            "fee increase too big");
+        require(_poolF >= settings.rejectedRedemptionDefaultFactorPoolBIPS.mulBips(8333),
+            "fee decrease too big");
+        // update
+        settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS = _vaultF.toUint32();
+        emit IAssetManagerEvents.SettingChanged("rejectedRedemptionDefaultFactorVaultCollateralBIPS", _vaultF);
+        settings.rejectedRedemptionDefaultFactorPoolBIPS = _poolF.toUint32();
+        emit IAssetManagerEvents.SettingChanged("rejectedRedemptionDefaultFactorPoolBIPS", _poolF);
     }
 }
