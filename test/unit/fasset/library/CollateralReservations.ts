@@ -132,7 +132,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         // assert
         const settings = await assetManager.getSettings();
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
@@ -151,7 +151,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         const settings = await assetManager.getSettings();
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
@@ -174,7 +174,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         await expectRevert(assetManager.approveCollateralReservation(args.collateralReservationId), "only agent vault owner");
     });
@@ -186,7 +186,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "CollateralReserved");
         await expectRevert(assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 }), "handshake not required");
     });
@@ -198,7 +198,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // reject reservation
         const minterBalanceBefore = await web3.eth.getBalance(minterAddress1);
@@ -236,7 +236,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // approve reservation
         const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
@@ -251,7 +251,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // move time for cancelCollateralReservationAfterSeconds
         await time.increase(Number(settings.cancelCollateralReservationAfterSeconds));
@@ -269,7 +269,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // try to cancel reservation
         await expectRevert(assetManager.cancelCollateralReservation(args.collateralReservationId), "only minter");
@@ -282,7 +282,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // approve reservation
         await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
@@ -297,7 +297,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // try to cancel reservation
         await expectRevert(assetManager.cancelCollateralReservation(args.collateralReservationId, { from: minterAddress1 }), "collateral reservation cancellation too early");
@@ -381,6 +381,32 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await expectRevert(promise1, "inappropriate fee amount");
     });
 
+    it("should not reserve collateral - minter underlying addresses required", async () => {
+        // init
+        chain.mint(underlyingAgent1, 100);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        // assert
+        const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
+        await expectRevert(promise1, "minter underlying addresses required");
+    });
+
+    it("should not reserve collateral - minter underlying addresses not sorted", async () => {
+        // init
+        chain.mint(underlyingAgent1, 100);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        // assert
+        const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, ["Agent1", "Agent2"], { from: minterAddress1, value: crFee });
+        await expectRevert(promise1, "minter underlying addresses not sorted");
+    });
+
     it("should not default minting if minting non-payment mismatch", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
@@ -436,7 +462,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
         await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
@@ -459,7 +485,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
