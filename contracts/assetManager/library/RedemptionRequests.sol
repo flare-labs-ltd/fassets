@@ -126,8 +126,8 @@ library RedemptionRequests {
         Agent.State storage agent = Agent.get(request.agentVault);
         // only owner can call
         Agents.requireAgentVaultOwner(agent);
-        // only if hand-shake is enabled
-        require(agent.handShakeType != 0, "hand-shake disabled");
+        // only if handshake is enabled
+        require(agent.handshakeType != 0, "handshake disabled");
         require(request.status == Redemption.Status.ACTIVE, "not active");
         require(request.rejectionTimestamp == 0, "already rejected");
         require(request.takeOverTimestamp == 0, "already taken over");

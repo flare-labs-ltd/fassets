@@ -13,7 +13,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: In case hand-shake was required, the payment must be done using only all provided addresses,
+     * NOTE: In case handshake was required, the payment must be done using only all provided addresses,
      * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).

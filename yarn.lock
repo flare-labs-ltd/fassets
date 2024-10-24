@@ -5232,7 +5232,7 @@ find-up@^6.3.0:
 
 "flare-smart-contracts-v2@git+https://github.com/flare-foundation/flare-smart-contracts-v2.git":
   version "0.0.1"
-  resolved "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git#48d173f0ff86aae325464e26fbacf383abe53475"
+  resolved "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git#d5190979ca923fccc655dcbb3044d7b651e287ae"
   dependencies:
     "@openzeppelin/contracts" "5.0.2"
     "@typescript-eslint/eslint-plugin" "^7.3.1"

@@ -20,7 +20,7 @@ interface IAssetManagerEvents {
         uint256 poolExitCollateralRatioBIPS;
         uint256 poolTopupCollateralRatioBIPS;
         uint256 poolTopupTokenPriceFactorBIPS;
-        uint256 handShakeType;
+        uint256 handshakeType;
     }
 
     /**
@@ -119,7 +119,7 @@ interface IAssetManagerEvents {
      * Minter reserved collateral, paid the reservation fee. Agent's collateral was reserved.
      * Agent needs to approve or reject the reservation according to the minter's identity.
      */
-    event HandShakeRequired(
+    event HandshakeRequired(
         address indexed agentVault,
         address indexed minter,
         uint256 indexed collateralReservationId,

@@ -60,7 +60,7 @@ library CollateralReservations {
         cr.executor = _executor;
         cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
 
-        if (agent.handShakeType != 0) {
+        if (agent.handshakeType != 0) {
             require(_minterUnderlyingAddresses.length > 0, "minter underlying addresses required");
             bytes32[] memory hashes = new bytes32[](_minterUnderlyingAddresses.length);
             // double hash the addresses (to prevent second pre-image attack) and check if they are sorted
@@ -70,8 +70,8 @@ library CollateralReservations {
                 require(hashes[i] > hashes[i - 1], "minter underlying addresses not sorted");
             }
             cr.sourceAddressesRoot = MerkleTree.calculateMerkleRoot(hashes);
-            cr.handShakeStartTimestamp = block.timestamp.toUint64();
-            _emitHandShakeRequiredEvent(agent, cr, crtId, _minterUnderlyingAddresses);
+            cr.handshakeStartTimestamp = block.timestamp.toUint64();
+            _emitHandshakeRequiredEvent(agent, cr, crtId, _minterUnderlyingAddresses);
         } else {
             (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
             cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
@@ -90,8 +90,8 @@ library CollateralReservations {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
-        require(crt.handShakeStartTimestamp != 0, "hand-shake not required");
-        crt.handShakeStartTimestamp = 0;
+        require(crt.handshakeStartTimestamp != 0, "handshake not required");
+        crt.handshakeStartTimestamp = 0;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         AssetManagerState.State storage state = AssetManagerState.get();
         crt.firstUnderlyingBlock = state.currentUnderlyingBlock;
@@ -108,8 +108,8 @@ library CollateralReservations {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
-        require(crt.handShakeStartTimestamp != 0,
-            "hand-shake not required or collateral reservation already approved");
+        require(crt.handshakeStartTimestamp != 0,
+            "handshake not required or collateral reservation already approved");
         emit IAssetManagerEvents.CollateralReservationRejected(crt.agentVault, crt.minter, _crtId);
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
@@ -121,9 +121,9 @@ library CollateralReservations {
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         require(crt.minter == msg.sender, "only minter");
-        require(crt.handShakeStartTimestamp != 0, "collateral reservation already approved");
+        require(crt.handshakeStartTimestamp != 0, "collateral reservation already approved");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        require(crt.handShakeStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
+        require(crt.handshakeStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
             block.timestamp, "collateral reservation cancellation too early");
         emit IAssetManagerEvents.CollateralReservationCancelled(crt.agentVault, crt.minter, _crtId);
         _rejectOrCancelCollateralReservation(crt, _crtId);
@@ -136,7 +136,7 @@ library CollateralReservations {
         internal
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
-        require(crt.handShakeStartTimestamp == 0, "collateral reservation not approved");
+        require(crt.handshakeStartTimestamp == 0, "collateral reservation not approved");
         require(!_nonPayment.data.requestBody.checkSourceAddresses && crt.sourceAddressesRoot == bytes32(0) ||
             _nonPayment.data.requestBody.checkSourceAddresses &&
             crt.sourceAddressesRoot == _nonPayment.data.requestBody.sourceAddressesRoot,
@@ -176,7 +176,7 @@ library CollateralReservations {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
-        require(crt.handShakeStartTimestamp == 0, "collateral reservation not approved");
+        require(crt.handshakeStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // verify proof
@@ -252,7 +252,7 @@ library CollateralReservations {
         state.totalReservedCollateralAMG += reservationAMG;
     }
 
-    function _emitHandShakeRequiredEvent(
+    function _emitHandshakeRequiredEvent(
         Agent.State storage _agent,
         CollateralReservation.Data memory _cr,
         uint64 _crtId,
@@ -260,7 +260,7 @@ library CollateralReservations {
     )
         private
     {
-        emit IAssetManagerEvents.HandShakeRequired(
+        emit IAssetManagerEvents.HandshakeRequired(
             _agent.vaultAddress(),
             _cr.minter,
             _crtId,
@@ -302,7 +302,7 @@ library CollateralReservations {
         // guarded against reentrancy in CollateralReservationsFacet
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = crt.minter.call{value: totalFee}("");
+        (bool success, ) = crt.minter.call{value: totalFee, gas: 100000}("");
         /* solhint-enable avoid-low-level-calls */
         if (!success) {
             // if failed, burn the fee
