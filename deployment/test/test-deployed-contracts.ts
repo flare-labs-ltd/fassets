@@ -86,7 +86,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         const chainIds = Object.keys(testUnderlyingAddresses);
         const currentTime = toBN(await latestBlockTimestamp());
         const chains = Object.fromEntries(chainIds.map(id => [id, new MockChain(currentTime)]));
-        const flareDataConnectorClient = new MockFlareDataConnectorClient(relay, fdcHub, chains, 'auto');
+        const flareDataConnectorClient = new MockFlareDataConnectorClient(fdcHub, relay, chains, 'auto');
         for (const mgrAddress of managers) {
             console.log("Testing manager at", mgrAddress);
             const assetManager = await IIAssetManager.at(mgrAddress);

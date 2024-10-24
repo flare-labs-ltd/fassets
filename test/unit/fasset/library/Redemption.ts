@@ -1121,7 +1121,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const underlyingAgent3 = accounts[334];
         const agentVault2 = await createAgent(agentOwner3, underlyingAgent3, { handshakeType: 0 });
         await depositAndMakeAgentAvailable(agentVault2, agentOwner3);
-        const lots1 = 2;
+        const lots1 = 5;
         const agentInfo1 = await assetManager.getAgentInfo(agentVault2.address);
         const crFee1 = await assetManager.collateralReservationFee(lots1);
         const resAg1 = await assetManager.reserveCollateral(agentVault2.address, lots1, agentInfo1.feeBIPS, constants.ZERO_ADDRESS, [], { from: minterAddress1, value: crFee1 });
@@ -1139,9 +1139,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // old redemption request should be deleted
         const promise1 = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         await expectRevert(promise1, "invalid request id");
-        const args3 = requiredEventArgs(tx1, 'RedemptionTicketCreated');
+        const args3 = requiredEventArgs(tx1, 'RedemptionTicketCreated');    // the created ticket for rejecting agent
+        const args3u = requiredEventArgs(tx1, 'RedemptionTicketUpdated');    // the updated ticket for takeover agent (only 2 of 5 lots were used)
         // old agent vault gets new ticket
         assertWeb3Equal(args3.agentVault, request.agentVault);
+        assertWeb3Equal(args3u.agentVault, agentVault2.address);
     });
 
     it("should revert rejecting redemption request if already taken over", async () => {

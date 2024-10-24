@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ZERO, deepFormat, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -1141,14 +1141,16 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const resRejected = await context.assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
             requiredEventArgs(resRejected, 'RedemptionRequestRejected');
 
+
             await agent.checkAgentInfo({ mintedUBA: poolFeeShare, redeemingUBA: lotsUBA1 });
             // agent2 takes over the redemption request
             // agent2 minted only 2 lots, so it can't fulfill the request entirely
             const resTakeOver = await context.assetManager.takeOverRedemptionRequest(agent2.agentVault.address, request.requestId, { from: agentOwner2 });
             await agent.checkAgentInfo({ mintedUBA: poolFeeShare.add(lotsUBA2), redeemingUBA: lotsUBA1.sub(lotsUBA2) });
             // agent3 takes over the remaining redemption request (1 lot)
+            const takeOverLots3 = context.convertLotsToUBA(1);
             const resTakeOver3 = await context.assetManager.takeOverRedemptionRequest(agent3.agentVault.address, request.requestId, { from: agentOwner3 });
-            await agent.checkAgentInfo({ mintedUBA: poolFeeShare.add(lotsUBA2).add(lotsUBA3), redeemingUBA: lotsUBA1.sub(lotsUBA2).sub(lotsUBA3) });
+            await agent.checkAgentInfo({ mintedUBA: poolFeeShare.add(lotsUBA2).add(takeOverLots3), redeemingUBA: lotsUBA1.sub(lotsUBA2).sub(takeOverLots3) });
             const newRequest = requiredEventArgs(resTakeOver, 'RedemptionRequested');
             const newRedemptionTicket = requiredEventArgs(resTakeOver, 'RedemptionTicketCreated');
             const requestTakenOver = requiredEventArgs(resTakeOver, 'RedemptionRequestTakenOver');
@@ -1171,11 +1173,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent2.exitAndDestroy(fullAgentCollateral);
 
             const newRequest1 = requiredEventArgs(resTakeOver3, 'RedemptionRequested');
-            const newRedemptionTicket1 = requiredEventArgs(resTakeOver3, 'RedemptionTicketCreated');
+            const newRedemptionTicket1 = requiredEventArgs(resTakeOver3, 'RedemptionTicketUpdated');
             const requestTakenOver1 = requiredEventArgs(resTakeOver3, 'RedemptionRequestTakenOver');
             assertWeb3Equal(newRedemptionTicket1.agentVault, agent.vaultAddress);
             // agent2 closed 2 lots
-            assertWeb3Equal(newRedemptionTicket1.ticketValueUBA, requestTakenOver1.valueTakenOverUBA);
+            // ticket from second take-over was merged with ticket from first take-over
+            assertWeb3Equal(newRedemptionTicket1.ticketValueUBA, toBN(requestTakenOver.valueTakenOverUBA).add(requestTakenOver1.valueTakenOverUBA));
+            assertWeb3Equal(newRedemptionTicket1.redemptionTicketId, newRedemptionTicket.redemptionTicketId);
 
             await agent3.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare3, mintedUBA: poolFeeShare3, redeemingUBA: lotsUBA3 });
             assertWeb3Equal(remainingLots, 0);
