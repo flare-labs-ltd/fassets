@@ -1,5 +1,6 @@
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
-import { toWei } from "../../../lib/utils/helpers";
+import { toBNExp, toWei } from "../../../lib/utils/helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
@@ -236,7 +237,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // collateral ratios should stay the same
             await agent.checkAgentInfo({ status: 0, vaultCollateralRatioBIPS, poolCollateralRatioBIPS }, "reset");
             // agent should not go to liquidation
-            await context.assetManager.startLiquidation(agent.vaultAddress);
+            await expectRevert(context.assetManager.startLiquidation(agent.vaultAddress), "liquidation not started");
             await agent.checkAgentInfo({ status: 0 }, "reset");
             //
             // same if we change NAT decimals
@@ -249,7 +250,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // collateral ratios should stay the same
             await agent.checkAgentInfo({ status: 0, vaultCollateralRatioBIPS, poolCollateralRatioBIPS }, "reset");
             // agent should not go to liquidation
-            await context.assetManager.startLiquidation(agent.vaultAddress);
+            await expectRevert(context.assetManager.startLiquidation(agent.vaultAddress), "liquidation not started");
             await agent.checkAgentInfo({ status: 0 }, "reset");
     });
 });

@@ -533,7 +533,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         } else { // KEEP_RATIO
             debtFAssetFeeShare = virtualFAsset > 0 ? debtFAsset.mulDiv(fAssetShare, virtualFAsset) : 0;
-            freeFAssetFeeShare = subOrZero(fAssetShare, debtFAssetFeeShare);
+            freeFAssetFeeShare = MathUtils.subOrZero(fAssetShare, debtFAssetFeeShare);
         }
         // cap the fee shares in case of rounding errors
         freeFAssetFeeShare = Math.min(freeFAssetFeeShare, totalFAssetFees);

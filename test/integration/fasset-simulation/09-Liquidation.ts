@@ -66,8 +66,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // price change
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             // start ccb
             const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
             assert.isTrue(ccb);

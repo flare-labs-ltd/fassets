@@ -1,22 +1,20 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import {
-    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, FdcVerificationEvents, CollateralPoolFactoryEvents,
-    ERC20Events, FtsoManagerEvents, FtsoEvents, FtsoRegistryEvents, WNatEvents, CollateralPoolTokenFactoryEvents, PriceReaderEvents,
-    FdcHubEvents, RelayEvents
+    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents,
+    CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events, FdcHubEvents,
+    FdcVerificationEvents, FtsoV2PriceStoreEvents, PriceReaderEvents, RelayEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { requireNotNull, toBNExp, WEEKS } from "../../../lib/utils/helpers";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, CollateralPoolFactoryInstance,
-    ERC20MockInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance,
-    RelayMockInstance,
-    FdcHubMockInstance,
-    FdcVerificationMockInstance
+    CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
+    FtsoV2PriceStoreMockInstance, GovernanceSettingsInstance, IPriceReaderInstance, RelayMockInstance, WNatInstance
 } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
+import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { TestChainInfo, testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
-import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
 
 const AgentVault = artifacts.require("AgentVault");
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');

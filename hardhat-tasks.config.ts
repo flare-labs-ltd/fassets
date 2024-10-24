@@ -10,7 +10,7 @@ import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
-import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployPriceReader, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
+import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
