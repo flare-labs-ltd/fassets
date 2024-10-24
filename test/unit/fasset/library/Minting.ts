@@ -37,10 +37,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     // addresses
     const agentOwner1 = accounts[20];
+    const agentOwner2 = accounts[21];
     const minterAddress1 = accounts[30];
-    const executorAddress1 = accounts[31];
+    const executorAddress1 = accounts[41];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
+    const underlyingAgent2 = "Agent2";
     const underlyingMinter1 = "Minter1";
     const underlyingRandomAddress = "Random";
 
@@ -316,7 +318,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         const crt = await reserveCollateral(agentVault1.address, 1);
         const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
@@ -327,6 +329,29 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const promise = assetManager.executeMinting(proof, args.collateralReservationId, { from: minterAddress1 });
         // assert
         await expectRevert(promise, "collateral reservation not approved");
+    });
+
+    it("should not execute minting if invalid minter underlying addresses root", async () => {
+        // init
+        const feeBIPS = toBIPS("50%");
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2, { feeBIPS: feeBIPS, handshakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault2, agentOwner2);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
+        const args = requiredEventArgs(tx, "HandshakeRequired");
+        const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
+        const crt = requiredEventArgs(tx1, "CollateralReserved");
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
+        chain.mint("wrongUnderlyingMinter", paymentAmount);
+        const txHash = await wallet.addTransaction("wrongUnderlyingMinter", crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, "wrongUnderlyingMinter", crt.paymentAddress);
+        const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // assert
+        await expectRevert(promise, "invalid minter underlying addresses root");
     });
 
     it("should unstick minting", async () => {
