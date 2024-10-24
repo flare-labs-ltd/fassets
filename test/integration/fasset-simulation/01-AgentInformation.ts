@@ -33,7 +33,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
-        context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        context = await AssetContext.createTest(commonContext, testChainInfo.btc);
         return { commonContext, context };
     }
 
@@ -211,5 +211,46 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(availableAgents6[0][1].status, AgentStatus.NORMAL);
             assertWeb3Equal(availableAgents6[1], 2);
         });
+
+        it("should survive ftsov2 decimal number changes", async () => {
+            const fullVaultCollateral = toWei(3e8);
+            const fullPoolCollateral = toWei(5e8);
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralsAndMakeAvailable(fullVaultCollateral, fullPoolCollateral);
+            // mint
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, toBNExp(5000, 8));
+            await minter.performMinting(agent.vaultAddress, 1600);
+            // console.log(deepFormat(await agent.getAgentInfo()));
+            const { vaultCollateralRatioBIPS, poolCollateralRatioBIPS } = await agent.checkAgentInfo({ status: 0 }, "reset");
+            //
+            // switch btc decimals
+            const { 0: btcprice, 2: btcdecimals } = await context.priceStore.getPrice(context.chainInfo.symbol);
+            // console.log(`price=${price} decimals=${decimals}`);
+            const newBTCdecimals = 2;
+            const newBTCprice = btcprice.divn(10 ** (Number(btcdecimals) - newBTCdecimals));
+            await context.priceStore.setDecimals(context.chainInfo.symbol, newBTCdecimals);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol, newBTCprice, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol, newBTCprice, 0);
+            // const { 0: price1, 2: decimals1 } = await context.priceStore.getPrice(context.chainInfo.symbol);
+            // console.log(`price1=${price1} decimals1=${decimals1}`);
+            // collateral ratios should stay the same
+            await agent.checkAgentInfo({ status: 0, vaultCollateralRatioBIPS, poolCollateralRatioBIPS }, "reset");
+            // agent should not go to liquidation
+            await context.assetManager.startLiquidation(agent.vaultAddress);
+            await agent.checkAgentInfo({ status: 0 }, "reset");
+            //
+            // same if we change NAT decimals
+            const { 0: natprice, 2: natdecimals } = await context.priceStore.getPrice("NAT");
+            const newNATdecimals = 7;
+            const newNATprice = natprice.muln(10 ** (newNATdecimals - Number(natdecimals)));
+            await context.priceStore.setDecimals("NAT", newNATdecimals);
+            await context.priceStore.setCurrentPrice("NAT", newNATprice, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", newNATprice, 0);
+            // collateral ratios should stay the same
+            await agent.checkAgentInfo({ status: 0, vaultCollateralRatioBIPS, poolCollateralRatioBIPS }, "reset");
+            // agent should not go to liquidation
+            await context.assetManager.startLiquidation(agent.vaultAddress);
+            await agent.checkAgentInfo({ status: 0 }, "reset");
     });
+});
 });

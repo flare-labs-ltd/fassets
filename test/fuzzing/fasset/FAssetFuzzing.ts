@@ -78,7 +78,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             assetManagerController: context.assetManagerController,
             fAsset: context.fAsset,
             wnat: context.wNat,
-            ftsoManager: context.ftsoManager,
+            priceStore: context.priceStore,
         });
         for (const [key, token] of Object.entries(context.stablecoins)) {
             interceptor.captureEventsFrom(key, token, "ERC20");
@@ -361,18 +361,20 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             .catch(e => expectErrors(e, ['too close to previous update']));
     }
 
+    const allFtsoSymbols = ["NAT", "USDC", "USDT", ...Object.values(testChainInfo).map(ci => ci.symbol)];
+
     async function testChangePrices(index: number) {
-        for (const [symbol, ftso] of Object.entries(context.ftsos)) {
+        for (const symbol of allFtsoSymbols) {
             const [minFactor, maxFactor] = CHANGE_PRICE_FACTOR?.[symbol] ?? CHANGE_PRICE_FACTOR?.['default'] ?? [0.9, 1.1];
-            await _changePriceOnFtso(ftso, randomNum(minFactor, maxFactor));
+            await _changePriceOnFtso(symbol, randomNum(minFactor, maxFactor));
         }
-        await context.ftsoManager.mockFinalizePriceEpoch();
+        await context.priceStore.finalizePrices();
     }
 
-    async function _changePriceOnFtso(ftso: FtsoMockInstance, factor: number) {
-        const { 0: price } = await ftso.getCurrentPrice();
+    async function _changePriceOnFtso(symbol: string, factor: number) {
+        const { 0: price } = await context.priceStore.getPrice(symbol);
         const newPrice = mulDecimal(price, factor);
-        await ftso.setCurrentPrice(newPrice, 0);
-        await ftso.setCurrentPriceFromTrustedProviders(newPrice, 0);
+        await context.priceStore.setCurrentPrice(symbol, newPrice, 0);
+        await context.priceStore.setCurrentPriceFromTrustedProviders(symbol, newPrice, 0);
     }
 });

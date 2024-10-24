@@ -3,20 +3,6 @@ import { FAssetContractStore } from "./contracts";
 import { loadDeployAccounts, waitFinalize, ZERO_ADDRESS } from "./deploy-utils";
 
 
-export async function deployPriceReader(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
-    console.log(`Deploying PriceReader`);
-
-    const artifacts = hre.artifacts as Truffle.Artifacts;
-
-    const PriceReader = artifacts.require("FtsoV1PriceReader");
-
-    const { deployer } = loadDeployAccounts(hre);
-
-    const priceReader = await waitFinalize(hre, deployer, () => PriceReader.new(contracts.AddressUpdater.address, contracts.FtsoRegistry.address, { from: deployer }));
-
-    contracts.add("PriceReader", "PriceReader.sol", priceReader.address);
-}
-
 export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying UserWhitelist`);
 

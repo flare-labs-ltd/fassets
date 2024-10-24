@@ -1,9 +1,11 @@
+import { constants, time } from "@openzeppelin/test-helpers";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, FdcVerificationEvents, CollateralPoolFactoryEvents,
     ERC20Events, FtsoManagerEvents, FtsoEvents, FtsoRegistryEvents, WNatEvents, CollateralPoolTokenFactoryEvents, PriceReaderEvents,
     FdcHubEvents, RelayEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
+import { requireNotNull, toBNExp, WEEKS } from "../../../lib/utils/helpers";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, CollateralPoolFactoryInstance,
     ERC20MockInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance,
@@ -11,11 +13,9 @@ import {
     FdcHubMockInstance,
     FdcVerificationMockInstance
 } from "../../../typechain-truffle";
-import { createFtsoMock } from "../../utils/test-settings";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
-import { constants } from "@openzeppelin/test-helpers";
+import { TestChainInfo, testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
 
 const AgentVault = artifacts.require("AgentVault");
@@ -25,20 +25,15 @@ const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const FdcVerification = artifacts.require('FdcVerificationMock');
-const FtsoV1PriceReader = artifacts.require('FtsoV1PriceReader');
+const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const ERC20Mock = artifacts.require("ERC20Mock");
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const Relay = artifacts.require('RelayMock');
 const FdcHub = artifacts.require('FdcHubMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 
 // common context shared between several asset managers
-
-// indexed by "key" (nat, usdc, etc.) or "ftso symbol" (NAT, USDC, etc.)
-export type TestContextFtsos = Record<string, ContractWithEvents<FtsoMockInstance, FtsoEvents>>;
 
 export class CommonContext {
     static deepCopyWithObjectCreate = true;
@@ -55,12 +50,10 @@ export class CommonContext {
         public collateralPoolTokenFactory: ContractWithEvents<CollateralPoolTokenFactoryInstance, CollateralPoolTokenFactoryEvents>,
         public fdcVerification: ContractWithEvents<FdcVerificationMockInstance, FdcVerificationEvents>,
         public priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>,
-        public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryEvents>,
-        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerEvents>,
+        public priceStore: ContractWithEvents<FtsoV2PriceStoreMockInstance, FtsoV2PriceStoreEvents>,
         public natInfo: TestNatInfo,
         public wNat: ContractWithEvents<WNatInstance, WNatEvents>,
         public stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>,
-        public ftsos: TestContextFtsos
     ) { }
 
     static async createTest(governance: string): Promise<CommonContext> {
@@ -83,19 +76,13 @@ export class CommonContext {
             USDC: await ERC20Mock.new("USDCoin", "USDC"),
             USDT: await ERC20Mock.new("Tether", "USDT"),
         };
-        // create ftso registry
-        const ftsoRegistry = await FtsoRegistryMock.new();
-        // create ftsos
-        const ftsos = await createTestFtsos(ftsoRegistry);
-        // create FTSO manager mock (just for notifying about epoch finalization)
-        const ftsoManager = await FtsoManagerMock.new();
+        // create price reader
+        const priceStore = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, testChainInfo);
         // add some addresses to address updater
         await addressUpdater.addOrUpdateContractNamesAndAddresses(
-            ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FtsoManager", "FtsoRegistry", "WNat"],
-            [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, ftsoManager.address, ftsoRegistry.address, wNat.address],
+            ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FtsoV2PriceStore", "WNat"],
+            [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, priceStore.address, wNat.address],
             { from: governance });
-        // create price reader
-        const priceReader = await FtsoV1PriceReader.new(addressUpdater.address, ftsoRegistry.address);
         // create agent vault factory
         const agentVaultImplementation = await AgentVault.new(constants.ZERO_ADDRESS);
         const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
@@ -111,17 +98,40 @@ export class CommonContext {
         // collect
         return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, relay, fdcHub,
             agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory,
-            fdcVerification, priceReader, ftsoRegistry, ftsoManager, testNatInfo, wNat, stablecoins, ftsos);
+            fdcVerification, priceStore, priceStore, testNatInfo, wNat, stablecoins);
     }
 }
 
-async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance): Promise<TestContextFtsos> {
-    const res: Partial<TestContextFtsos> = { };
-    res[testNatInfo.symbol] = await createFtsoMock(ftsoRegistry, testNatInfo.symbol, testNatInfo.startPrice);
-    res["USDC"] = await createFtsoMock(ftsoRegistry, "USDC", 1.01);
-    res["USDT"] = await createFtsoMock(ftsoRegistry, "USDT", 0.99);
-    for (const ci of Object.values(testChainInfo)) {
-        res[ci.symbol] = await createFtsoMock(ftsoRegistry, ci.symbol, ci.startPrice);
+export async function createMockFtsoV2PriceStore(governanceSettingsAddress: string, initialGovernance: string, addressUpdater: string, assetChainInfos: Record<string, TestChainInfo>) {
+    const currentTime = await time.latest();
+    const votingEpochDurationSeconds = 90;
+    const firstVotingRoundStartTs = currentTime.toNumber() - 1 * WEEKS;
+    const ftsoScalingProtocolId = 100;
+    // create store
+    const priceStore = await FtsoV2PriceStoreMock.new(governanceSettingsAddress, initialGovernance, addressUpdater,
+        firstVotingRoundStartTs, votingEpochDurationSeconds, ftsoScalingProtocolId);
+    // setup
+    const feedIdArr = ["0xc1", "0xc2", "0xc3"];
+    const symbolArr = ["NAT", "USDC", "USDT"];
+    const decimalsArr = [5, 5, 5];
+    for (const [i, ci] of Object.values(assetChainInfos).entries()) {
+        feedIdArr.push(`0xa${i + 1}`);
+        symbolArr.push(ci.symbol);
+        decimalsArr.push(5);
     }
-    return res as TestContextFtsos;
+    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, { from: initialGovernance });
+    // init prices
+    async function setInitPrice(symbol: string, price: number | string) {
+        const decimals = requireNotNull(decimalsArr[symbolArr.indexOf(symbol)]);
+        await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
+        await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
+}
+    await setInitPrice("NAT", 0.42);
+    await setInitPrice("USDC", 1.01);
+    await setInitPrice("USDT", 0.99);
+    for (const ci of Object.values(assetChainInfos)) {
+        await setInitPrice(ci.symbol, ci.startPrice);
+    }
+    //
+    return priceStore;
 }

@@ -2,6 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
+import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -209,8 +210,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endVaultCollateralBalanceAgent = await vaultCollateralToken.balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            assertWeb3Equal(res.redeemedVaultCollateralWei, redemptionDefaultValueVaultCollateral);
-            assertWeb3Equal(res.redeemedPoolCollateralWei, redemptionDefaultValuePool);
+            assertApproximatelyEqual(res.redeemedVaultCollateralWei, redemptionDefaultValueVaultCollateral, 'relative', 1e-8);
+            assertApproximatelyEqual(res.redeemedPoolCollateralWei, redemptionDefaultValuePool, 'relative', 1e-8);
             assertWeb3Equal(endVaultCollateralBalanceRedeemer.sub(startVaultCollateralBalanceRedeemer), res.redeemedVaultCollateralWei);
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);

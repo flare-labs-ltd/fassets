@@ -12,6 +12,7 @@ import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployPriceReader, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
+import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract } from "./deployment/lib/verify-fasset-contracts";
@@ -29,7 +30,7 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await deployPriceReader(hre, contracts);
+        await deployPriceReaderV2(hre, contracts);
         await deployAgentOwnerRegistry(hre, contracts);
         await deployUserWhitelist(hre, contracts);
         await deployAgentVaultFactory(hre, contracts);
@@ -78,6 +79,13 @@ task("verify-asset-manager-controller", "Verify deployed asset manager controlle
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyAssetManagerController(hre, contracts);
+    });
+
+task("verify-price-reader-v2", "Verify deployed asset manager controller.")
+    .setAction(async ({}, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyFtsoV2PriceStore(hre, contracts);
     });
 
 task("verify-asset-manager-facets", "Verify all asset manager facets.")

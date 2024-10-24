@@ -114,7 +114,7 @@ export class TrackedState {
             collateral.validUntil = toBN(args.validUntil);
         });
         // track price changes
-        this.truffleEvents.event(this.context.ftsoManager, 'PriceEpochFinalized').subscribe(async args => {
+        this.truffleEvents.event(this.context.priceStore, 'PricesPublished').subscribe(async args => {
             const [prices, trustedPrices] = await this.getPrices();
             this.logger?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);
             [this.prices, this.trustedPrices] = [prices, trustedPrices];

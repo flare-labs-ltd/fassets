@@ -122,8 +122,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // price change
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             // start ccb
             const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
             assert.isTrue(ccb);
@@ -238,8 +238,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             // start ccb
             const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
             assert.isTrue(ccb);
@@ -353,10 +353,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(10, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(10, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPrice("NAT", 10, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 10, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 6), 0);
             // start liquidation
             const [isCCB, liquidationStartTs] = await liquidator.startLiquidation(agent);   // should put agent to liquidation mode
             await agent.checkAgentInfo({
@@ -630,8 +630,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(50, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(50, 0);
+            await context.priceStore.setCurrentPrice("NAT", 50, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 50, 0);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
@@ -882,10 +882,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(10, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(10, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPrice("NAT", 10, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 10, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 6), 0);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
@@ -919,10 +919,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.increase(90);
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 5), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 5), 0);
             // agent still in liquidation status
             const info1 = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(vaultCollateralLiquidationReward1),
                 totalPoolCollateralNATWei: fullAgentCollateral.sub(poolLiquidationReward1),
@@ -1058,10 +1058,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(10, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(10, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPrice("NAT", 10, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 10, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 6), 0);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
@@ -1094,10 +1094,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.increase(90);
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 5), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 5), 0);
             // agent still in liquidation status
             const info1 = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(vaultCollateralLiquidationReward1),
                 totalPoolCollateralNATWei: fullAgentCollateral.sub(poolLiquidationReward1),
@@ -1182,10 +1182,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.increase(90);
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 5), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 5), 0);
             // agent still in liquidation status
             const info1 = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(vaultCollateralLiquidationReward1),
                 totalPoolCollateralNATWei: fullPoolCollateral.sub(poolLiquidationReward1),
@@ -1235,10 +1235,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(10, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(10, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPrice("NAT", 10, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 10, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 6), 0);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
@@ -1270,10 +1270,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.increase(90);
-            await context.natFtso.setCurrentPrice(100, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 5), 0);
-            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol,  toBNExp(10, 5), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol,  toBNExp(10, 5), 0);
             // wait some time to get next premium
             await time.increase(90);
             // agent still in liquidation status
