@@ -343,6 +343,22 @@
             "minimum": 0,
             "type": "integer"
         },
+        "transferFeeClaimEpochDurationSeconds": {
+            "description": "Transfer fees are collected for each \"epoch\" and can be claimed after the epoch ends.\nThis setting is the epoch duration (in seconds).",
+            "type": "integer"
+        },
+        "transferFeeClaimFirstEpochStartTs": {
+            "description": "Transfer fees are collected for each \"epoch\" and can be claimed after the epoch ends.\nThis setting marks the start timestamp of the epoch 0.",
+            "type": "integer"
+        },
+        "transferFeeClaimMaxUnexpiredEpochs": {
+            "description": "After a while, the epochs become unclaimable and the fees in there are transfered to the latest epoch.\nThis setting is the epoch duration (in seconds).",
+            "type": "integer"
+        },
+        "transferFeeMillionths": {
+            "description": "The fee paid for FAsset transfers.\nUnlike other ratios that are in BIPS, this one is in millionths (1/1000000), which is 1/100 of a BIP.\nThis is because the values can be very small, just a few BIPS.",
+            "type": "integer"
+        },
         "underlyingBlocksForPayment": {
             "description": "Number of underlying blocks that the minter or agent is allowed to pay underlying value.\nIf payment not reported in that time, minting/redemption can be challenged and default action triggered.\nCAREFUL: Count starts from the current proved block height, so the minters and agents should\nmake sure that current block height is fresh, otherwise they might not have enough time for payment.",
             "minimum": 0,
@@ -430,6 +446,10 @@
         "requireEOAAddressProof",
         "takeOverRedemptionRequestWindowSeconds",
         "tokenInvalidationTimeMinSeconds",
+        "transferFeeClaimEpochDurationSeconds",
+        "transferFeeClaimFirstEpochStartTs",
+        "transferFeeClaimMaxUnexpiredEpochs",
+        "transferFeeMillionths",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
         "userWhitelist",

@@ -2,8 +2,6 @@
 pragma solidity >=0.7.6 <0.9;
 
 interface IRedemptionTimeExtension {
-    event RedemptionPaymentExtensionSecondsChanged(uint256 value);
-
     function setRedemptionPaymentExtensionSeconds(uint256 _value)
         external;
 

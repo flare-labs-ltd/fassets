@@ -36,7 +36,7 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedProxyImplemen
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
-        emit RedemptionPaymentExtensionSecondsChanged(_value);
+        emit AMEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);
     }
 
     function redemptionPaymentExtensionSeconds()

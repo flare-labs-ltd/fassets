@@ -4,7 +4,7 @@ import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp, WEEKS } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance,
@@ -129,6 +129,10 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         takeOverRedemptionRequestWindowSeconds: 120,
         rejectedRedemptionDefaultFactorVaultCollateralBIPS: toBIPS(1.05),
         rejectedRedemptionDefaultFactorPoolBIPS: toBIPS(0.05),
+        transferFeeMillionths: 0,
+        transferFeeClaimFirstEpochStartTs: Math.floor(new Date("2024-09-01").getTime() / 1000),
+        transferFeeClaimEpochDurationSeconds: 1 * WEEKS,
+        transferFeeClaimMaxUnexpiredEpochs: 12,
     };
     return Object.assign(result, options ?? {});
 }

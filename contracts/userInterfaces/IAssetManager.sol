@@ -13,12 +13,20 @@ import "./data/RedemptionTicketInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
+import "./ITransferFees.sol";
 
 
 /**
  * Asset manager publicly callable methods.
  */
-interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPing, IRedemptionTimeExtension {
+interface IAssetManager is
+    IERC165,
+    IDiamondLoupe,
+    IAssetManagerEvents,
+    IAgentPing,
+    IRedemptionTimeExtension,
+    ITransferFees
+{
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
 

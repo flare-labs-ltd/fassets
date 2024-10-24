@@ -12,6 +12,7 @@ import "./Globals.sol";
 import "./Conversion.sol";
 import "./CollateralTypes.sol";
 import "./AgentCollateral.sol";
+import "./TransferFees.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -122,6 +123,7 @@ library Agents {
         internal
     {
         _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
+        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function releaseMintedAssets(
@@ -131,6 +133,7 @@ library Agents {
         internal
     {
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function startRedeemingAssets(
@@ -144,7 +147,7 @@ library Agents {
         if (!_poolSelfCloseRedemption) {
             _agent.poolRedeemingAMG += _valueAMG;
         }
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        releaseMintedAssets(_agent, _valueAMG);
     }
 
     function endRedeemingAssets(

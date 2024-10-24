@@ -86,6 +86,18 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
         },
         { execute: true, verbose: false });
 
+    await deployCutsOnDiamond(hre, contracts,
+        {
+            diamond: assetManager.address,
+            facets: [{ contract: "TransferFeeFacet", exposedInterfaces: ["ITransferFees"] }],
+            init: {
+                contract: "TransferFeeFacet",
+                method: "initTransferFeeFacet",
+                args: [parameters.transferFeeMillionths, parameters.transferFeeClaimFirstEpochStartTs, parameters.transferFeeClaimEpochDurationSeconds, parameters.transferFeeClaimMaxUnexpiredEpochs]
+            },
+        },
+        { execute: true, verbose: false });
+
     // everything from IIAssetManager must be implemented now
     await checkAllAssetManagerMethodsImplemented(hre, assetManager.address);
 

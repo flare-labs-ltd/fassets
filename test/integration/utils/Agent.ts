@@ -1,21 +1,21 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentInfo, AgentSetting, AgentSettings, AgentStatus, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
-import { createTestAgentSettings } from "../../utils/test-settings";
 import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
+import { createTestAgentSettings } from "../../utils/test-settings";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
-import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -270,8 +270,8 @@ export class Agent extends AssetContextClient {
         return await this.agentVault.redeemCollateralPoolTokens(amountWei, this.ownerWorkAddress, { from: this.ownerWorkAddress });
     }
 
-    async withdrawPoolFees(amountUBA: BNish) {
-        await this.agentVault.withdrawPoolFees(amountUBA, this.ownerWorkAddress, { from: this.ownerWorkAddress });
+    async withdrawPoolFees(amountUBA: BNish, recipient = this.ownerWorkAddress) {
+        await this.agentVault.withdrawPoolFees(amountUBA, recipient, { from: this.ownerWorkAddress });
     }
 
     async poolFeeBalance() {
@@ -325,15 +325,22 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
     }
 
-    async performRedemptions(requests: EventArgs<RedemptionRequested>[]) {
+    static async performRedemptions(agents: Agent[], requests: EventArgs<RedemptionRequested>[]) {
         const results: Record<string, Truffle.TransactionResponse<AssetManagerEvents>> = {};
         for (const request of requests) {
-            if (request.agentVault !== this.vaultAddress) continue;
-            const txHash = await this.performRedemptionPayment(request);
-            const proof = await this.attestationProvider.provePayment(txHash, this.underlyingAddress, request.paymentAddress);
-            const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+            const agent = agents.find(ag => ag.vaultAddress === request.agentVault);
+            if (!agent) assert.fail(`No agent for redemption ${request.paymentReference}`);
+            // perform redemption
+            const txHash = await agent.performRedemptionPayment(request);
+            const proof = await agent.attestationProvider.provePayment(txHash, agent.underlyingAddress, request.paymentAddress);
+            const res = await agent.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
             results[String(request.requestId)] = res;
         }
+        return results;
+    }
+
+    async performRedemptions(requests: EventArgs<RedemptionRequested>[]) {
+        return await Agent.performRedemptions([this], requests);
     }
 
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
@@ -533,6 +540,15 @@ export class Agent extends AssetContextClient {
     async buybackAgentCollateral() {
         const [,, buybackCost] = await this.getBuybackAgentCollateralValue()
         await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
+    }
+
+    async transferFeeShare(maxEpochs: BNish) {
+        return await this.context.assetManager.agentTransferFeeShare(this.vaultAddress, maxEpochs);
+    }
+
+    async claimTransferFees(recipient: string, maxEpochs: BNish) {
+        const res = await this.context.assetManager.claimTransferFees(this.vaultAddress, recipient, maxEpochs, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "TransferFeesClaimed");
     }
 
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;

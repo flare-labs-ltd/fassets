@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "../../utils/lib/SafePct.sol";
 import "./Globals.sol";
 import "./SettingsValidators.sol";
+import "./data/TransferFeeTracking.sol";
 
 library SettingsInitializer {
     using SafePct for *;

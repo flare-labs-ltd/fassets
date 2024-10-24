@@ -12,11 +12,13 @@ import { IFlareDataConnectorClient } from "../../../lib/underlying-chain/interfa
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
+import { BNish, requireNotNull, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { createTestCollaterals, createTestSettings } from "../../utils/test-settings";
+import { createTestCollaterals, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -27,6 +29,7 @@ const Whitelist = artifacts.require('Whitelist');
 export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
+    testSettings?: TestSettingOptions;
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
@@ -146,6 +149,13 @@ export class AssetContext implements IAssetContext {
         return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
     }
 
+    async transferFAsset(from: string, to: string, amount: BNish) {
+        const res = await this.fAsset.transfer(to, amount, { from });
+        const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
+        assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
+        return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };
+    }
+
     attestationWindowSeconds() {
         return Number(this.settings.attestationWindowSeconds);
     }
@@ -260,7 +270,7 @@ export class AssetContext implements IAssetContext {
         // create collaterals
         const testSettingsContracts = { ...common, agentOwnerRegistry };
         // create settings
-        const settings = createTestSettings(testSettingsContracts, chainInfo);
+        const settings = createTestSettings(testSettingsContracts, chainInfo, options.testSettings);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
