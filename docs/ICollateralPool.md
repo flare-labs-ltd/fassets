@@ -17,7 +17,7 @@ NOTE: only the owner of the pool's corresponding agent vault may call this metho
 **delegate** - Delegate FTSO vote power for the wrapped native tokens held in this vault.
 NOTE: only the owner of the pool's corresponding agent vault may call this method.
 
-**claimFtsoRewards** - Claim the FTSO rewards earned by delegating the vote power for the pool.
+**claimDelegationRewards** - Claim the rewards earned by delegating (for FTSO) the vote power for the pool.
 NOTE: only the owner of the pool's corresponding agent vault may call this method.
 
 **setAutoClaiming** - Set executors that can then automatically claim rewards and airdrop.
