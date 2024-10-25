@@ -77,9 +77,3 @@ export function assertApproximatelyEqual(value: BNish, expected: BNish, approxim
     // console.log(`value: ${value},  expected: ${expected},  error: ${toBN(value).sub(toBN(expected))},  relativeErr: ${approximation.relativeError(value)}`);
     approximation.assertMatches(value, message);
 }
-
-export function assertApproximatelyEqual(value: BNish, expected: BNish, approximationType: 'absolute' | 'relative', maxError: BNish, message?: string) {
-    const approximation = approximationType === 'absolute' ? Approximation.absolute(expected, maxError) : Approximation.relative(expected, Number(maxError));
-    // console.log(`value: ${value},  expected: ${expected},  error: ${toBN(value).sub(toBN(expected))},  relativeErr: ${approximation.relativeError(value)}`);
-    approximation.assertMatches(value, message);
-}

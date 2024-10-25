@@ -10,11 +10,9 @@ import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingC
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { IFlareDataConnectorClient } from "../../../lib/underlying-chain/interfaces/IFlareDataConnectorClient";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
-import { BNish, requireNotNull, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { BN_ZERO, BNish, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { AgentOwnerRegistryInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
