@@ -5232,7 +5232,7 @@ find-up@^6.3.0:
 
 "flare-smart-contracts-v2@git+https://github.com/flare-foundation/flare-smart-contracts-v2.git":
   version "0.0.1"
-  resolved "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git#d5190979ca923fccc655dcbb3044d7b651e287ae"
+  resolved "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git#a5d0a00d4a568ec5d886d1b438db6bcf694ba853"
   dependencies:
     "@openzeppelin/contracts" "5.0.2"
     "@typescript-eslint/eslint-plugin" "^7.3.1"
@@ -5244,7 +5244,7 @@ find-up@^6.3.0:
 
 "flare-smart-contracts@git+https://gitlab.com/flarenetwork/flare-smart-contracts.git":
   version "0.0.1"
-  resolved "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#51d7a33f64c6b55c0e295b4c6274ac1f14c6bab5"
+  resolved "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#03ae9c741e364bb5582afdb0dc49726b149c18f7"
   dependencies:
     "@openzeppelin/contracts" "3.4.0"
     "@tenderly/hardhat-tenderly" "1.0.12"
