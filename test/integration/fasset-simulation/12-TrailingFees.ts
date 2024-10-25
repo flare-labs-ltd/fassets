@@ -286,7 +286,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const startFee = await assetManager.transferFeeMillionths();
             assertWeb3Equal(startFee, 200);
             // update fee to 500 in 100 sec
-            await assetManager.setTransferFeeMillionths(500, startTime + 100, { from: governance});
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 100, { from: governance});
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
             await time.increase(50);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
@@ -294,7 +294,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
             // update fee again, to 400
             await time.increase(1 * DAYS);  // skip to avoid too close updates
-            await assetManager.setTransferFeeMillionths(400, await time.latest() + 200, { from: governance });
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 200, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
             await time.increase(100);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
@@ -302,13 +302,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 400);
             // update in past/now/0 updates immediately
             await time.increase(1 * DAYS);
-            await assetManager.setTransferFeeMillionths(300, startTime, { from: governance });
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 300, startTime, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 300);
             await time.increase(1 * DAYS);
-            await assetManager.setTransferFeeMillionths(150, await time.latest() + 1, { from: governance });
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 150, await time.latest() + 1, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 150);
             await time.increase(1 * DAYS);
-            await assetManager.setTransferFeeMillionths(100, 0, { from: governance });
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 100, 0, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 100);
         });
     });

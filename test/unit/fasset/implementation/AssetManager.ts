@@ -1395,9 +1395,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
             // set redemptionPaymentExtensionSeconds setting to 0 (needs two steps and timeskip due to validation)
-            await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: governance });
+            await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: assetManagerController });
             await time.increase(86400);
-            await assetManager.setRedemptionPaymentExtensionSeconds(0, { from: governance });
+            await assetManager.setRedemptionPaymentExtensionSeconds(0, { from: assetManagerController });
             // default a redemption
             const times1: number[] = [];
             const blocks1: number[] = [];

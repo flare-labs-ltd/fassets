@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./AssetManagerBase.sol";
 import "../../diamond/library/LibDiamond.sol";
-import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../userInterfaces/ITransferFees.sol";
 import "../../utils/lib/SafePct.sol";
@@ -15,7 +14,7 @@ import "../library/TransferFees.sol";
 import "../library/Agents.sol";
 
 
-contract TransferFeeFacet is AssetManagerBase, GovernedProxyImplementation, IAssetManagerEvents, ITransferFees {
+contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFees {
     using TransferFeeTracking for TransferFeeTracking.Data;
     using SafeCast for *;
 
@@ -78,7 +77,7 @@ contract TransferFeeFacet is AssetManagerBase, GovernedProxyImplementation, IAss
 
     function setTransferFeeMillionths(uint256 _value, uint256 _scheduledAt)
         external
-        onlyImmediateGovernance
+        onlyAssetManagerController
     {
         SettingsUpdater.checkEnoughTimeSinceLastUpdate();
         // validate

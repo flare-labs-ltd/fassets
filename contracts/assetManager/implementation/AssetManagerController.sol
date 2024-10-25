@@ -519,6 +519,29 @@ contract AssetManagerController is
             abi.encodeCall(IISettingsManagement.setRejectedRedemptionDefaultFactorBips, (_vaultF, _poolF)));
     }
 
+    function setRedemptionPaymentExtensionSeconds(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            IRedemptionTimeExtension.setRedemptionPaymentExtensionSeconds.selector, _value);
+    }
+
+    function setTransferFeeMillionths(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value,
+        uint256 _scheduledAt
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(ITransferFees.setTransferFeeMillionths, (_value, _scheduledAt)));
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Collateral tokens
 

@@ -2,7 +2,7 @@ import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-h
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
@@ -1168,6 +1168,25 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = 5000;
             let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: governance });
             await expectRevert(res, "bips value too low");
+        });
+
+        it("should set redemption payment extension seconds", async () => {
+            const redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
+            let redemptionPaymentExtensionSeconds_new = redemptionPaymentExtensionSeconds.muln(2);
+            let res = await assetManagerController.setRedemptionPaymentExtensionSeconds([assetManager.address], redemptionPaymentExtensionSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "redemptionPaymentExtensionSeconds", value: toBN(redemptionPaymentExtensionSeconds_new) });
+        });
+
+        it("should set transfer fee millionths with schedule", async () => {
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            let transferFeeMillionths_new = transferFeeMillionths.muln(2);
+            const ts = await latestBlockTimestamp();
+            let res = await assetManagerController.setTransferFeeMillionths([assetManager.address], transferFeeMillionths_new, ts + 3600, { from: governance });
+            await expectEvent.inTransaction(res.tx, assetManager, "TransferFeeChangeScheduled", { nextTransferFeeMillionths: String(transferFeeMillionths_new), scheduledAt: String(ts + 3600) });
+            // should not take effect immediately
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), transferFeeMillionths);
+            await time.increase(3600);
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), transferFeeMillionths_new);
         });
 
         it("should add Collateral token", async () => {

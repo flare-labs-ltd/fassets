@@ -8,10 +8,9 @@ import "../../userInterfaces/IRedemptionTimeExtension.sol";
 import "../library/data/RedemptionTimeExtension.sol";
 import "../library/SettingsUpdater.sol";
 import "../../diamond/library/LibDiamond.sol";
-import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "./AssetManagerBase.sol";
 
-contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedProxyImplementation, IRedemptionTimeExtension {
+contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtension {
     bytes32 internal constant SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS =
         keccak256("RedemptionTimeExtensionFacet.setRedemptionPaymentExtensionSeconds(uint256)");
 
@@ -29,13 +28,15 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedProxyImplemen
 
     function setRedemptionPaymentExtensionSeconds(uint256 _value)
         external
-        onlyImmediateGovernance
+        onlyAssetManagerController
     {
         SettingsUpdater.checkEnoughTimeSinceLastUpdate();
+        // validate
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
+        // update
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
         emit IAssetManagerEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);
     }
