@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../userInterfaces/data/AssetManagerSettings.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../userInterfaces/IRedemptionTimeExtension.sol";
 import "../library/data/RedemptionTimeExtension.sol";
 import "../library/SettingsUpdater.sol";
@@ -36,7 +37,7 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedProxyImplemen
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
-        emit AMEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);
+        emit IAssetManagerEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);
     }
 
     function redemptionPaymentExtensionSeconds()

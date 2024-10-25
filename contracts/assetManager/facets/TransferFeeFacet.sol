@@ -4,8 +4,8 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./AssetManagerBase.sol";
-import "../../diamond/facets/GovernedFacet.sol";
 import "../../diamond/library/LibDiamond.sol";
+import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../userInterfaces/ITransferFees.sol";
 import "../../utils/lib/SafePct.sol";
@@ -15,7 +15,7 @@ import "../library/TransferFees.sol";
 import "../library/Agents.sol";
 
 
-contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvents, ITransferFees {
+contract TransferFeeFacet is AssetManagerBase, GovernedProxyImplementation, IAssetManagerEvents, ITransferFees {
     using TransferFeeTracking for TransferFeeTracking.Data;
     using SafeCast for *;
 
@@ -80,7 +80,7 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         external
         onlyImmediateGovernance
     {
-        SettingsUpdater.checkEnoughTimeSinceLastUpdate(keccak256("TransferFeeFacet.setTransferFeeMillionths"));
+        SettingsUpdater.checkEnoughTimeSinceLastUpdate();
         // validate
         uint256 currentValue = TransferFees.transferFeeMillionths();
         require(_value <= 1e6, "millionths value too high");
