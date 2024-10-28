@@ -93,8 +93,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
+            // check that fee was not burned
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), 0);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -147,8 +147,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // change Collateral reservation fee bips
             const currentSettings = await context.assetManager.getSettings();
             await context.setCollateralReservationFeeBips(toBN(currentSettings.collateralReservationFeeBIPS).muln(2));
@@ -170,8 +168,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare2, minted2.agentFeeUBA);
             const mintedUBA2 = crt2.valueUBA.add(poolFeeShare2);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA.add(mintedUBA2), reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress2.sub(startBalanceBurnAddress2), crFee2);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
             // wait until another setting update is possible
@@ -231,8 +227,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -303,8 +297,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -373,7 +365,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minted1 = await agent.executeMinting(crt1, tx1Hash);
             assertWeb3Equal(minted1.mintedAmountUBA, context.convertLotsToUBA(lots1));
             const totalMinted1 = minted1.mintedAmountUBA.add(minted1.poolFeeUBA);
-            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA, mintedUBA: totalMinted1, reservedUBA: 0 });
+            const poolCRFee1 = await agent.poolCRFee(lots1);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA, mintedUBA: totalMinted1, reservedUBA: 0, totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee1) });
             const lots2 = 6;
             const crt2 = await minter2.reserveCollateral(agent.vaultAddress, lots2);
             await agent.checkAgentInfo({ reservedUBA: crt2.valueUBA.add(agent.poolFeeShare(crt2.feeUBA)) });
@@ -383,7 +376,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
             assertWeb3Equal(minted2.mintedAmountUBA, context.convertLotsToUBA(lots2));
             const totalMinted2 = totalMinted1.add(minted2.mintedAmountUBA).add(minted2.poolFeeUBA);
-            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA), mintedUBA: totalMinted2, reservedUBA: 0 });
+            const poolCRFee2 = await agent.poolCRFee(lots2);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA), mintedUBA: totalMinted2, reservedUBA: 0,
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee1).add(poolCRFee2) });
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
             // perform redemption
@@ -769,8 +764,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -832,8 +825,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
 
@@ -854,8 +845,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare2, minted2.agentFeeUBA);
             const mintedUBA2 = crt2.valueUBA.add(poolFeeShare2);
             await agent2.checkAgentInfo({ mintedUBA: mintedUBA2, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress2.sub(startBalanceBurnAddress2), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer2.address, minted2.mintedAmountUBA, { from: minter2.address });
 
@@ -945,8 +934,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee1);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
 
@@ -970,8 +957,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare2, minted2.agentFeeUBA);
             const mintedUBA2 = crt2.valueUBA.add(poolFeeShare2);
             await agent2.checkAgentInfo({ mintedUBA: mintedUBA2, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress2.sub(startBalanceBurnAddress2), crFee2);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer2.address, minted2.mintedAmountUBA, { from: minter2.address });
 
@@ -1079,8 +1064,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee1);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
 
@@ -1104,8 +1087,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare2, minted2.agentFeeUBA);
             const mintedUBA2 = crt2.valueUBA.add(poolFeeShare2);
             await agent2.checkAgentInfo({ mintedUBA: mintedUBA2, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress2.sub(startBalanceBurnAddress2), crFee2);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer2.address, minted2.mintedAmountUBA, { from: minter2.address });
 
@@ -1129,8 +1110,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(agentFeeShare3, minted3.agentFeeUBA);
             const mintedUBA3 = crt3.valueUBA.add(poolFeeShare3);
             await agent3.checkAgentInfo({ mintedUBA: mintedUBA3, reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress3.sub(startBalanceBurnAddress3), crFee3);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer3.address, minted3.mintedAmountUBA, { from: minter3.address });
 

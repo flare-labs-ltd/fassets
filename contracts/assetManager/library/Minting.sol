@@ -62,7 +62,8 @@ library Minting {
             unclaimedExecutorFee = 0;
         }
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
-        Agents.burnDirectNAT(crt.reservationFeeNatWei + unclaimedExecutorFee);
+        CollateralReservations.distributeCollateralReservationFee(agent,
+            crt.reservationFeeNatWei + unclaimedExecutorFee);
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
     }

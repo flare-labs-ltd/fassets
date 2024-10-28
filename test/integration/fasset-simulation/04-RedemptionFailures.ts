@@ -83,8 +83,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             assertWeb3Equal(minted.mintedAmountUBA, lotsUBA);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: lotsUBA.add(minted.poolFeeUBA), reservedUBA: 0 });
-            // check that fee was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -628,8 +626,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
         const mintedUBA = crt.valueUBA.add(poolFeeShare);
         await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-        // check that fee was burned
-        assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee1);
         // redeemer "buys" f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
 

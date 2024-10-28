@@ -98,8 +98,6 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, async 
         assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
         const mintedUBA = crt.valueUBA.add(poolFeeShare);
         await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-        // check that fee was burned
-        assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
         // redeemer "buys" f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
         // perform redemption

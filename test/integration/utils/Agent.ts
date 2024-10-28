@@ -393,6 +393,11 @@ export class Agent extends AssetContextClient {
 
     async getRedemptionPaymentDefaultValue(lots: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
         const uba = this.context.convertLotsToUBA(lots);
+        return await this.getRedemptionPaymentDefaultValueForUBA(uba, selfCloseExit);
+    }
+
+    async getRedemptionPaymentDefaultValueForUBA(redemptionAmountUBA: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
+        const uba = toBN(redemptionAmountUBA);
         const agentInfo = await this.getAgentInfo();
         const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
         const maxRedemptionCollateral = toBN(agentInfo.totalVaultCollateralWei).mul(uba).div(totalUBA);
@@ -410,7 +415,7 @@ export class Agent extends AssetContextClient {
             redemptionDefaultPool = toBN(0);
         }
         if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
-            const extraPoolAmg = this.context.convertLotsToAMG(lots).mul
+            const extraPoolAmg = this.context.convertUBAToAmg(uba).mul
                 (redemptionDefaultAgent.sub(maxRedemptionCollateral)).divRound(redemptionDefaultAgent);
             return [maxRedemptionCollateral, redemptionDefaultPool.add(priceNat.convertAmgToTokenWei(extraPoolAmg))];
         }
@@ -667,8 +672,8 @@ export class Agent extends AssetContextClient {
         return price;
     }
 
-    poolFeeShare(feeUBA: BNish) {
-        return toBN(feeUBA).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+    poolFeeShare(fee: BNish) {
+        return toBN(fee).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
     }
 
     // pool's CR can fall below exitCR
@@ -689,5 +694,22 @@ export class Agent extends AssetContextClient {
             firstTicketId = nextId;
         } while (!firstTicketId.eqn(0));
         return result;
+    }
+
+    async poolCRFee(lots: BNish) {
+        const crFee = await this.assetManager.collateralReservationFee(lots);
+        return this.poolFeeShare(crFee);
+    }
+
+    async wnatToPoolTokens(wnat: BNish) {
+        const totalCollateral = await this.collateralPool.totalCollateral();
+        const totalTokens = await this.collateralPoolToken.totalSupply();
+        return totalCollateral.eq(BN_ZERO) ? toBN(wnat) : toBN(wnat).mul(totalTokens).div(totalCollateral);
+    }
+
+    async poolTokensToWnat(wnat: BNish) {
+        const totalCollateral = await this.collateralPool.totalCollateral();
+        const totalTokens = await this.collateralPoolToken.totalSupply();
+        return totalTokens.eq(BN_ZERO) ? toBN(wnat) : toBN(wnat).mul(totalCollateral).div(totalTokens);
     }
 }

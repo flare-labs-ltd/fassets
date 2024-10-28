@@ -291,6 +291,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
+            const poolCRFee = await agent.poolCRFee(lots);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             const mintedAmount = toBN(minted.mintedAmountUBA).add(minted.poolFeeUBA);
             // perform illegal payment
@@ -305,6 +306,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test full liquidation started
             const info = await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: mintedAmount,
                 status: AgentStatus.FULL_LIQUIDATION });
@@ -337,7 +339,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceLiquidator1Pool.sub(startBalanceLiquidator1Pool), liquidationReward1Pool);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral),
-                totalPoolCollateralNATWei: fullAgentCollateral.sub(liquidationReward1Pool),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA),
                 mintedUBA: mintedAmount.sub(liquidateUBA),
                 ccbStartTimestamp: 0,
@@ -368,7 +370,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceLiquidator2Pool.sub(startBalanceLiquidator2Pool), liquidationReward2Pool);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral).sub(liquidationReward2VaultCollateral),
-                totalPoolCollateralNATWei: fullAgentCollateral.sub(liquidationReward1Pool).sub(liquidationReward2Pool),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool).sub(liquidationReward2Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA.muln(2)),
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(2)),
                 ccbStartTimestamp: 0,
@@ -399,7 +401,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceLiquidator3Pool.sub(startBalanceLiquidator3Pool), liquidationReward3Pool);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral).sub(liquidationReward2VaultCollateral).sub(liquidationReward3VaultCollateral),
-                totalPoolCollateralNATWei: fullAgentCollateral.sub(liquidationReward1Pool).sub(liquidationReward2Pool).sub(liquidationReward3Pool),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool).sub(liquidationReward2Pool).sub(liquidationReward3Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA.muln(3)),
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(3)),
                 ccbStartTimestamp: 0,

@@ -161,9 +161,7 @@ library CollateralReservations {
         emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // share collateral reservation fee between the agent's vault and pool
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
-        uint256 poolFeeShare = totalFee.mulBips(agent.poolFeeShareBIPS);
-        agent.collateralPool.depositNat{value: poolFeeShare}();
-        IIAgentVault(crt.agentVault).depositNat{value: totalFee - poolFeeShare}(Globals.getWNat());
+        distributeCollateralReservationFee(agent, totalFee);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
@@ -188,7 +186,7 @@ library CollateralReservations {
                 _proof.data.responseBody.blockTimestamp,
             "cannot unstick minting yet");
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
-        Agents.burnDirectNAT(crt.reservationFeeNatWei);
+        Agents.burnDirectNAT(crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
         // burn reserved collateral at market price
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
@@ -199,6 +197,17 @@ library CollateralReservations {
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
+    }
+
+    function distributeCollateralReservationFee(
+        Agent.State storage _agent,
+        uint256 _fee
+    )
+        internal
+    {
+        uint256 poolFeeShare = _fee.mulBips(_agent.poolFeeShareBIPS);
+        _agent.collateralPool.depositNat{value: poolFeeShare}();
+        IIAgentVault(_agent.vaultAddress()).depositNat{value: _fee - poolFeeShare}(Globals.getWNat());
     }
 
     function calculateReservationFee(
