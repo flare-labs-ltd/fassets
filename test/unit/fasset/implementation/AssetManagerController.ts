@@ -2,7 +2,7 @@ import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-h
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
@@ -1191,6 +1191,30 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         // emergency pause
 
+        // reset
+        it("should reset emergency pause total duration", async () => {
+            await assetManagerController.resetEmergencyPauseTotalDuration([assetManager.address], { from: governance });
+        });
+
+        it("only governance can reset emergency pause total duration", async () => {
+            await expectRevert(assetManagerController.resetEmergencyPauseTotalDuration([assetManager.address]), "only governance");
+        });
+
+        // emergency pause sender
+        it("can add and remove emergency pause sender", async () => {
+            const sender = accounts[80];
+            await expectRevert(assetManagerController.emergencyPause([assetManager.address], 10, { from: sender }), "only governance or emergency pause senders");
+            // add sender
+            await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
+            await assetManagerController.emergencyPause([assetManager.address], 10, { from: sender });
+            assert.isTrue(await assetManager.emergencyPaused());
+            await time.increase(20);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // remove sender
+            await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
+            await expectRevert(assetManagerController.emergencyPause([assetManager.address], 10, { from: sender }), "only governance or emergency pause senders");
+        });
+
         // max emergency pause duration seconds
         it("should set max emergency pause duration seconds", async () => {
             const currentSettings = await assetManager.getSettings();
@@ -1409,6 +1433,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await waitForTimelock(res, assetManagerController, updateExecutor);
             const testResult = await mockProxy.testResult();
             assert.equal(testResult, "test proxy");
+        });
+
+        it("should upgrade and call", async () => {
+            const mockProxy = await TestUUPSProxyImpl.at(assetManagerController.address);
+            await expectRevert.unspecified(mockProxy.testResult());
+            const calldata = abiEncodeCall(mockProxy, mp => mp.initialize("initialized test proxy"));
+            const res = await assetManagerController.upgradeToAndCall(newImplementation.address, calldata, { from: governance });
+            await waitForTimelock(res, assetManagerController, updateExecutor);
+            const testResult = await mockProxy.testResult();
+            assert.equal(testResult, "initialized test proxy");
         });
 
         it("should be able to revert upgrade", async () => {

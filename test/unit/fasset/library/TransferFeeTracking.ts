@@ -107,4 +107,58 @@ contract(`TransferFeeTracking.sol; ${getTestFile(__filename)};  Transfer fee uni
             }
         });
     });
+
+    describe("tracking fees", () => {
+        it("should not expire epochs until fee is added to current", async () => {
+            const FEE = 1000;
+            const settings = await tracking.transferFeeSettings();
+            const M = Number(settings.maxUnexpiredEpochs);
+            const firstEpoch = await tracking.currentEpoch();
+            for (let i = 0; i < M; i++) {
+                await tracking.addFees(FEE);
+                await time.increase(toBN(settings.epochDuration));
+            }
+            await time.increase(toBN(settings.epochDuration).muln(M));
+            // check previous epochs
+            for (let i = 0; i < 2 * M; i++) {
+                const data = await tracking.transferFeeEpochData(firstEpoch.addn(i));
+                assert.isFalse(data.expired);
+                assert.isTrue(data.claimable);
+                assertWeb3Equal(data.totalFees, i < M ? FEE : 0)
+            }
+            // current epoch
+            const currentEpoch = await tracking.currentEpoch();
+            assertWeb3Equal(currentEpoch, firstEpoch.addn(2 * M));
+            const dataCur = await tracking.transferFeeEpochData(currentEpoch);
+            assert.isFalse(dataCur.expired);
+            assert.isFalse(dataCur.claimable);
+            assertWeb3Equal(dataCur.totalFees, 0)
+        });
+
+        it("should expire one epoch each time fee is added", async () => {
+            const FEE = 1000;
+            const settings = await tracking.transferFeeSettings();
+            const M = Number(settings.maxUnexpiredEpochs);
+            const firstEpoch = await tracking.currentEpoch();
+            for (let i = 0; i < M; i++) {
+                await tracking.addFees(FEE);
+                await time.increase(toBN(settings.epochDuration));
+            }
+            await time.increase(toBN(settings.epochDuration).muln(M));
+            // add fee M times to current epoch
+            const currentEpoch = await tracking.currentEpoch();
+            assertWeb3Equal(currentEpoch, firstEpoch.addn(2 * M));
+            for (let i = 0; i < M; i++) {
+                await tracking.addFees(1);
+                const dataExp = await tracking.transferFeeEpochData(firstEpoch.addn(i));
+                assert.isTrue(dataExp.expired);
+                assertWeb3Equal(dataExp.totalFees, 0)
+                const dataNextExp = await tracking.transferFeeEpochData(firstEpoch.addn(i + 1));
+                assert.isFalse(dataNextExp.expired);
+                const dataCur = await tracking.transferFeeEpochData(currentEpoch);
+                assert.isFalse(dataCur.expired);
+                assertWeb3Equal(dataCur.totalFees, (i + 1) * (FEE + 1)) // 1 added, 1 * FEE expired to current per each loop
+            }
+        });
+    });
 });
