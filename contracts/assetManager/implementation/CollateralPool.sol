@@ -451,7 +451,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _mintFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(address(this), _recipient, _fAssets);
         // emit event
-        emit Exited(msg.sender, 0, 0, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
+        emit Exited(msg.sender, 0, 0, _fAssets, 0, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
