@@ -145,9 +145,6 @@ export function convertCollateralType(contracts: FAssetContractStore, parameters
 }
 
 export function createAssetManagerSettings(contracts: FAssetContractStore, parameters: AssetManagerParameters, fAsset: FAssetInstance): AssetManagerSettings {
-    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.FdcVerification || !contracts.CollateralPoolFactory) {
-        throw new Error("Missing contracts");
-    }
     const ten = new BN(10);
     const assetUnitUBA = ten.pow(new BN(parameters.assetDecimals));
     const assetMintingGranularityUBA = ten.pow(new BN(parameters.assetDecimals - parameters.assetMintingDecimals));

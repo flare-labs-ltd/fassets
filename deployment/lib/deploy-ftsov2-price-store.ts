@@ -7,10 +7,10 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const FtsoV2PriceStore = artifacts.require("FtsoV2PriceStore");
-
     const { deployer } = loadDeployAccounts(hre);
     const network = networkConfigName(hre);
+
+    const FtsoV2PriceStore = network === 'hardhat' ? artifacts.require("FtsoV2PriceStoreMock") : artifacts.require("FtsoV2PriceStore");
 
     const firstVotingRoundStartTs = network === 'songbird' || network === 'coston' ? 1658429955 : 1658430000;
     const ftsoV2PriceStore = await FtsoV2PriceStore.new(contracts.GovernanceSettings.address, deployer, deployer, firstVotingRoundStartTs, 90, 100);
@@ -33,6 +33,8 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
 
     contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);
     contracts.add("FtsoV2PriceStore", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
+
+    console.log(`    deployed ${ftsoV2PriceStore.contract.contractName}`);
 }
 
 export interface IFeedId {

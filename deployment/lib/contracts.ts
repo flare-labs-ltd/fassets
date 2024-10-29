@@ -12,12 +12,11 @@ export interface FAssetContracts {
     GovernanceSettings: Contract;
     AddressUpdater: Contract;
     WNat: Contract;
-    FtsoRegistry: Contract;
-    FtsoManager: Contract;
     Relay: Contract;
     FdcHub: Contract;
     FdcVerification?: Contract;
     // fasset
+    FtsoV2PriceStore?: Contract;
     AgentVaultFactory?: Contract;
     CollateralPoolFactory?: Contract;
     CollateralPoolTokenFactory?: Contract;
@@ -80,12 +79,11 @@ export class FAssetContractStore extends ContractStore implements FAssetContract
     get GovernanceSettings() { return this.getRequired('GovernanceSettings'); }
     get AddressUpdater() { return this.getRequired('AddressUpdater'); }
     get WNat() { return this.getRequired('WNat'); }
-    get FtsoRegistry() { return this.getRequired('FtsoRegistry'); }
-    get FtsoManager() { return this.getRequired('FtsoManager'); }
     get Relay() { return this.getRequired('Relay'); }
     get FdcHub() { return this.getRequired('FdcHub'); }
     get FdcVerification() { return this.get('FdcVerification'); }
     // fasset
+    get FtsoV2PriceStore() { return this.get('FtsoV2PriceStore'); }
     get AgentVaultFactory() { return this.get('AgentVaultFactory'); }
     get CollateralPoolFactory() { return this.get('CollateralPoolFactory'); }
     get CollateralPoolTokenFactory() { return this.get('CollateralPoolTokenFactory'); }

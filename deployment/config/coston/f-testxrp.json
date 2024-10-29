@@ -103,7 +103,7 @@
     "rejectRedemptionRequestWindowSeconds": 120,
     "takeOverRedemptionRequestWindowSeconds": 120,
     "rejectedRedemptionDefaultFactorVaultCollateralBIPS": 10500,
-    "rejectedRedemptionDefaultFactorPoolBIPS": 0
+    "rejectedRedemptionDefaultFactorPoolBIPS": 0,
     "transferFeeMillionths": 0,
     "transferFeeClaimFirstEpochStartTs": 1727784000,
     "transferFeeClaimEpochDurationSeconds": 604800,
