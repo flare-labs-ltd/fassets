@@ -277,10 +277,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await agent.collateralPool.fAssetFeesOf(minter.address), 0);
         // minter makes and defaults redemption
         const [[redemptionRequest],,] = await redeemer.requestRedemption(lots);
-
-        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment+100; i++) {
-            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
-        }
+        context.skipToExpiration(redemptionRequest.lastUnderlyingBlock, redemptionRequest.lastUnderlyingTimestamp);
         const poolCollateralBefore = await context.wNat.balanceOf(agent.collateralPool.address);
         const agentWNatBefore = await agent.poolCollateralBalance();
         const agentFAssetFeesBefore = await agent.collateralPool.fAssetFeesOf(agent.agentVault.address);
@@ -334,9 +331,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const redeemLots = 106;
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         const [redemptionRequests,,] = await redeemer.requestRedemption(redeemLots);
-        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment+100; i++) {
-            await agent.wallet.addTransaction(agent.underlyingAddress, agent.underlyingAddress, 1, null);
-        }
+        context.skipToExpiration(redemptionRequests[0].lastUnderlyingBlock, redemptionRequests[0].lastUnderlyingTimestamp);
         await agent.redemptionPaymentDefault(redemptionRequests[0]);
         await agent.finishRedemptionWithoutPayment(redemptionRequests[0]);
         // minter partially exits the pool after waiting for the token timelock
@@ -535,9 +530,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(request.paymentAddress, minter.underlyingAddress);
         assertWeb3Equal(request.agentVault, agent.vaultAddress);
         // mine some blocks to create overflow blocka
-        for (let i = 0; i <= 100 * context.chainInfo.underlyingBlocksForPayment; i++) {
-            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
-        }
+        context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
         // do default
         const [redemptionDefaultValueVaultCollateral, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValueForUBA(request.valueUBA, true);
         const redDef = await agent.redemptionPaymentDefault(request);
@@ -623,9 +616,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // perform some payment with correct minting reference and wrong amount
         await minter.performPayment(crt.paymentAddress, 100, crt.paymentReference);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 20; i++) {
-            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
-        }
+        context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
         // test rewarding for mint default
         const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
         const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);

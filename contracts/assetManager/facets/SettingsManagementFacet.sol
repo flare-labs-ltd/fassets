@@ -622,7 +622,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, "cannot be zero");
-        require(_value <= settings.maxEmergencyPauseDurationSeconds * 4, "increase too big");
+        require(_value <= settings.maxEmergencyPauseDurationSeconds * 4 + 60, "increase too big");
         require(_value >= settings.maxEmergencyPauseDurationSeconds / 4, "decrease too big");
         // update
         settings.maxEmergencyPauseDurationSeconds = _value.toUint64();
@@ -638,7 +638,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, "cannot be zero");
-        require(_value <= settings.emergencyPauseDurationResetAfterSeconds * 4, "increase too big");
+        require(_value <= settings.emergencyPauseDurationResetAfterSeconds * 4 + 3600, "increase too big");
         require(_value >= settings.emergencyPauseDurationResetAfterSeconds / 4, "decrease too big");
         // update
         settings.emergencyPauseDurationResetAfterSeconds = _value.toUint64();

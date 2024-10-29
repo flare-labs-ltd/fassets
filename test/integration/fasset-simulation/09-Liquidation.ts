@@ -106,6 +106,53 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy();
         });
 
+        it("ccb due to price change (turns into liquidation after time by calling startLiquidation again)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            // price change
+            await context.priceStore.setCurrentPrice("NAT", 100, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
+            // start ccb
+            const ccbTimeSeconds = toBN(context.settings.ccbTimeSeconds);
+            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
+            assert.isTrue(ccb);
+            const info = await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                ccbStartTimestamp: ccbStartTimestamp,
+                status: AgentStatus.CCB
+            });
+            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(ccbTimeSeconds));
+            // startLiquidation after 10 seconds should fail
+            await time.increase(10);
+            await expectRevert(liquidator.startLiquidation(agent), "liquidation not started");
+            // after ccb time we can switch to liquidation (and liquidation event should be sent)
+            await time.increase(ccbTimeSeconds);
+            const [ccb2, liquidationStartTimestamp] = await liquidator.startLiquidation(agent);
+            assert.isFalse(ccb2);
+            await agent.checkAgentInfo({
+                ccbStartTimestamp: 0,
+                liquidationStartTimestamp: liquidationStartTimestamp,
+                status: AgentStatus.LIQUIDATION
+            });
+            // do a complete safe-close
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
+            await agent.selfClose(minted.mintedAmountUBA);
+            // agent can exit now
+            await agent.exitAndDestroy();
+        });
+
         it("ccb due to price change (no liquidation due to collateral deposit)(NAT price change, pool collateral ratio unsafe)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

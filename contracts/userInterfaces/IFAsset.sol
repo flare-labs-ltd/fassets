@@ -41,6 +41,20 @@ interface IFAsset is IERC20, IERC20Metadata {
     // Transfer fee payment
 
     /**
+     * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
+     * NOTE: more than `_amount` will be transfered from `msg.sender`.
+     */
+    function transferAndPayFee(address _to, uint256 _amount)
+        external;
+
+    /**
+     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transfered amount.
+     * NOTE: less than `_amount` will be delivered to `_to`.
+     */
+    function transferSubtractingFee(address _to, uint256 _amount)
+        external;
+
+    /**
      * Transfer fees are normally paid by the account that ran the transaction (tx.origin).
      * But it is possible to assign some other account to pay transfer fees.
      * Of course, that other account must set the allowance high enough.
