@@ -3,11 +3,11 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IRelay.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../interfaces/IPriceReader.sol";
 import "../interfaces/IPricePublisher.sol";
-import "../interfaces/IRelay.sol";
 
 
 contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, AddressUpdatable {
