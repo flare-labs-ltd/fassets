@@ -48,7 +48,7 @@ function sleep(ms: number) {
 }
 
 export type WaitFinalizeOptions = { extraBlocks: number, retries: number, sleepMS: number }
-export const waitFinalizeDefaults: WaitFinalizeOptions = { extraBlocks: 1, retries: 3, sleepMS: 1000 };
+export const waitFinalizeDefaults: WaitFinalizeOptions = { extraBlocks: 0, retries: 3, sleepMS: 1000 };
 
 /**
  * Finalization wrapper for web3/truffle. Needed on Flare network since account nonce has to increase
@@ -60,12 +60,12 @@ export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: s
     }
     let nonce = await hre.web3.eth.getTransactionCount(address);
     let res = await func();
-    while (await hre.web3.eth.getTransactionCount(address) == nonce) {
+    while (await hre.web3.eth.getTransactionCount(address) <= nonce) {
         await sleep(options.sleepMS);
     }
     for (let i = 0; i < options.retries; i++) {
-        const block = await hre.web3.eth.getBlockNumber();
-        while (await hre.web3.eth.getBlockNumber() - block < options.extraBlocks) {
+        const currentBlock = await hre.web3.eth.getBlockNumber();
+        while (await hre.web3.eth.getBlockNumber() < currentBlock + options.extraBlocks) {
             await sleep(options.sleepMS);
         }
         // only end if the nonce didn't revert (and repeat up to 3 times)
