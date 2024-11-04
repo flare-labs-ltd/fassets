@@ -928,12 +928,23 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(timelock_info, "address zero");
         });
 
-        it("should set Flare data connector proof verifier after timelock", async () => {
+        it("should upgrade FAsset after timelock", async () => {
             const FAsset = artifacts.require('FAsset');
             const impl = await FAsset.new();
             const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
             expectEvent(timelock_info, "ContractChanged", { name: "fAsset", value: impl.address });
+        });
+
+        it("should upgrade FAsset after timelock (with init)", async () => {
+            const TestUUPSProxyImpl = artifacts.require("TestUUPSProxyImpl")
+            const impl = await TestUUPSProxyImpl.new();
+            const initCall = abiEncodeCall(impl, c => c.initialize("an init message"));
+            const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, initCall, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "fAsset", value: impl.address });
+            const testProxy = await TestUUPSProxyImpl.at(fAsset.address);
+            assertWeb3Equal(await testProxy.testResult(), "an init message");
         });
 
         it("should set price reader", async () => {

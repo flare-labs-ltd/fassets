@@ -3,14 +3,14 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IIFAsset.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../assetManager/interfaces/IIAssetManager.sol";
-import "../../governance/implementation/Governed.sol";
 import "./CheckPointable.sol";
 
 
-contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
+contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     /**
      * The name of the underlying asset.
      */
@@ -379,5 +379,22 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
             || _interfaceId == type(IFAsset).interfaceId
             || _interfaceId == type(IIFAsset).interfaceId
             || _interfaceId == type(IICleanable).interfaceId;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // UUPS proxy upgrade
+
+    function implementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    /**
+     * Upgrade calls can only arrive through asset manager.
+     * See UUPSUpgradeable._authorizeUpgrade.
+     */
+    function _authorizeUpgrade(address /* _newImplementation */)
+        internal virtual override
+        onlyAssetManager
+    {
     }
 }

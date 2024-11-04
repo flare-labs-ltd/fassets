@@ -1,10 +1,10 @@
+import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { abiEncodeCall, erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { FAssetInstance } from "../../../../typechain-truffle";
+import { impersonateContract } from "../../../utils/contract-test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { impersonateContract } from "../../../utils/contract-test-helpers";
-import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
 
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
@@ -300,7 +300,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it("should upgrade via upgradeTo", async () => {
             const proxyAddress = fAsset.address;
-            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            const fAssetProxy = await FAsset.at(proxyAddress);
             assertWeb3Equal(await fAsset.symbol(), "FETH");
             // upgrade
             const newFAssetImpl = await FAsset.new();
@@ -315,7 +315,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it("should upgrade via upgradeToAndCall", async () => {
             const proxyAddress = fAsset.address;
-            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            const fAssetProxy = await FAsset.at(proxyAddress);
             assertWeb3Equal(await fAsset.symbol(), "FETH");
             // upgrade
             const newFAssetImpl = await FAsset.new();
@@ -333,7 +333,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it("calling initialize in upgradeToAndCall should fail and pass the revert message to outside", async () => {
             const proxyAddress = fAsset.address;
-            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            const fAssetProxy = await FAsset.at(proxyAddress);
             assertWeb3Equal(await fAsset.symbol(), "FETH");
             // upgrade
             const newFAssetImpl = await FAsset.new();
@@ -343,7 +343,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
         });
 
         it("only asset manager can upgrade", async () => {
-            const fAssetProxy = await FAssetProxy.at(fAsset.address);
+            const fAssetProxy = await FAsset.at(fAsset.address);
             // upgrade
             const newFAssetImpl = await FAsset.new();
             await expectRevert(fAssetProxy.upgradeTo(newFAssetImpl.address), "only asset manager");

@@ -173,7 +173,11 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // validate
         require(_value != address(0), "address zero");
         // update
-        fAssetProxy.upgradeToAndCall(_value, callData);
+        if (callData.length > 0) {
+            fAssetProxy.upgradeToAndCall(_value, callData);
+        } else {
+            fAssetProxy.upgradeTo(_value);
+        }
         emit ContractChanged("fAsset", _value);
     }
 
