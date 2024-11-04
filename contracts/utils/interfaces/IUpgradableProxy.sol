@@ -4,7 +4,7 @@ pragma solidity >=0.7.6 <0.9;
 import "@openzeppelin/contracts/interfaces/IERC1967.sol";
 
 
-interface IITransparentProxy is IERC1967 {
+interface IUpgradableProxy is IERC1967 {
     /**
      * The current address of the proxy implementation.
      */

@@ -3,11 +3,11 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
-import "../interfaces/IITransparentProxy.sol";
+import "../../utils/interfaces/IUpgradableProxy.sol";
 import "./FAsset.sol";
 
 
-contract FAssetProxy is IITransparentProxy, Proxy, ERC1967Upgrade {
+contract FAssetProxy is IUpgradableProxy, Proxy, ERC1967Upgrade {
     modifier onlyAssetManager {
         require(msg.sender == _assetManager(), "only asset manager");
         _;

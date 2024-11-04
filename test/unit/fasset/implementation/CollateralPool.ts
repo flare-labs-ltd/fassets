@@ -1588,39 +1588,34 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("ERC-165 interface identification for CollateralPoolFactory", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const ICollateralPoolFactory = artifacts.require("ICollateralPoolFactory");
-            const iERC165 = await IERC165.at(contracts.collateralPoolFactory.address);
-            const iCollateralPoolFactory = await ICollateralPoolFactory.at(contracts.collateralPoolFactory.address);
-            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(iCollateralPoolFactory.abi)));
+            const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
+            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(ICollateralPoolFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.collateralPoolFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 
     describe("ERC-165 interface identification for CollateralPoolTokenFactory", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const ICollateralPoolTokenFactory = artifacts.require("ICollateralPoolTokenFactory");
-            const iERC165 = await IERC165.at(contracts.collateralPoolTokenFactory.address);
-            const iCollateralPoolTokenFactory = await ICollateralPoolTokenFactory.at(contracts.collateralPoolTokenFactory.address);
-            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(iCollateralPoolTokenFactory.abi)));
+            const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(ICollateralPoolTokenFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.collateralPoolTokenFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 
     describe("ERC-165 interface identification for Collateral Pool Token", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
-            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as any) as any as IERC20Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
+            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
             const ICollateralPoolToken = artifacts.require("ICollateralPoolToken");
-            const iERC165 = await IERC165.at(collateralPoolToken.address);
-            const iERC20 = await IERC20.at(collateralPoolToken.address);
-            const iCollateralPoolToken = await ICollateralPoolToken.at(collateralPoolToken.address);
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iCollateralPoolToken.abi, [iERC20.abi])));
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC20.abi)));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(ICollateralPoolToken, [IERC20])));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(IERC20)));
             assert.isFalse(await collateralPoolToken.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

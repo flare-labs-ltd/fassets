@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../fassetToken/interfaces/IITransparentProxy.sol";
+import "../../utils/interfaces/IUpgradableProxy.sol";
 import "../../utils/lib/SafePct.sol";
 import "../interfaces/IISettingsManagement.sol";
 import "../library/Globals.sol";
@@ -169,7 +169,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         onlyAssetManagerController
         rateLimited
     {
-        IITransparentProxy fAssetProxy = IITransparentProxy(address(Globals.getFAsset()));
+        IUpgradableProxy fAssetProxy = IUpgradableProxy(address(Globals.getFAsset()));
         // validate
         require(_value != address(0), "address zero");
         // update

@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../../utils/lib/Transfers.sol";
 import "../interfaces/IWNat.sol";
@@ -10,7 +11,7 @@ import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IIAssetManager.sol";
 
 
-contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
+contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     using SafeERC20 for IERC20;
 
     IIAssetManager public assetManager; // practically immutable
@@ -271,5 +272,22 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
             usedTokens.push(_token);
         }
         tokenUseFlags[_token] |= _flags;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // UUPS proxy upgrade
+
+    function implementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    /**
+     * Upgrade calls can only arrive through asset manager.
+     * See UUPSUpgradeable._authorizeUpgrade.
+     */
+    function _authorizeUpgrade(address /* _newImplementation */)
+        internal virtual override
+        onlyAssetManager
+    {
     }
 }

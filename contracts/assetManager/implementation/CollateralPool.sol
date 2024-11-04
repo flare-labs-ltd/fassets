@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -19,7 +20,7 @@ import "../interfaces/IICollateralPoolToken.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
-contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
+contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, IERC165 {
     using SafeCast for uint256;
     using SafePct for uint256;
     using SafeERC20 for IFAsset;
@@ -940,6 +941,23 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAgent
     {
         _distribution.optOutOfAirdrop();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // UUPS proxy upgrade
+
+    function implementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    /**
+     * Upgrade calls can only arrive through asset manager.
+     * See UUPSUpgradeable._authorizeUpgrade.
+     */
+    function _authorizeUpgrade(address /* _newImplementation */)
+        internal virtual override
+        onlyAssetManager
+    {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

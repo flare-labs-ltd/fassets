@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -23,8 +23,10 @@ const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 const ERC20Mock = artifacts.require('ERC20Mock');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
-const AssetManagerInit = artifacts.require('AssetManagerInit');
-const AssetManager = artifacts.require('AssetManager');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
+const CollateralPoolFactory = artifacts.require('CollateralPoolFactory');
+const CollateralPoolTokenFactory = artifacts.require('CollateralPoolTokenFactory');
+const TestUUPSProxyImpl = artifacts.require('TestUUPSProxyImpl');
 
 const mulBIPS = (x: BN, y: BN) => x.mul(y).div(toBN(MAX_BIPS));
 const divBIPS = (x: BN, y: BN) => x.mul(toBN(MAX_BIPS)).div(y);
@@ -444,6 +446,75 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "handshakeType", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.handshakeType.toString(), "1");
+        });
+    });
+
+    describe("agent vault and pool upgrade", () => {
+        it("should upgrade agent vault", async () => {
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const testProxyImpl = await TestUUPSProxyImpl.new();
+            const agentVaultFactory = await AgentVaultFactory.new(testProxyImpl.address);
+            await assetManager.setAgentVaultFactory(agentVaultFactory.address, { from: assetManagerController });
+            // now the implementation is still old
+            const startImplAddress = await agentVault.implementation();
+            // test
+            await assetManager.upgradeAgentVaultAndPool(agentVault.address, { from: agentOwner1 });
+            assert.equal(await agentVault.implementation(), testProxyImpl.address);
+            assert.notEqual(await agentVault.implementation(), startImplAddress);
+        });
+
+        it("should upgrade agent vault, pool and pool token", async () => {
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const collateralPool = await CollateralPool.at(await agentVault.collateralPool());
+            const collateralPoolToken = await CollateralPoolToken.at(await collateralPool.poolToken());
+            const testProxyImpl = await TestUUPSProxyImpl.new();
+            const newCollateralPoolImpl = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+            //
+            const agentVaultFactory = await AgentVaultFactory.new(testProxyImpl.address);
+            const collateralPoolFactory = await CollateralPoolFactory.new(newCollateralPoolImpl.address);
+            const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(testProxyImpl.address);
+            //
+            await assetManager.setAgentVaultFactory(agentVaultFactory.address, { from: assetManagerController });
+            await assetManager.setCollateralPoolFactory(collateralPoolFactory.address, { from: assetManagerController });
+            await assetManager.setCollateralPoolTokenFactory(collateralPoolTokenFactory.address, { from: assetManagerController });
+            // test
+            await assetManager.upgradeAgentVaultAndPool(agentVault.address, { from: agentOwner1 });
+            assert.equal(await agentVault.implementation(), testProxyImpl.address);
+            assert.equal(await collateralPool.implementation(), newCollateralPoolImpl.address);
+            assert.equal(await collateralPoolToken.implementation(), testProxyImpl.address);
+        });
+
+        it("only owner can call upgrade vault and pool", async () => {
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const testProxyImpl = await TestUUPSProxyImpl.new();
+            const agentVaultFactory = await AgentVaultFactory.new(testProxyImpl.address);
+            await assetManager.setAgentVaultFactory(agentVaultFactory.address, { from: assetManagerController });
+            await expectRevert(assetManager.upgradeAgentVaultAndPool(agentVault.address), "only agent vault owner");
+        });
+
+        it("vault and pool upgrade cannot be called directly", async () => {
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const collateralPool = await CollateralPool.at(await agentVault.collateralPool());
+            const collateralPoolToken = await CollateralPoolToken.at(await collateralPool.poolToken());
+            const testProxyImpl = await TestUUPSProxyImpl.new();
+            //
+            await expectRevert(agentVault.upgradeTo(testProxyImpl.address), "only asset manager");
+            await expectRevert(collateralPool.upgradeTo(testProxyImpl.address), "only asset manager");
+            await expectRevert(collateralPoolToken.upgradeTo(testProxyImpl.address), "only asset manager");
+        });
+
+        it("can upgrade with initialization", async () => {
+            const MockProxyFactory = artifacts.require("MockProxyFactory");
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const testProxyImpl = await TestUUPSProxyImpl.new();
+            const mockFactory = await MockProxyFactory.new(testProxyImpl.address);
+            await assetManager.setAgentVaultFactory(mockFactory.address, { from: assetManagerController });
+            // test
+            await assetManager.upgradeAgentVaultAndPool(agentVault.address, { from: agentOwner1 });
+            // check
+            assert.equal(await agentVault.implementation(), testProxyImpl.address);
+            const testProxy = await TestUUPSProxyImpl.at(agentVault.address);
+            assert.equal(await testProxy.testResult(), "some test string");
         });
     });
 

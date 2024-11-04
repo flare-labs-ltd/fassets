@@ -240,6 +240,18 @@ interface IAssetManager is
     ) external;
 
     /**
+     * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults
+     * automatically get the new implementation from the factory. But the existing agent vaults must
+     * be upgraded by their owners using this method.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault address of the agent's vault; both vault, its corresponding pool, and
+     *  its pool token will be upgraded to the newest implementations
+     */
+    function upgradeAgentVaultAndPool(
+        address _agentVault
+    ) external;
+
+    /**
      * Check if the collateral pool token has been used already by some vault.
      * @param _suffix the suffix to check
      */

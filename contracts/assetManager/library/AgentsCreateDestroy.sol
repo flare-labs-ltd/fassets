@@ -8,6 +8,7 @@ import "../interfaces/ICollateralPoolFactory.sol";
 import "../interfaces/ICollateralPoolTokenFactory.sol";
 import "../interfaces/IAgentVaultFactory.sol";
 import "../interfaces/IIAssetManagerController.sol";
+import "../../utils/interfaces/IUpgradableProxy.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
@@ -174,12 +175,45 @@ library AgentsCreateDestroy {
         emit IAssetManagerEvents.AgentDestroyed(_agentVault);
     }
 
+    function upgradeAgentVaultAndPool(address _agentVault)
+        internal
+        onlyAgentVaultOwner(_agentVault)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        ICollateralPool collateralPool = Agent.get(_agentVault).collateralPool;
+        ICollateralPoolToken collateralPoolToken = collateralPool.poolToken();
+        _upgradeContract(IAgentVaultFactory(settings.agentVaultFactory), _agentVault);
+        _upgradeContract(ICollateralPoolFactory(settings.collateralPoolFactory),
+            address(collateralPool));
+        _upgradeContract(ICollateralPoolTokenFactory(settings.collateralPoolTokenFactory),
+            address(collateralPoolToken));
+    }
+
     function isPoolTokenSuffixReserved(string memory _suffix)
         internal view
         returns (bool)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.reservedPoolTokenSuffixes[_suffix];
+    }
+
+    function _upgradeContract(
+        IUpgradableContractFactory _factory,
+        address _proxyAddress
+    )
+        private
+    {
+        IUpgradableProxy proxy = IUpgradableProxy(_proxyAddress);
+        address newImplementation = _factory.implementation();
+        address currentImplementation = proxy.implementation();
+        if (currentImplementation != newImplementation) {
+            bytes memory initCall = _factory.upgradeInitCall(_proxyAddress);
+            if (initCall.length > 0) {
+                proxy.upgradeToAndCall(newImplementation, initCall);
+            } else {
+                proxy.upgradeTo(newImplementation);
+            }
+        }
     }
 
     function _createCollateralPool(

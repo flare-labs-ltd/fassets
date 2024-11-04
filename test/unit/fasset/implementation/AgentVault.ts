@@ -497,12 +497,11 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     describe("ERC-165 interface identification for Agent Vault Factory", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAgentVaultFactory = artifacts.require("IAgentVaultFactory");
-            const iERC165 = await IERC165.at(contracts.agentVaultFactory.address);
-            const iAgentVaultFactory = await IAgentVaultFactory.at(contracts.agentVaultFactory.address);
-            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iAgentVaultFactory.abi)));
+            const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IAgentVaultFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.agentVaultFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
