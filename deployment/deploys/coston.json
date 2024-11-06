@@ -230,6 +230,11 @@
     "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   },
   {
+    "name": "FtsoV2PriceStore",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
+  },
+  {
     "name": "FakePriceReader",
     "contractName": "FakePriceReader.sol",
     "address": "0x0664EE5762F14c6f87007bAEEbE69Bbf366a5897"
@@ -443,10 +448,5 @@
     "name": "EmergencyPauseFacet",
     "contractName": "EmergencyPauseFacet.sol",
     "address": "0x9421dE62Ed391b0B37Bec6B720661b43DEDB36dd"
-  },
-  {
-    "name": "FtsoV2PriceStore",
-    "contractName": "FtsoV2PriceStore.sol",
-    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   }
 ]
