@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { FAssetContractStore } from "./contracts";
-import { loadDeployAccounts, networkConfigName } from './deploy-utils';
+import { loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
 
 export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying PriceReaderV2`);
@@ -34,7 +34,7 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
     contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);
     contracts.add("FtsoV2PriceStore", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
 
-    console.log(`    deployed ${ftsoV2PriceStore.contract.contractName}`);
+    console.log(`    deployed ${truffleContractMetadata(FtsoV2PriceStore).contractName}`);
 }
 
 export interface IFeedId {

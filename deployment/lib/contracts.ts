@@ -1,10 +1,17 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
+import { basename, dirname, join } from "path";
 
 export interface Contract {
     name: string;
     contractName: string;
     address: string;
     mustSwitchToProduction?: boolean;
+}
+
+export interface ContractHistory {
+    name: string;
+    contractName: string;
+    addresses: string[];
 }
 
 export interface FAssetContracts {
@@ -30,13 +37,21 @@ export type NewContractOptions = Omit<Contract, 'name' | 'contractName' | 'addre
 
 export class ContractStore {
     protected readonly map: Map<string, Contract>;
+    protected readonly history: Map<string, ContractHistory>;
 
     constructor(
         public readonly filename: string,
         public autosave: boolean,
+        public readonly historyFilename: string = ContractStore.historyDefaultFilename(filename),
     ) {
         const list: Contract[] = existsSync(filename) ? JSON.parse(readFileSync(filename).toString()) : [];
         this.map = new Map(list.map(it => [it.name, it]));
+        const historyList: ContractHistory[] = existsSync(historyFilename) ? JSON.parse(readFileSync(historyFilename).toString()) : [];
+        this.history = new Map(historyList.map(it => [it.name, it]));
+    }
+
+    public static historyDefaultFilename(filename: string) {
+        return join(dirname(filename), "history", basename(filename));
     }
 
     public get(name: string) {
@@ -60,8 +75,20 @@ export class ContractStore {
 
     public addContract(contract: Contract) {
         this.map.set(contract.name, contract);
+        this.addHistoryItem(contract);
         if (this.autosave) {
             this.save();
+        }
+    }
+
+    public addHistoryItem({ name, contractName, address }: Contract) {
+        let contractHistory = this.history.get(name);
+        if (contractHistory == null) {
+            contractHistory = { name, contractName, addresses: [] };
+            this.history.set(name, contractHistory);
+        }
+        if (!contractHistory.addresses.includes(address)) {
+            contractHistory.addresses.push(address);
         }
     }
 
@@ -69,8 +96,13 @@ export class ContractStore {
         return Array.from(this.map.values());
     }
 
+    public historyList() {
+        return Array.from(this.history.values());
+    }
+
     public save() {
         writeFileSync(this.filename, JSON.stringify(this.list(), null, 2));
+        writeFileSync(this.historyFilename, JSON.stringify(this.historyList(), null, 2));
     }
 }
 
