@@ -45,13 +45,24 @@ export class ContractStore {
         public readonly historyFilename: string = ContractStore.historyDefaultFilename(filename),
     ) {
         const list: Contract[] = existsSync(filename) ? JSON.parse(readFileSync(filename).toString()) : [];
-        this.map = new Map(list.map(it => [it.name, it]));
+        this.map = ContractStore.listToMap(list, filename);
         const historyList: ContractHistory[] = existsSync(historyFilename) ? JSON.parse(readFileSync(historyFilename).toString()) : [];
-        this.history = new Map(historyList.map(it => [it.name, it]));
+        this.history = ContractStore.listToMap(historyList, historyFilename);
     }
 
     public static historyDefaultFilename(filename: string) {
         return join(dirname(filename), "history", basename(filename));
+    }
+
+    public static listToMap<T extends { name: string }>(list: T[], filename: string) {
+        const map: Map<string, T> = new Map();
+        for (const item of list) {
+            if (map.has(item.name)) {
+                throw new Error(`Duplicate constract "${item.name}" in ${filename}`);
+            }
+            map.set(item.name, item);
+        }
+        return map;
     }
 
     public get(name: string) {
