@@ -103,19 +103,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     }
 
     /**
-     * Transfer fees are normally paid by the account that ran the transaction (tx.origin).
-     * But it is possible to assign some other account to pay transfer fees.
-     * Of course, that other account must set the allowance high enough.
-     * @param _payingAccount the account that pays fees for fasset transactions
-     *  where tx.origin is the caller of this method
-     */
-    function setTransferFeesPaidBy(address _payingAccount)
-        external
-    {
-        transferFeesPaidBy[msg.sender] = _payingAccount;
-    }
-
-    /**
      * Mints `_amount` od fAsset.
      * Only the assetManager corresponding to this fAsset may call `mint()`.
      */
@@ -140,30 +127,35 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     /**
      * @dev See {ERC20-transfer}.
      *
-     * Adds fee payment to `ERC20.transfer`.
-     * The fee is paid from `tx.origin`, unless the `tx.origin` has set another payer using `setTransferFeesPaidBy`.
+     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transfered amount.
+     * NOTE: less than `_amount` will be delivered to `_to`.
      */
     function transfer(address _to, uint256 _amount)
         public virtual override(ERC20, IERC20)
         returns (bool)
     {
-        ERC20.transfer(_to, _amount);
-        _payTransferFeeFromOrigin(_amount);
+        address owner = _msgSender();
+        uint256 transferFee = _transferFeeAmount(_amount);
+        _transfer(owner, _to, _amount - transferFee);
+        _payTransferFee(owner, transferFee);
         return true;
     }
 
     /**
      * @dev See {ERC20-transferFrom}.
      *
-     * Adds fee payment to `ERC20.transferFrom`.
-     * The fee is paid from `tx.origin`, unless the `tx.origin` has set another payer using `setTransferFeesPaidBy`.
+     * Perform transfer (like ERC20.transferFrom) and pay fee by subtracting it from the transfered amount.
+     * NOTE: less than `_amount` will be delivered to `_to`.
      */
     function transferFrom(address _from, address _to, uint256 _amount)
         public virtual override(ERC20, IERC20)
         returns (bool)
     {
-        ERC20.transferFrom(_from, _to, _amount);
-        _payTransferFeeFromOrigin(_amount);
+        address spender = _msgSender();
+        uint256 transferFee = _transferFeeAmount(_amount);
+        _spendAllowance(_from, spender, _amount);
+        _transfer(_from, _to, _amount - transferFee);
+        _payTransferFee(_from, transferFee);
         return true;
     }
 
@@ -173,22 +165,30 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
      */
     function transferAndPayFee(address _to, uint256 _amount)
         external
+        returns (bool)
     {
+        address owner = _msgSender();
         uint256 transferFee = _transferFeeAmount(_amount);
-        _transfer(msg.sender, _to, _amount);
-        _payTransferFee(msg.sender, false, transferFee);
+        _transfer(owner, _to, _amount);
+        _payTransferFee(owner, transferFee);
+        return true;
     }
 
     /**
-     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transfered amount.
-     * NOTE: less than `_amount` will be delivered to `_to`.
+     * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
+     * NOTE: more than `_amount` will be transfered from the `_from` account.
+     * Preceeding call to `approve()` must account for this, otherwise the transfer will fail.
      */
-    function transferSubtractingFee(address _to, uint256 _amount)
+    function transferFromAndPayFee(address _from, address _to, uint256 _amount)
         external
+        returns (bool)
     {
-        uint256 transferFee = _transferFeeAmountSubtractive(_amount);
-        _transfer(msg.sender, _to, _amount - transferFee);
-        _payTransferFee(msg.sender, false, transferFee);
+        address spender = _msgSender();
+        uint256 transferFee = _transferFeeAmount(_amount);
+        _spendAllowance(_from, spender, _amount + transferFee);
+        _transfer(_from, _to, _amount);
+        _payTransferFee(_from, transferFee);
+        return true;
     }
 
     /**
@@ -315,38 +315,16 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
     }
 
-    function _payTransferFeeFromOrigin(uint256 _paymentAmount) private {
-        uint256 transferFee = _transferFeeAmount(_paymentAmount);
-        // For ordinary transfers, the fee is paid by tx.origin, but the payment can be redirected.
-        // solhint-disable-next-line avoid-tx-origin
-        _payTransferFee(tx.origin, true, transferFee);
-    }
-
-    function _payTransferFee(address _expectedFeePayer, bool _allowOtherPayer, uint256 _transferFee) private {
+    function _payTransferFee(address feePayer, uint256 _transferFee) private {
         // if fees are not enabled (fee percentage set to 0), do nothing
         if (_transferFee == 0) return;
-        // check if the fee should be paid by someone else
-        address feePayer = _transferFeesPaidBy(_expectedFeePayer, _allowOtherPayer);
-        // The two requires are present so that the caller can tell the difference between too low balance/allowance
+        // The extra require is present so that the caller can tell the difference between too low balance
         // for the payment and too low balance/allowance for the transfer fee.
         require(balanceOf(feePayer) >= _transferFee, "balance too low for transfer fee");
-        if (feePayer != _expectedFeePayer) {
-            // the expected fee payer must have enough allowance from the actual fee payer
-            require(allowance(feePayer, _expectedFeePayer) >= _transferFee, "allowance too low for transfer fee");
-            _spendAllowance(feePayer, _expectedFeePayer, _transferFee);
-        }
         // Transfer the fee to asset manager which collects the fees that can be later claimed by the agents.
         _transfer(feePayer, assetManager, _transferFee);
         // Update fee accounting on asset manager.
         IIAssetManager(assetManager).fassetTransferFeePaid(_transferFee);
-    }
-
-    // Decide which account pays the fee.
-    // An account can assign a different account to pay fees (it must have enough allowance from the other account).
-    function _transferFeesPaidBy(address _origin, bool _allowOtherPayer) private view returns (address) {
-        if (!_allowOtherPayer) return _origin;
-        address feePayer = transferFeesPaidBy[_origin];
-        return feePayer != address(0) ? feePayer : _origin;
     }
 
     function _transferFeeAmount(uint256 _transferAmount)
@@ -355,14 +333,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     {
         uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
         return SafePct.mulDiv(_transferAmount, feeMillionths, 1e6);
-    }
-
-    function _transferFeeAmountSubtractive(uint256 _transferAmount)
-        private view
-        returns (uint256)
-    {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
-        return SafePct.mulDiv(_transferAmount, feeMillionths, 1e6 + feeMillionths);
     }
 
     /**

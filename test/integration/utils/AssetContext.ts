@@ -147,8 +147,10 @@ export class AssetContext implements IAssetContext {
         return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
     }
 
-    async transferFAsset(from: string, to: string, amount: BNish) {
-        const res = await this.fAsset.transfer(to, amount, { from });
+    async transferFAsset(from: string, to: string, amount: BNish, addFee: boolean = false) {
+        const res = addFee
+            ? await this.fAsset.transferAndPayFee(to, amount, { from })
+            : await this.fAsset.transfer(to, amount, { from });
         const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
         assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
         return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };

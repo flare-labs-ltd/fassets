@@ -45,32 +45,15 @@ interface IFAsset is IERC20, IERC20Metadata {
      * NOTE: more than `_amount` will be transfered from `msg.sender`.
      */
     function transferAndPayFee(address _to, uint256 _amount)
-        external;
+        external
+        returns (bool);
 
     /**
-     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transfered amount.
-     * NOTE: less than `_amount` will be delivered to `_to`.
+     * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
+     * NOTE: more than `_amount` will be transfered from the `_from` account.
+     * Preceeding call to `approve()` must account for this, otherwise the transfer will fail.
      */
-    function transferSubtractingFee(address _to, uint256 _amount)
-        external;
-
-    /**
-     * Transfer fees are normally paid by the account that ran the transaction (tx.origin).
-     * But it is possible to assign some other account to pay transfer fees.
-     * Of course, that other account must set the allowance high enough.
-     * @param _payingAccount the account that pays fees for fasset transactions
-     *  where tx.origin is the caller of this method; if it is `address(0)` the caller pays fees for itself
-     */
-    function setTransferFeesPaidBy(address _payingAccount)
-        external;
-
-    /**
-     * The account that will take over paying the transfer fees for another account (`_origin`).
-     * @param _origin the account for which the fee paying account is queried
-     * @return _payingAccount the account that pays fees for fasset transactions originated by `_account`;
-     *  if it is `address(0)` the `_origin` pays fees for itself
-     */
-    function transferFeesPaidBy(address _origin)
-        external view
-        returns (address _payingAccount);
+    function transferFromAndPayFee(address _from, address _to, uint256 _amount)
+        external
+        returns (bool);
 }

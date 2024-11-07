@@ -74,7 +74,7 @@ export class Minter extends AssetContextClient {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
     }
 
-    async transferFAsset(target: string, amount: BNish) {
-        return await this.context.transferFAsset(this.address, target, amount);
+    async transferFAsset(target: string, amount: BNish, addFee: boolean = false) {
+        return await this.context.transferFAsset(this.address, target, amount, addFee);
     }
 }

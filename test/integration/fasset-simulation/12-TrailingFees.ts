@@ -41,16 +41,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         return toBN(cumulative).divn(epochDuration);
     }
 
-    const UNLIMITED = toBN(1).shln(255);
-
-    async function setFAssetFeesPaidBy(origin: string, feePayer: string, maxFeeAmount: BNish, method: () => Promise<void>,) {
-        await fAsset.approve(origin, maxFeeAmount, { from: feePayer });
-        await fAsset.setTransferFeesPaidBy(feePayer, { from: origin });
-        await method();
-        await fAsset.setTransferFeesPaidBy(ZERO_ADDRESS, { from: origin });
-        await fAsset.approve(origin, 0, { from: feePayer });
-    }
-
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.btc, {
@@ -85,19 +75,19 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform minting
             const lots = 3;
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
-            // cannot transfer everything - something must remain to pay the fee
-            await expectRevert(minter.transferFAsset(redeemer.address, minted.mintedAmountUBA),
-                "balance too low for transfer fee");
             // transfer and check that fee was subtracted
             const transferAmount = context.lotSize().muln(2);
             const transferFee = transferAmount.mul(toBN(trfSettings.transferFeeMillionths)).divn(1e6);
             assertWeb3Equal(transferFee, await context.fAsset.transferFeeAmount(transferAmount));
-            const startBalance = await fAsset.balanceOf(minter.address);
+            const startBalanceM = await fAsset.balanceOf(minter.address);
+            const startBalanceR = await fAsset.balanceOf(redeemer.address);
             const transfer = await minter.transferFAsset(redeemer.address, transferAmount);
-            const endBalance = await fAsset.balanceOf(minter.address);
+            const endBalanceM = await fAsset.balanceOf(minter.address);
+            const endBalanceR = await fAsset.balanceOf(redeemer.address);
             assertWeb3Equal(transfer.fee, transferFee);
             assert.isAbove(Number(transferFee), 100);
-            assertWeb3Equal(startBalance.sub(endBalance), transferAmount.add(transferFee));
+            assertWeb3Equal(endBalanceM, startBalanceM.sub(transferAmount));
+            assertWeb3Equal(endBalanceR.sub(startBalanceR), transferAmount.sub(transferFee));
             // at this epoch, claimable amount should be 0, though fees are collected
             const epochData = await assetManager.transferFeeEpochData(currentEpoch);
             const claimableAmount0 = await agent.transferFeeShare(10);
@@ -140,88 +130,144 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(epochData.totalFees, 0);
         });
 
-        it("other account can pay transfer fee", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter1 = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
-            const minter2 = await Minter.createTest(context, userAddress2, underlyingUser2, context.lotSize().muln(100));
-            await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
-            mockChain.mine(10);
-            await context.updateUnderlyingBlock();
-            const currentEpoch = await assetManager.currentTransferFeeEpoch();
-            // perform mintings
-            const lots = 1;
-            const [minted1] = await minter1.performMinting(agent.vaultAddress, lots);
-            const [minted2] = await minter2.performMinting(agent.vaultAddress, lots);
-            // change transfer payer
-            await fAsset.setTransferFeesPaidBy(minter2.address, { from: minter1.address });
-            // of course the other has to agree
-            await expectRevert(minter1.transferFAsset(userAddress3, minted1.mintedAmountUBA),
-                "allowance too low for transfer fee");
-            // after approval, minter1 should be able to transfer whole amount
-            const transferAmount = toBN(minted1.mintedAmountUBA);
-            await fAsset.approve(minter1.address, transferAmount.divn(1000), { from: minter2.address });
-            assertWeb3Equal(await fAsset.balanceOf(minter1.address), transferAmount);
-            const transfer = await minter1.transferFAsset(userAddress3, transferAmount);
-            assertWeb3Equal(await fAsset.balanceOf(minter1.address), 0);
-            assertWeb3Equal(await fAsset.balanceOf(userAddress3), transferAmount);
-            assertWeb3Equal(transfer.value, transferAmount);
-            assert.isBelow(Number(transfer.fee), Number(transfer.value) / 100);
-            assert.isAbove(Number(transfer.fee), 0);
-            const epochData = await assetManager.transferFeeEpochData(currentEpoch);
-            assertWeb3Equal(transfer.fee, epochData.totalFees);
-            // minter2 has paid the fee
-            assertWeb3Equal(await fAsset.balanceOf(minter2.address), toBN(minted2.mintedAmountUBA).sub(toBN(transfer.fee)));
-        });
+    });
 
-        it("various ways of paying transfer fee", async () => {
-            const TokenHolderMock = artifacts.require("TokenHolderMock");
-            //
+    describe("various ways of paying fee", () => {
+        it("plain transfer - fee should be subtracted from the payment", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
-            const trfSettings = await assetManager.transferFeeSettings();
             // settings
             const lotSize = context.lotSize();
             const transferFeeMillionths = await assetManager.transferFeeMillionths();
             const eventDecoder = new Web3EventDecoder({ fAsset: context.fAsset })
             // perform minting
-            const lots = 5;
+            const lots = 10;
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
-            // transfer enough to a contract
-            const holder = await TokenHolderMock.new();
-            await minter.transferFAsset(holder.address, lotSize.muln(4));
-            // ordinary transfer - fee should be paid by tx.origin
-            const res1 = await holder.transferTo(fAsset.address, accounts[50], lotSize, { from: minter.address });
+            const transfer1LotFee = lotSize.mul(transferFeeMillionths).divn(1e6);
+            // transfer
+            const startBalance1 = await fAsset.balanceOf(minter.address);
+            const res1 = await fAsset.transfer(userAddress2, lotSize, { from: minter.address });
+            const endBalance1 = await fAsset.balanceOf(minter.address);
+            const received1 = await fAsset.balanceOf(userAddress2);
             const transfers1 = eventDecoder.filterEventsFrom(res1, context.fAsset, "Transfer");
             assert.equal(transfers1.length, 2);
-            assertWeb3Equal(transfers1[0].args.from, holder.address);
-            assertWeb3Equal(transfers1[0].args.to, accounts[50]);
+            // check
+            assertWeb3Equal(transfers1[0].args.from, minter.address);
+            assertWeb3Equal(transfers1[0].args.to, userAddress2);
+            assertWeb3Equal(transfers1[0].args.value, lotSize.sub(transfer1LotFee));
+            assertWeb3Equal(transfers1[1].args.from, minter.address);
+            assertWeb3Equal(transfers1[1].args.to, assetManager.address);
+            assertWeb3Equal(transfers1[1].args.value, transfer1LotFee);
+            assertWeb3Equal(startBalance1.sub(endBalance1), lotSize);
+            assertWeb3Equal(received1, lotSize.sub(transfer1LotFee));
+        });
+
+        it("plain transferFrom - fee should be subtracted from the payment", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
+            await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            mockChain.mine(10);
+            await context.updateUnderlyingBlock();
+            // settings
+            const lotSize = context.lotSize();
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            const eventDecoder = new Web3EventDecoder({ fAsset: context.fAsset })
+            // perform minting
+            const lots = 10;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            const transfer1LotFee = lotSize.mul(transferFeeMillionths).divn(1e6);
+            // approval is required
+            await expectRevert(fAsset.transferFrom(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
+            // approve and transfer
+            await fAsset.approve(userAddress2, lotSize, { from: minter.address });
+            const startBalance1 = await fAsset.balanceOf(minter.address);
+            const res1 = await fAsset.transferFrom(minter.address, userAddress2, lotSize, { from: userAddress2 });
+            const endBalance1 = await fAsset.balanceOf(minter.address);
+            const received1 = await fAsset.balanceOf(userAddress2);
+            const transfers1 = eventDecoder.filterEventsFrom(res1, context.fAsset, "Transfer");
+            // check
+            assert.equal(transfers1.length, 2);
+            assertWeb3Equal(transfers1[0].args.from, minter.address);
+            assertWeb3Equal(transfers1[0].args.to, userAddress2);
+            assertWeb3Equal(transfers1[0].args.value, lotSize.sub(transfer1LotFee));
+            assertWeb3Equal(transfers1[1].args.from, minter.address);
+            assertWeb3Equal(transfers1[1].args.to, assetManager.address);
+            assertWeb3Equal(transfers1[1].args.value, transfer1LotFee);
+            assertWeb3Equal(startBalance1.sub(endBalance1), lotSize);
+            assertWeb3Equal(received1, lotSize.sub(transfer1LotFee));
+        });
+
+        it("transferAndPayFee - fee should be additionaly charged to the payer", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
+            await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            mockChain.mine(10);
+            await context.updateUnderlyingBlock();
+            // settings
+            const lotSize = context.lotSize();
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            const eventDecoder = new Web3EventDecoder({ fAsset: context.fAsset })
+            // perform minting
+            const lots = 10;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            const transfer1LotFee = lotSize.mul(transferFeeMillionths).divn(1e6);
+            // transfer
+            const startBalance1 = await fAsset.balanceOf(minter.address);
+            const res1 = await fAsset.transferAndPayFee(userAddress2, lotSize, { from: minter.address });
+            const endBalance1 = await fAsset.balanceOf(minter.address);
+            const received1 = await fAsset.balanceOf(userAddress2);
+            const transfers1 = eventDecoder.filterEventsFrom(res1, context.fAsset, "Transfer");
+            assert.equal(transfers1.length, 2);
+            // check
+            assertWeb3Equal(transfers1[0].args.from, minter.address);
+            assertWeb3Equal(transfers1[0].args.to, userAddress2);
             assertWeb3Equal(transfers1[0].args.value, lotSize);
             assertWeb3Equal(transfers1[1].args.from, minter.address);
             assertWeb3Equal(transfers1[1].args.to, assetManager.address);
-            assertWeb3Equal(transfers1[1].args.value, lotSize.mul(transferFeeMillionths).divn(1e6));
-            // transferAndPayFee - fee should be paid by the payer (holder contract)
-            const res2 = await holder.transferToAndPayFee(fAsset.address, accounts[50], lotSize, { from: minter.address });
-            const transfers2 = eventDecoder.filterEventsFrom(res2, context.fAsset, "Transfer");
-            assert.equal(transfers2.length, 2);
-            assertWeb3Equal(transfers2[0].args.from, holder.address);
-            assertWeb3Equal(transfers2[0].args.to, accounts[50]);
-            assertWeb3Equal(transfers2[0].args.value, lotSize);
-            assertWeb3Equal(transfers2[1].args.from, holder.address);
-            assertWeb3Equal(transfers2[1].args.to, assetManager.address);
-            assertWeb3Equal(transfers2[1].args.value, lotSize.mul(transferFeeMillionths).divn(1e6));
-            // transferSubtractingFee - fee should be paid by the payer (holder contract)
-            const res3 = await holder.transferToSubtractingFee(fAsset.address, accounts[50], lotSize, { from: minter.address });
-            const transfers3 = eventDecoder.filterEventsFrom(res3, context.fAsset, "Transfer");
-            assert.equal(transfers3.length, 2);
-            assertWeb3Equal(transfers3[0].args.from, holder.address);
-            assertWeb3Equal(transfers3[0].args.to, accounts[50]);
-            assertWeb3Equal(transfers3[1].args.from, holder.address);
-            assertWeb3Equal(transfers3[1].args.to, assetManager.address);
-            assertApproximatelyEqual(transfers2[1].args.value, lotSize.mul(transferFeeMillionths).divn(1e6), "relative", 1e-5);
-            assertWeb3Equal(toBN(transfers3[0].args.value).add(toBN(transfers3[1].args.value)), lotSize);
+            assertWeb3Equal(transfers1[1].args.value, transfer1LotFee);
+            assertWeb3Equal(startBalance1.sub(endBalance1), lotSize.add(transfer1LotFee));
+            assertWeb3Equal(received1, lotSize);
+        });
+
+        it("transferFromAndPayFee - fee should be additionaly charged to the payer", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
+            await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            mockChain.mine(10);
+            await context.updateUnderlyingBlock();
+            // settings
+            const lotSize = context.lotSize();
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            const eventDecoder = new Web3EventDecoder({ fAsset: context.fAsset })
+            // perform minting
+            const lots = 10;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            const transfer1LotFee = lotSize.mul(transferFeeMillionths).divn(1e6);
+            // approval is required
+            await expectRevert(fAsset.transferFromAndPayFee(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
+            // approval must include fee
+            await fAsset.approve(userAddress2, lotSize, { from: minter.address });
+            await expectRevert(fAsset.transferFromAndPayFee(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
+            // approve and transfer
+            await fAsset.approve(userAddress2, lotSize.add(transfer1LotFee), { from: minter.address });
+            const startBalance1 = await fAsset.balanceOf(minter.address);
+            const res1 = await fAsset.transferFromAndPayFee(minter.address, userAddress2, lotSize, { from: userAddress2 });
+            const endBalance1 = await fAsset.balanceOf(minter.address);
+            const received1 = await fAsset.balanceOf(userAddress2);
+            const transfers1 = eventDecoder.filterEventsFrom(res1, context.fAsset, "Transfer");
+            // check
+            assert.equal(transfers1.length, 2);
+            assertWeb3Equal(transfers1[0].args.from, minter.address);
+            assertWeb3Equal(transfers1[0].args.to, userAddress2);
+            assertWeb3Equal(transfers1[0].args.value, lotSize);
+            assertWeb3Equal(transfers1[1].args.from, minter.address);
+            assertWeb3Equal(transfers1[1].args.to, assetManager.address);
+            assertWeb3Equal(transfers1[1].args.value, transfer1LotFee);
+            assertWeb3Equal(startBalance1.sub(endBalance1), lotSize.add(transfer1LotFee));
+            assertWeb3Equal(received1, lotSize);
         });
     });
 
@@ -261,19 +307,17 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // console.log(await time.latest() - Number((await firstEpochData).startTs));
             // console.log((await time.latest() - Number((await firstEpochData).startTs)) / epochDuration);
             // give minter enough extra to cover transfer fees (mind that this charges some transfer fees too)
-            await setFAssetFeesPaidBy(agent1.ownerWorkAddress, minter.address, UNLIMITED, async () => {
-                await agent1.withdrawPoolFees(await agent1.poolFeeBalance(), minter.address);
-            });
+            await agent1.withdrawPoolFees(await agent1.poolFeeBalance(), minter.address);
             //
             await time.increaseTo(start + 0.5 * epochDuration);
-            await minter.transferFAsset(redeemer.address, lotSize.muln(30));
+            await minter.transferFAsset(redeemer.address, lotSize.muln(30), true);
             const [rrqs1] = await redeemer.requestRedemption(20);
             await Agent.performRedemptions([agent1, agent2], rrqs1);
             await agent1.checkAgentInfo({ mintedUBA: toBN(lotSize).muln(0).add(poolFees1) });
             await agent2.checkAgentInfo({ mintedUBA: toBN(lotSize).muln(20).add(poolFees2) });
             //
             await time.increaseTo(start + 1.5 * epochDuration);
-            await minter.transferFAsset(redeemer.address, lotSize.muln(10));
+            await minter.transferFAsset(redeemer.address, lotSize.muln(10), true);
             const [rrqs2] = await redeemer.requestRedemption(20);
             await Agent.performRedemptions([agent1, agent2], rrqs2);
             await agent1.checkAgentInfo({ mintedUBA: toBN(lotSize).muln(0).add(poolFees1) });
@@ -362,11 +406,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const startFee = await assetManager.transferFeeMillionths();
             assertWeb3Equal(startFee, 200);
             // update fee to 500 in 100 sec
-            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 100, { from: governance});
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 200, { from: governance});
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
-            await time.increase(50);
+            await time.increase(100);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
-            await time.increase(50);
+            await time.increase(100);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
             // updating is rate-limited
             await expectRevert(context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 200, { from: governance }),
