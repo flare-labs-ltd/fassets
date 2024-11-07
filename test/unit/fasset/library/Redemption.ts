@@ -753,6 +753,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         assertWeb3Equal(args.requestId, request.requestId);
         assertWeb3Equal(args.agentVault, agentVault.address);
         assertWeb3Equal(args.redeemer, redeemerAddress1);
+        assertWeb3Equal(args.paymentAddress, underlyingRedeemer1);
+        assertWeb3Equal(args.valueUBA, request.valueUBA);
     });
 
     it("should not reject redemption request - handshake disabled", async () => {

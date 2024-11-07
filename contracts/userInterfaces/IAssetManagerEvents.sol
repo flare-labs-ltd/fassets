@@ -233,7 +233,9 @@ interface IAssetManagerEvents {
     event RedemptionRequestRejected(
         address indexed agentVault,
         address indexed redeemer,
-        uint64 indexed requestId);
+        uint64 indexed requestId,
+        string paymentAddress,
+        uint256 valueUBA);
 
     /**
      * Agent's rejected redemption request was taken over by another agent.

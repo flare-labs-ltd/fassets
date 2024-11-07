@@ -145,8 +145,13 @@ library RedemptionRequests {
             Redemptions.deleteRedemptionRequest(_redemptionRequestId);
         } else {
             // emit event
-            emit IAssetManagerEvents.RedemptionRequestRejected(request.agentVault, request.redeemer,
-                _redemptionRequestId);
+            emit IAssetManagerEvents.RedemptionRequestRejected(
+                request.agentVault,
+                request.redeemer,
+                _redemptionRequestId,
+                request.redeemerUnderlyingAddressString,
+                Conversion.convertAmgToUBA(request.valueAMG)
+            );
             // keep redemption request for take over or default
         }
     }
