@@ -200,7 +200,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(received1, lotSize.sub(transfer1LotFee));
         });
 
-        it("transferAndPayFee - fee should be additionaly charged to the payer", async () => {
+        it("transferExactDest - fee should be additionaly charged to the payer", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
@@ -216,7 +216,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const transfer1LotFee = lotSize.mul(transferFeeMillionths).divn(1e6);
             // transfer
             const startBalance1 = await fAsset.balanceOf(minter.address);
-            const res1 = await fAsset.transferAndPayFee(userAddress2, lotSize, { from: minter.address });
+            const res1 = await fAsset.transferExactDest(userAddress2, lotSize, { from: minter.address });
             const endBalance1 = await fAsset.balanceOf(minter.address);
             const received1 = await fAsset.balanceOf(userAddress2);
             const transfers1 = eventDecoder.filterEventsFrom(res1, context.fAsset, "Transfer");
@@ -232,7 +232,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(received1, lotSize);
         });
 
-        it("transferFromAndPayFee - fee should be additionaly charged to the payer", async () => {
+        it("transferExactDestFrom - fee should be additionaly charged to the payer", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
@@ -247,14 +247,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
             const transfer1LotFee = lotSize.mul(transferFeeMillionths).divn(1e6);
             // approval is required
-            await expectRevert(fAsset.transferFromAndPayFee(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
+            await expectRevert(fAsset.transferExactDestFrom(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
             // approval must include fee
             await fAsset.approve(userAddress2, lotSize, { from: minter.address });
-            await expectRevert(fAsset.transferFromAndPayFee(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
+            await expectRevert(fAsset.transferExactDestFrom(minter.address, userAddress2, lotSize, { from: userAddress2 }), "ERC20: insufficient allowance");
             // approve and transfer
             await fAsset.approve(userAddress2, lotSize.add(transfer1LotFee), { from: minter.address });
             const startBalance1 = await fAsset.balanceOf(minter.address);
-            const res1 = await fAsset.transferFromAndPayFee(minter.address, userAddress2, lotSize, { from: userAddress2 });
+            const res1 = await fAsset.transferExactDestFrom(minter.address, userAddress2, lotSize, { from: userAddress2 });
             const endBalance1 = await fAsset.balanceOf(minter.address);
             const received1 = await fAsset.balanceOf(userAddress2);
             const transfers1 = eventDecoder.filterEventsFrom(res1, context.fAsset, "Transfer");
@@ -433,6 +433,28 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 100, 0, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 100);
+        });
+
+        it("calculating received amount and fee", async () => {
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            const amount = toBN(1e6);
+            // calculate fee
+            const fee = await fAsset.transferFeeAmount(amount);
+            assertWeb3Equal(fee, amount.mul(transferFeeMillionths).divn(1e6));
+            // calculate receive amount
+            const { 0: receivedAmount, 1: payedFee } = await fAsset.getReceivedAmount(accounts[0], accounts[1], amount);
+            assertWeb3Equal(payedFee, fee);
+            assertWeb3Equal(receivedAmount, amount.sub(fee));
+        });
+
+        it("calculating send amount to receive given amount", async () => {
+            const amount = toBN(1e10);
+            // calculate required send amount to receive `amount`
+            const { 0: sendAmount, 1: payedFee } = await fAsset.getSendAmount(accounts[0], accounts[1], amount);
+            // calculate fee on sendAmount
+            const fee = await fAsset.transferFeeAmount(sendAmount);
+            assertWeb3Equal(payedFee, fee);
+            assertWeb3Equal(sendAmount.sub(fee), amount);
         });
     });
 });

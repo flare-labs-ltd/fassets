@@ -54,11 +54,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     address private _deployer;
     bool private _initialized;
 
-    /**
-     * The account that will take over paying the transfer fees for another account (`_origin`).
-     */
-    mapping(address _origin => address _payingAccount) public transferFeesPaidBy;
-
     modifier onlyAssetManager() {
         require(msg.sender == assetManager, "only asset manager");
         _;
@@ -163,7 +158,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
      * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
      * NOTE: more than `_amount` will be transfered from `msg.sender`.
      */
-    function transferAndPayFee(address _to, uint256 _amount)
+    function transferExactDest(address _to, uint256 _amount)
         external
         returns (bool)
     {
@@ -179,7 +174,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
      * NOTE: more than `_amount` will be transfered from the `_from` account.
      * Preceeding call to `approve()` must account for this, otherwise the transfer will fail.
      */
-    function transferFromAndPayFee(address _from, address _to, uint256 _amount)
+    function transferExactDestFrom(address _from, address _to, uint256 _amount)
         external
         returns (bool)
     {
@@ -293,13 +288,35 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
 
     /**
      * Return the amount of fees that will be charged for the transfer of _transferAmount.
-     * The fees are paid by the external account the initiated the transaction.
      */
     function transferFeeAmount(uint256 _transferAmount)
         external view
         returns (uint256)
     {
         return _transferFeeAmount(_transferAmount);
+    }
+
+    /**
+     * Return the exact amount the `_to` will receive, if `_from` transfers `_sentAmount`.
+     */
+    function getReceivedAmount(address /*_from*/, address /*_to*/, uint256 _sentAmount)
+        external view
+        returns (uint256 _receivedAmount, uint256 _feeAmount)
+    {
+        _feeAmount = _transferFeeAmount(_sentAmount);
+        _receivedAmount = _sentAmount - _feeAmount;
+    }
+
+    /**
+     * Return the exact amount the `_from` must transfer for  `_to` to receive `_receivedAmount`.
+     */
+    function getSendAmount(address /*_from*/, address /*_to*/, uint256 _receivedAmount)
+        external view
+        returns (uint256 _sendAmount, uint256 _feeAmount)
+    {
+        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
+        _feeAmount = SafePct.mulDiv(_receivedAmount, feeMillionths, 1e6 - feeMillionths);
+        _sendAmount = _receivedAmount + _feeAmount;
     }
 
     /**

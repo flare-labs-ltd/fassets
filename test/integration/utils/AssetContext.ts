@@ -149,7 +149,7 @@ export class AssetContext implements IAssetContext {
 
     async transferFAsset(from: string, to: string, amount: BNish, addFee: boolean = false) {
         const res = addFee
-            ? await this.fAsset.transferAndPayFee(to, amount, { from })
+            ? await this.fAsset.transferExactDest(to, amount, { from })
             : await this.fAsset.transfer(to, amount, { from });
         const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
         assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
