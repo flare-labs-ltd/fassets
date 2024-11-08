@@ -125,9 +125,8 @@ export class Agent extends AssetContextClient {
     }
 
     async usd5ToVaultCollateralWei(usd5: BN) {
-        const ftsoAddress = await this.context.ftsoRegistry.getFtsoBySymbol(this.vaultCollateral().tokenFtsoSymbol);
-        const ftso = await Ftso.at(ftsoAddress);
-        const { 0: vaultCollateralPrice, 2: vaultCollateralDecimals } = await ftso.getCurrentPriceWithDecimals();
+        const { 0: vaultCollateralPrice, 2: vaultCollateralDecimals } =
+            await this.context.priceReader.getPrice(this.vaultCollateral().tokenFtsoSymbol);
         return usd5.mul(toWei(10**vaultCollateralDecimals.toNumber())).divn(1e5).div(vaultCollateralPrice);
     }
 
@@ -586,45 +585,65 @@ export class Agent extends AssetContextClient {
         const vaultCollateral = this.vaultCollateral();
         const totalUBA = await this.getTotalBackedAssetUBA();
         const agentInfo = await this.getAgentInfo();
-        const { 0: vaultCollateralPrice } = await this.context.ftsos[vaultCollateral.tokenFtsoSymbol].getCurrentPrice();
+        const { 0: vaultCollateralPrice, 2: vaultDecimals } = await this.context.priceReader.getPrice(vaultCollateral.tokenFtsoSymbol);
+        const { 2: assetDecimals } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
         const assetPriceUBA = vaultCollateralPrice.mul(toBN(agentInfo.totalVaultCollateralWei)).div(totalUBA).muln(MAX_BIPS).divn(ratioBIPS);
-        const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(vaultCollateral.decimals)));
-        await this.context.assetFtso.setCurrentPrice(assetPrice, 0);
-        await this.context.assetFtso.setCurrentPriceFromTrustedProviders(assetPrice, 0);
+        let assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(vaultCollateral.decimals) + Number(vaultDecimals) - Number(assetDecimals)));
+        assetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, assetPrice);
+        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  assetPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  assetPrice, 0);
     }
 
     async setPoolCollateralRatioByChangingAssetPrice(ratioBIPS: number) {
         const poolCollateral = this.context.collaterals[0];
         const totalUBA = await this.getTotalBackedAssetUBA();
         const poolBalance = await this.collateralPool.totalCollateral();
-        const { 0: poolPrice } = await this.context.ftsos[poolCollateral.tokenFtsoSymbol].getCurrentPrice();
+        const { 0: poolPrice, 2: poolDecimals } = await this.context.priceReader.getPrice(poolCollateral.tokenFtsoSymbol);
+        const { 2: assetDecimals } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
         const assetPriceUBA = poolPrice.mul(poolBalance).div(totalUBA).divn(ratioBIPS).muln(MAX_BIPS);
-        const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(poolCollateral.decimals)));
-        await this.context.assetFtso.setCurrentPrice(assetPrice, 0);
-        await this.context.assetFtso.setCurrentPriceFromTrustedProviders(assetPrice, 0);
+        let assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(poolCollateral.decimals) + Number(poolDecimals) - Number(assetDecimals)));
+        assetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, assetPrice);
+        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  assetPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  assetPrice, 0);
     }
 
     async getVaultCollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {
         const vaultCollateral = this.vaultCollateral();
-        const { 0: vaultCollateralPrice } = await this.context.ftsos[vaultCollateral.tokenFtsoSymbol].getCurrentPrice();
-        const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
+        const { 0: vaultCollateralPrice } = await this.context.priceReader.getPrice(vaultCollateral.tokenFtsoSymbol);
+        const { 0: assetPrice } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
         return mintedUBA.mul(assetPrice).div(vaultCollateralPrice).muln(ratioBIPS).divn(MAX_BIPS)
             .mul(toBNExp(1, Number(vaultCollateral.decimals))).div(toBNExp(1, this.context.chainInfo.decimals));
     }
 
     async getPoolCollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {
         const poolCollateral = this.context.collaterals[0];
-        const { 0: natPrice } = await this.context.natFtso.getCurrentPrice();
-        const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
+        const { 0: natPrice } = await this.context.priceReader.getPrice("NAT");
+        const { 0: assetPrice } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
         return mintedUBA.mul(assetPrice).div(natPrice).muln(ratioBIPS).divn(MAX_BIPS)
             .mul(toBNExp(1, Number(poolCollateral.decimals))).div(toBNExp(1, this.context.chainInfo.decimals));
     }
 
     async multiplyAssetPriceWithBIPS(factorBIPS: BNish) {
-        const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
-        const newAssetPrice = assetPrice.mul(toBN(factorBIPS)).divn(MAX_BIPS);
-        await this.context.assetFtso.setCurrentPrice(newAssetPrice, 0);
-        await this.context.assetFtso.setCurrentPriceFromTrustedProviders(newAssetPrice, 0);
+        const { 0: assetPrice } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
+        let newAssetPrice = assetPrice.mul(toBN(factorBIPS)).divn(MAX_BIPS);
+        newAssetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, newAssetPrice);
+        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  newAssetPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  newAssetPrice, 0);
+    }
+
+    private async adjustPriceAndDecimalsToFitUInt32(symbol: string, price: BN) {
+        const maxUInt32 = toBN(1).shln(32);
+        let { 2: decimals } = await this.context.priceReader.getPrice(symbol);
+        console.log(`Adjusting price=${price} decimals=${decimals}`);
+        if (price.lt(maxUInt32)) return price;
+        // console.log(`Before price=${price} decimals=${decimals}`);
+        while (price.gte(maxUInt32)) {
+            price = price.divn(10);
+            decimals = decimals.subn(1);
+        }
+        console.log(`After price=${price} decimals=${decimals}`);
+        await this.context.priceStore.setDecimals(symbol, decimals);
+        return price;
     }
 
     poolFeeShare(feeUBA: BNish) {

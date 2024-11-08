@@ -224,8 +224,8 @@
   },
   {
     "name": "PriceReader",
-    "contractName": "PriceReader.sol",
-    "address": "0x1fb7ef96Bf3D19dbD327D09F74025DFe43dFC596"
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   },
   {
     "name": "FakePriceReader",
@@ -448,5 +448,15 @@
     "name": "EmergencyPauseFacet",
     "contractName": "EmergencyPauseFacet.sol",
     "address": "0x9421dE62Ed391b0B37Bec6B720661b43DEDB36dd"
+  },
+  {
+    "name": "Relay",
+    "contractName": "Relay.sol",
+    "address": "0x32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
+  },
+  {
+    "name": "FtsoV2PriceStore",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   }
 ]

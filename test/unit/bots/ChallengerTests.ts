@@ -86,7 +86,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
             assetManagerController: context.assetManagerController,
             fAsset: context.fAsset,
             wnat: context.wNat,
-            ftsoManager: context.ftsoManager,
+            priceStore: context.priceStore,
         });
         // uniform event handlers
         eventQueue = new EventExecutionQueue();

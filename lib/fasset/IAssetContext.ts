@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, IIAssetManagerInstance, FAssetInstance, IERC20Instance, IFtsoInstance, IFtsoManagerInstance, IFtsoRegistryInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetManagerControllerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -15,6 +15,7 @@ export type CollateralPoolTokenFactoryEvents = import('../../typechain-truffle/C
 export type WhitelistEvents = import('../../typechain-truffle/IWhitelist').AllEvents;
 export type SCProofVerifierEvents = import('../../typechain-truffle/SCProofVerifier').AllEvents;
 export type PriceReaderEvents = import('../../typechain-truffle/IPriceReader').AllEvents;
+export type FtsoV2PriceStoreEvents = import('../../typechain-truffle/FtsoV2PriceStore').AllEvents;
 export type FtsoRegistryEvents = import('../../typechain-truffle/IFtsoRegistry').AllEvents;
 export type FtsoEvents = import('../../typechain-truffle/IFtso').AllEvents;
 export type FtsoManagerEvents = import('../../typechain-truffle/IFtsoManager').AllEvents;
@@ -33,13 +34,10 @@ export interface IAssetContext {
     attestationProvider: AttestationHelper;
     // contracts
     assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>;
-    ftsoRegistry: ContractWithEvents<IFtsoRegistryInstance, FtsoRegistryEvents>;
-    ftsoManager: ContractWithEvents<IFtsoManagerInstance, FtsoManagerEvents>;
     wNat: ContractWithEvents<WNatInstance, WNatEvents>;
-    natFtso: ContractWithEvents<IFtsoInstance, FtsoEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
     assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>;
     stablecoins: Record<string, ContractWithEvents<IERC20Instance, ERC20Events>>;
-    ftsos: Record<string, ContractWithEvents<IFtsoInstance, FtsoEvents>>;
     priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>;
+    priceStore: ContractWithEvents<FtsoV2PriceStoreInstance, FtsoV2PriceStoreEvents>;
 }

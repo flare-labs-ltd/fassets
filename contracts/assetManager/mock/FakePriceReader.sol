@@ -62,6 +62,7 @@ contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {
         onlyDataProvider
     {
         emit PriceEpochFinalized(address(0), 0);
+        emit PricesPublished(0);
     }
 
     function getPrice(string memory _symbol)

@@ -77,7 +77,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redemption payments can be performed and confirmed in pause
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await agent.performRedemptions(requests);
-            await agent.exitAndDestroy();
+            // but self close is prevented
+            await expectRevert(agent.selfClose(10), "emergency pause active");
         });
 
         it("pause liquidation", async () => {
@@ -94,8 +95,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await minter.performMinting(agent.vaultAddress, lots);
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL }, "reset");
             // price change
-            await context.natFtso.setCurrentPrice(200, 0);
-            await context.natFtso.setCurrentPriceFromTrustedProviders(200, 0);
+            await context.priceStore.setCurrentPrice("NAT", 200, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 200, 0);
             //  pause stops liquidation/ccb
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert(liquidator.startLiquidation(agent), "emergency pause active");

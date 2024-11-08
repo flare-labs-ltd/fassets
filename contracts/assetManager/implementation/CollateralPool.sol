@@ -425,8 +425,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (tokens == 0) return (0, 0); // never happens in this contract
         uint256 fAssetShare = virtualFAsset.mulDiv(_tokenShare, tokens);
         // note: rounding errors can be responsible for:
-        // - debtFAsset = virtualFAsset + 1 > virtualFAsset
-        // - freeFAsset > totalFAssetFees (not necessarily by 1, but should be small)
+        // - debtFAsset > virtualFAsset
+        // - freeFAsset > totalFAssetFees
+        // errors should be small
         if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
             uint256 freeFAsset = subOrZero(virtualFAsset, debtFAsset);
             freeFAssetFeeShare = Math.min(fAssetShare, freeFAsset);
@@ -436,9 +437,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         } else { // KEEP_RATIO
             debtFAssetFeeShare = virtualFAsset > 0 ? debtFAsset.mulDiv(fAssetShare, virtualFAsset) : 0;
-            // _tokenShare <= token.balanceOf(_account) implies fAssetShare <= virtualFAsset
-            // implies debtFAssetFeeShare <= fAssetShare
-            freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
+            freeFAssetFeeShare = subOrZero(fAssetShare, debtFAssetFeeShare);
         }
         // cap the fee shares in case of rounding errors
         freeFAssetFeeShare = Math.min(freeFAssetFeeShare, totalFAssetFees);
