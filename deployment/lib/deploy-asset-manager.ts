@@ -28,7 +28,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
         () => AssetManagerControllerProxy.new(assetManagerControllerImplAddress, contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address, { from: deployer }));
     const assetManagerController = await AssetManagerController.at(assetManagerControllerProxy.address);
 
-    contracts.add("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
+    contracts.add("AssetManagerController", "AssetManagerControllerProxy.sol", assetManagerController.address, { mustSwitchToProduction: true });
 
     // add asset managers before switching to production governance
     for (const parameterFile of managerParameterFiles) {
