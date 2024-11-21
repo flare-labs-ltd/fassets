@@ -79,7 +79,7 @@ library AssetManagerState {
         // When emergency pause is not done by governance, the total allowed pause is limited.
         // So the caller must state the duration after which the pause will automatically end.
         // When total pauses exceed the max allowed length, pausing is only allowed by the governance.
-        // A emergencyPause call by the governance optionally resets the total duration counter to 0.
+        // An emergencyPause call by the governance optionally resets the total duration counter to 0.
         uint64 emergencyPausedTotalDuration;
 
         // When emergency pause was triggered by governance, only governance can unpause.
