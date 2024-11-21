@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -1486,6 +1486,24 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 assert.isAtMost(blocks1[i] - blocks1[i - 1], 2);
             }
         });
+
+        it("should not set redemption payment extension seconds - only asset manager controller", async () => {
+            const promise = assetManager.setRedemptionPaymentExtensionSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set redemption payment extension seconds - decrease too big", async () => {
+            const promise = assetManager.setRedemptionPaymentExtensionSeconds(0, { from: assetManagerController });
+            await expectRevert(promise, "decrease too big");
+        });
+
+        it("should not set redemption payment extension seconds - increase too big", async () => {
+            const currentExtensionSecs = await assetManager.redemptionPaymentExtensionSeconds();
+            const averageBlockTimeMs = settings.averageBlockTimeMS;
+            const newExtensionSecs = currentExtensionSecs.muln(4).add(toBN(averageBlockTimeMs).divn(1000)).addn(1);
+            const promise = assetManager.setRedemptionPaymentExtensionSeconds(newExtensionSecs, { from: assetManagerController });
+            await expectRevert(promise, "increase too big");
+        });
 });
 
     describe("agent underlying", () => {
@@ -2163,6 +2181,800 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(r2,true);
             assert.equal(r3,true);
         });
+
+        it("should not set whitelist if not from asset manager controller", async () => {
+            const promise = assetManager.setWhitelist(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set agent owner registry if not from asset manager controller", async () => {
+            const promise = assetManager.setAgentOwnerRegistry(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set agent vault factory if not from asset manager controller", async () => {
+            const promise = assetManager.setAgentVaultFactory(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set collateral pool factory if not from asset manager controller", async () => {
+            const promise = assetManager.setCollateralPoolFactory(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set collateral pool token factory if not from asset manager controller", async () => {
+            const promise = assetManager.setCollateralPoolTokenFactory(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set price reader if not from asset manager controller", async () => {
+            const promise = assetManager.setPriceReader(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set cleaner contract if not from asset manager controller", async () => {
+            const promise = assetManager.setCleanerContract(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set fdv verification if not from asset manager controller", async () => {
+            const promise = assetManager.setFdcVerification(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set cleanup block number manager if not from asset manager controller", async () => {
+            const promise = assetManager.setCleanupBlockNumberManager(accounts[0]);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not upgrade FAsset implementation if not from asset manager controller", async () => {
+            const promise = assetManager.upgradeFAssetImplementation(accounts[0], "0x");
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set time for payment if not from asset manager controller", async () => {
+            const promise = assetManager.setTimeForPayment(0, 0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set payment challenge rewards if not from asset manager controller", async () => {
+            const promise = assetManager.setPaymentChallengeReward(0, 0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set MinUpdateRepeatTimeSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setMinUpdateRepeatTimeSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set lot size if not from asset manager controller", async () => {
+            const promise = assetManager.setLotSizeAmg(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setMinUnderlyingBackingBips not from asset manager controller", async () => {
+            const promise = assetManager.setMinUnderlyingBackingBips(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setMaxTrustedPriceAgeSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setMaxTrustedPriceAgeSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setCollateralReservationFeeBips if not from asset manager controller", async () => {
+            const promise = assetManager.setCollateralReservationFeeBips(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setRedemptionFeeBips if not from asset manager controller", async () => {
+            const promise = assetManager.setRedemptionFeeBips(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setRedemptionDefaultFactorBips if not from asset manager controller", async () => {
+            const promise = assetManager.setRedemptionDefaultFactorBips(0, 0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setConfirmationByOthersAfterSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setConfirmationByOthersAfterSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setConfirmationByOthersRewardUSD5 if not from asset manager controller", async () => {
+            const promise = assetManager.setConfirmationByOthersRewardUSD5(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setMaxRedeemedTickets if not from asset manager controller", async () => {
+            const promise = assetManager.setMaxRedeemedTickets(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setWithdrawalOrDestroyWaitMinSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setWithdrawalOrDestroyWaitMinSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setCcbTimeSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setCcbTimeSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAttestationWindowSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setAttestationWindowSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAverageBlockTimeMS if not from asset manager controller", async () => {
+            const promise = assetManager.setAverageBlockTimeMS(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAnnouncedUnderlyingConfirmationMinSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setMintingPoolHoldingsRequiredBIPS if not from asset manager controller", async () => {
+            const promise = assetManager.setMintingPoolHoldingsRequiredBIPS(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setMintingCapAmg if not from asset manager controller", async () => {
+            const promise = assetManager.setMintingCapAmg(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setTokenInvalidationTimeMinSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setTokenInvalidationTimeMinSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setVaultCollateralBuyForFlareFactorBIPS if not from asset manager controller", async () => {
+            const promise = assetManager.setVaultCollateralBuyForFlareFactorBIPS(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAgentExitAvailableTimelockSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setAgentExitAvailableTimelockSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAgentMintingCRChangeTimelockSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setAgentMintingCRChangeTimelockSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setPoolExitAndTopupChangeTimelockSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setPoolExitAndTopupChangeTimelockSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAgentTimelockedOperationWindowSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setAgentTimelockedOperationWindowSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setCollateralPoolTokenTimelockSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setCollateralPoolTokenTimelockSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setLiquidationStepSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setLiquidationStepSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setLiquidationPaymentFactors if not from asset manager controller", async () => {
+            const promise = assetManager.setLiquidationPaymentFactors([], []);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setMaxEmergencyPauseDurationSeconds - value zero", async () => {
+            const promise = assetManager.setMaxEmergencyPauseDurationSeconds(0, { from: assetManagerController });
+            await expectRevert(promise, "cannot be zero");
+        });
+
+        it("should not setEmergencyPauseDurationResetAfterSeconds - value zero", async () => {
+            const promise = assetManager.setEmergencyPauseDurationResetAfterSeconds(0, { from: assetManagerController });
+            await expectRevert(promise, "cannot be zero");
+        });
+
+        it("should not setMaxEmergencyPauseDurationSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setMaxEmergencyPauseDurationSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setEmergencyPauseDurationResetAfterSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setEmergencyPauseDurationResetAfterSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setCancelCollateralReservationAfterSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setCancelCollateralReservationAfterSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setRejectRedemptionRequestWindowSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setRejectRedemptionRequestWindowSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setTakeOverRedemptionRequestWindowSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setTakeOverRedemptionRequestWindowSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setRejectedRedemptionDefaultFactorBips if not from asset manager controller", async () => {
+            const promise = assetManager.setRejectedRedemptionDefaultFactorBips(0, 0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setAgentFeeChangeTimelockSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setAgentFeeChangeTimelockSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        // rate limited
+        it("should not set whitelist if rate limited", async () => {
+            await assetManager.setWhitelist(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setWhitelist(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setWhitelist(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set agent owner registry if rate limited", async () => {
+            await assetManager.setAgentOwnerRegistry(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAgentOwnerRegistry(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAgentOwnerRegistry(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set agent vault factory if rate limited", async () => {
+            await assetManager.setAgentVaultFactory(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAgentVaultFactory(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAgentVaultFactory(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set collateral pool factory if rate limited", async () => {
+            await assetManager.setCollateralPoolFactory(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCollateralPoolFactory(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCollateralPoolFactory(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set collateral pool token factory if rate limited", async () => {
+            await assetManager.setCollateralPoolTokenFactory(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCollateralPoolTokenFactory(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCollateralPoolTokenFactory(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set price reader if rate limited", async () => {
+            await assetManager.setPriceReader(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setPriceReader(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setPriceReader(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set cleaner contract if rate limited", async () => {
+            await assetManager.setCleanerContract(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCleanerContract(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCleanerContract(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set fdv verification if rate limited", async () => {
+            await assetManager.setFdcVerification(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setFdcVerification(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setFdcVerification(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not set cleanup block number manager if rate limited", async () => {
+            await assetManager.setCleanupBlockNumberManager(accounts[1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCleanupBlockNumberManager(accounts[0], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCleanupBlockNumberManager(accounts[0], { from: assetManagerController });
+        });
+
+        it("should not upgrade FAsset implementation if rate limited", async () => {
+            const impl = await TestUUPSProxyImpl.new();
+            const initCall = abiEncodeCall(impl, c => c.initialize("an init message"));
+            await assetManager.upgradeFAssetImplementation(impl.address, initCall, { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const initCall1 = abiEncodeCall(impl, c => c.initialize("an init message 1"));
+            const promise = assetManager.upgradeFAssetImplementation(impl.address, initCall1, { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.upgradeFAssetImplementation(impl.address, initCall1, { from: assetManagerController });
+        });
+
+        it("should not set time for payment if rate limited", async () => {
+            await assetManager.setTimeForPayment(100, 100, { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setTimeForPayment(200, 200, { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setTimeForPayment(200, 200, { from: assetManagerController });
+        });
+
+        it("should not set payment challenge rewards if rate limited", async () => {
+            const paymentChallengeRewardBIPS = settings.paymentChallengeRewardBIPS;
+            const paymentChallengeRewardNAT = settings.paymentChallengeRewardUSD5;
+            await assetManager.setPaymentChallengeReward(toBN(paymentChallengeRewardNAT).addn(10), toBN(paymentChallengeRewardBIPS).addn(11), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise =  assetManager.setPaymentChallengeReward(toBN(paymentChallengeRewardNAT).addn(20), toBN(paymentChallengeRewardBIPS).addn(21), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setPaymentChallengeReward(toBN(paymentChallengeRewardNAT).addn(20), toBN(paymentChallengeRewardBIPS).addn(21), { from: assetManagerController });
+        });
+
+        it("should not set MinUpdateRepeatTimeSeconds if rate limited", async () => {
+            await assetManager.setMinUpdateRepeatTimeSeconds(90000, { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMinUpdateRepeatTimeSeconds(91000, { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(90000 - minUpdateTime + 1);
+            await assetManager.setMinUpdateRepeatTimeSeconds(91000, { from: assetManagerController });
+        });
+
+        it("should not set lot size if rate limited", async () => {
+            const oldLotSize = settings.lotSizeAMG;
+            await assetManager.setLotSizeAmg(toBN(oldLotSize).addn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setLotSizeAmg(toBN(oldLotSize).addn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setLotSizeAmg(toBN(oldLotSize).addn(2), { from: assetManagerController });
+        });
+
+        it("should not setMinUnderlyingBackingBips rate limited", async () => {
+            const oldValue = settings.minUnderlyingBackingBIPS;
+            await assetManager.setMinUnderlyingBackingBips(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMinUnderlyingBackingBips(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setMinUnderlyingBackingBips(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setMaxTrustedPriceAgeSeconds if rate limited", async () => {
+            const oldValue = settings.maxTrustedPriceAgeSeconds;
+            await assetManager.setMaxTrustedPriceAgeSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMaxTrustedPriceAgeSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setMaxTrustedPriceAgeSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setCollateralReservationFeeBips if rate limited", async () => {
+            const oldValue = settings.collateralReservationFeeBIPS;
+            await assetManager.setCollateralReservationFeeBips(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCollateralReservationFeeBips(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCollateralReservationFeeBips(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setRedemptionFeeBips if rate limited", async () => {
+            const oldValue = settings.redemptionFeeBIPS;
+            await assetManager.setRedemptionFeeBips(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setRedemptionFeeBips(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setRedemptionFeeBips(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setRedemptionDefaultFactorBips if rate limited", async () => {
+            const oldValueVault = settings.redemptionDefaultFactorVaultCollateralBIPS;
+            const oldValuePool = settings.redemptionDefaultFactorPoolBIPS;
+            await assetManager.setRedemptionDefaultFactorBips(toBN(oldValueVault).subn(1), toBN(oldValuePool).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setRedemptionDefaultFactorBips(toBN(oldValueVault).subn(2), toBN(oldValuePool).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setRedemptionDefaultFactorBips(toBN(oldValueVault).subn(2), toBN(oldValuePool).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setConfirmationByOthersAfterSeconds if rate limited", async () => {
+            await assetManager.setConfirmationByOthersAfterSeconds(60 * 60 * 3, { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setConfirmationByOthersAfterSeconds(60 * 60 * 4, { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setConfirmationByOthersAfterSeconds(60 * 60 * 4, { from: assetManagerController });
+        });
+
+        it("should not setConfirmationByOthersRewardUSD5 if rate limited", async () => {
+            const oldValue = settings.confirmationByOthersRewardUSD5;
+            await assetManager.setConfirmationByOthersRewardUSD5(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setConfirmationByOthersRewardUSD5(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setConfirmationByOthersRewardUSD5(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setMaxRedeemedTickets if rate limited", async () => {
+            const oldValue = settings.maxRedeemedTickets;
+            await assetManager.setMaxRedeemedTickets(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMaxRedeemedTickets(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setMaxRedeemedTickets(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setWithdrawalOrDestroyWaitMinSeconds if rate limited", async () => {
+            const oldValue = settings.withdrawalWaitMinSeconds;
+            await assetManager.setWithdrawalOrDestroyWaitMinSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setWithdrawalOrDestroyWaitMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setWithdrawalOrDestroyWaitMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setCcbTimeSeconds if rate limited", async () => {
+            const oldValue = settings.ccbTimeSeconds;
+            await assetManager.setCcbTimeSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCcbTimeSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCcbTimeSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setAttestationWindowSeconds if rate limited", async () => {
+            const oldValue = settings.attestationWindowSeconds;
+            await assetManager.setAttestationWindowSeconds(toBN(oldValue).addn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAttestationWindowSeconds(toBN(oldValue).addn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAttestationWindowSeconds(toBN(oldValue).addn(2), { from: assetManagerController });
+        });
+
+        it("should not setAverageBlockTimeMS if rate limited", async () => {
+            const oldValue = settings.averageBlockTimeMS;
+            await assetManager.setAverageBlockTimeMS(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAverageBlockTimeMS(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAverageBlockTimeMS(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setAnnouncedUnderlyingConfirmationMinSeconds if rate limited", async () => {
+            const oldValue = settings.announcedUnderlyingConfirmationMinSeconds;
+            await assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setMintingPoolHoldingsRequiredBIPS if rate limited", async () => {
+            const oldValue = settings.mintingPoolHoldingsRequiredBIPS;
+            await assetManager.setMintingPoolHoldingsRequiredBIPS(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMintingPoolHoldingsRequiredBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setMintingPoolHoldingsRequiredBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setMintingCapAmg if rate limited", async () => {
+            const lotSize = settings.lotSizeAMG;
+            await assetManager.setMintingCapAmg(toBN(lotSize).addn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMintingCapAmg(toBN(lotSize).addn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setMintingCapAmg(toBN(lotSize).addn(2), { from: assetManagerController });
+        });
+
+        it("should not setTokenInvalidationTimeMinSeconds if rate limited", async () => {
+            const oldValue = settings.tokenInvalidationTimeMinSeconds;
+            await assetManager.setTokenInvalidationTimeMinSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setTokenInvalidationTimeMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setTokenInvalidationTimeMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setVaultCollateralBuyForFlareFactorBIPS if rate limited", async () => {
+            const oldValue = settings.vaultCollateralBuyForFlareFactorBIPS;
+            await assetManager.setVaultCollateralBuyForFlareFactorBIPS(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setVaultCollateralBuyForFlareFactorBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setVaultCollateralBuyForFlareFactorBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setAgentExitAvailableTimelockSeconds if rate limited", async () => {
+            const oldValue = settings.agentExitAvailableTimelockSeconds;
+            await assetManager.setAgentExitAvailableTimelockSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAgentExitAvailableTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAgentExitAvailableTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setAgentMintingCRChangeTimelockSeconds if rate limited", async () => {
+            const oldValue = settings.agentMintingCRChangeTimelockSeconds;
+            await assetManager.setAgentMintingCRChangeTimelockSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAgentMintingCRChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAgentMintingCRChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setPoolExitAndTopupChangeTimelockSeconds if rate limited", async () => {
+            const oldValue = settings.poolExitAndTopupChangeTimelockSeconds;
+            await assetManager.setPoolExitAndTopupChangeTimelockSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setPoolExitAndTopupChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setPoolExitAndTopupChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setAgentTimelockedOperationWindowSeconds if rate limited", async () => {
+            const oldValue = settings.agentTimelockedOperationWindowSeconds;
+            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setCollateralPoolTokenTimelockSeconds if rate limited", async () => {
+            const oldValue = settings.collateralPoolTokenTimelockSeconds;
+            await assetManager.setCollateralPoolTokenTimelockSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCollateralPoolTokenTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCollateralPoolTokenTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setLiquidationStepSeconds if rate limited", async () => {
+            const oldValue = settings.liquidationStepSeconds;
+            await assetManager.setLiquidationStepSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setLiquidationStepSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setLiquidationStepSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setLiquidationPaymentFactors if rate limited", async () => {
+            await assetManager.setLiquidationPaymentFactors([20000], [1], { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setLiquidationPaymentFactors([30000], [2], { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setLiquidationPaymentFactors([30000], [2], { from: assetManagerController });
+        });
+
+        it("should not setMaxEmergencyPauseDurationSeconds if rate limited", async () => {
+            const oldValue = settings.maxEmergencyPauseDurationSeconds;
+            await assetManager.setMaxEmergencyPauseDurationSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setMaxEmergencyPauseDurationSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setMaxEmergencyPauseDurationSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setEmergencyPauseDurationResetAfterSeconds if rate limited", async () => {
+            const oldValue = settings.emergencyPauseDurationResetAfterSeconds;
+            await assetManager.setEmergencyPauseDurationResetAfterSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setEmergencyPauseDurationResetAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setEmergencyPauseDurationResetAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setCancelCollateralReservationAfterSeconds if rate limited", async () => {
+            const oldValue = settings.cancelCollateralReservationAfterSeconds;
+            await assetManager.setCancelCollateralReservationAfterSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setCancelCollateralReservationAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setCancelCollateralReservationAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setRejectRedemptionRequestWindowSeconds if rate limited", async () => {
+            const oldValue = settings.rejectRedemptionRequestWindowSeconds;
+            await assetManager.setRejectRedemptionRequestWindowSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setRejectRedemptionRequestWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setRejectRedemptionRequestWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setTakeOverRedemptionRequestWindowSeconds if rate limited", async () => {
+            const oldValue = settings.takeOverRedemptionRequestWindowSeconds;
+            await assetManager.setTakeOverRedemptionRequestWindowSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setTakeOverRedemptionRequestWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setTakeOverRedemptionRequestWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setRejectedRedemptionDefaultFactorBips if rate limited", async () => {
+            const oldValueVault = settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS;
+            const oldValuePool = settings.rejectedRedemptionDefaultFactorPoolBIPS;
+            await assetManager.setRejectedRedemptionDefaultFactorBips(toBN(oldValueVault).subn(1), toBN(oldValuePool).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setRejectedRedemptionDefaultFactorBips(toBN(oldValueVault).subn(2), toBN(oldValuePool).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setRejectedRedemptionDefaultFactorBips(toBN(oldValueVault).subn(2), toBN(oldValuePool).subn(2), { from: assetManagerController });
+        });
+
+        it("should not set transfer fee millionths - only asset manager controller", async () => {
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            let transferFeeMillionths_new = transferFeeMillionths.muln(2);
+            const ts = await latestBlockTimestamp();
+            let promise = assetManager.setTransferFeeMillionths(transferFeeMillionths_new, ts + 3600);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not set transfer fee millionths - millionths value too high", async () => {
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            let transferFeeMillionths_new = transferFeeMillionths.muln(2);
+            const ts = await latestBlockTimestamp();
+            let promise = assetManager.setTransferFeeMillionths(1e7, ts + 3600, { from: assetManagerController });
+            await expectRevert(promise, "millionths value too high");
+        });
+
+        it("should not set transfer fee millionths - increase too big", async () => {
+            const ts = await latestBlockTimestamp();
+            await assetManager.setTransferFeeMillionths(10, ts + 1, { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime));
+            const transferFeeMillionths = await assetManager.transferFeeMillionths();
+            let transferFeeMillionths_new = transferFeeMillionths.muln(5).addn(1000);
+            const promise = assetManager.setTransferFeeMillionths(transferFeeMillionths_new, ts + 3600, { from: assetManagerController });
+            await expectRevert(promise, "increase too big");
+        });
+
+        it("should not set transfer fee millionths - decrease too big", async () => {
+            const ts = await latestBlockTimestamp();
+            await assetManager.setTransferFeeMillionths(10, ts + 1, { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime));
+            const promise = assetManager.setTransferFeeMillionths(0, ts + 3600, { from: assetManagerController });
+            await expectRevert(promise, "decrease too big");
+        });
     });
 
     describe("reading system properties", () => {
@@ -2292,7 +3104,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
             });
 
-            it("governence can pause anytime and for unlimited time", async () => {
+            it("governance can pause anytime and for unlimited time", async () => {
                 // use up all pause time
                 await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
                 // after 24 hours, the pause should have ended
@@ -2313,7 +3125,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 assert.isFalse(await assetManager.emergencyPaused());
             });
 
-            it("governence can reset pause time", async () => {
+            it("governance can reset pause time", async () => {
                 // use up all pause time
                 await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
                 // after 24 hours, the pause should have ended
@@ -2323,6 +3135,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
                 // now we can use all time again
                 await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            });
+
+            it("should not reset pause time if not from asset manager controller", async () => {
+                // use up all pause time
+                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+                // after 24 hours, the pause should have ended
+                await time.increase(24 * HOURS);
+                assert.isFalse(await assetManager.emergencyPaused());
+                // reset
+                const promise = assetManager.resetEmergencyPauseTotalDuration();
+                await expectRevert(promise, "only asset manager controller");
             });
 
             it("others cannot pause/unpause when governance pause is active", async () => {

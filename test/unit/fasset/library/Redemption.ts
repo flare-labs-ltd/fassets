@@ -1180,4 +1180,35 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const promise = assetManager.rejectRedemptionRequest(args.newRequestId, { from: agentOwner2 });
         await expectRevert(promise, "already taken over");
     });
+
+    it("should not redeem from agent if emergency paused", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from: collateralPool.address });
+        await expectRevert(rs, "emergency pause active");
+    });
+
+    it("should not redeem from agent in collateral if emergency paused", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        const rs = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
+        await expectRevert(rs, "emergency pause active");
+    });
+
+    it("should not take over redemption request - emergency pause", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        const promise = assetManager.takeOverRedemptionRequest(agentVault.address, request.requestId, { from: agentOwner2 });
+        await expectRevert(promise, "emergency pause active");
+    });
+
 });

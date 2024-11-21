@@ -627,4 +627,72 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // assert
         await expectRevert(promise, "self-mint payment too old");
     });
+
+    it("should not self-mint if it is emergency paused", async () => {
+        // init
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 2;
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
+        const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
+        // assert
+        await expectRevert(promise, "emergency pause active");
+    });
+
+    it("should not mint from free underlying if agent's status is not 'NORMAL'", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        //await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1});
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "self-mint invalid agent status");
+    });
+
+    it("should not mint from free underlying if minting is paused", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // pause minting
+        await assetManager.pauseMinting({ from: assetManagerController });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "minting paused");
+    });
+
+    it("should not mint from free underlying if emergency paused", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // emergency pause minting
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "emergency pause active");
+    });
+
+    it("should not mint from free underlying if not attached", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // emergency pause minting
+        await assetManager.attachController(false, { from: assetManagerController });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "not attached");
+    });
+
+
 });
