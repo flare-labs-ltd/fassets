@@ -107,7 +107,7 @@ interface ICollateralPool {
      * Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
      *  will revert. In that case, see selfCloseExit.
      * @param _tokenShare   The amount of pool tokens to be redeemed
-     * @param _recipient    The address to which NATs and FAsset fees will be transfered
+     * @param _recipient    The address to which NATs and FAsset fees will be transferred
      * @param _exitType     The ratio used to redeem transferable and non-transferable tokens
      */
     function exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
@@ -131,7 +131,7 @@ interface ICollateralPool {
      * @param _tokenShare                   The amount of pool tokens to be liquidated
      * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
      *                                      by the agent
-     * @param _recipient                    The address to which NATs and FAsset fees will be transfered
+     * @param _recipient                    The address to which NATs and FAsset fees will be transferred
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @param _executor                     The account that is allowed to execute redemption default
      */
@@ -147,7 +147,7 @@ interface ICollateralPool {
      * Collect f-asset fees by locking an appropriate ratio of transferable tokens
      * @param _amount       The amount of f-asset fees to withdraw.
      *                      Must be positive and smaller or equal to the sender's fAsset fees.
-     * @param _recipient    The address to which FAsset fees will be transfered
+     * @param _recipient    The address to which FAsset fees will be transferred
      */
     function withdrawFeesTo(uint256 _amount, address _recipient) external;
 

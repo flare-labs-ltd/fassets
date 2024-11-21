@@ -507,7 +507,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             );
         }
 
-        let tx = await priceStore.publishPrices([{ merkleProof: [leaf1], body: feed0 }, { merkleProof: [leaf0], body: feed1 }]);
+        let tx = await priceStore.publishPrices([{ proof: [leaf1], body: feed0 }, { proof: [leaf0], body: feed1 }]);
         console.log(`publishPrices gas used: ${tx.receipt.gasUsed}`);
     }
 

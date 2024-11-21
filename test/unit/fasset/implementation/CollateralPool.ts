@@ -1,22 +1,20 @@
-import { time } from "@openzeppelin/test-helpers";
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
-import { ZERO_ADDRESS, erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
+import { eventArgs } from "../../../../lib/utils/events/truffle";
+import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
     CollateralPoolInstance, CollateralPoolTokenInstance,
     DistributionToDelegatorsInstance,
     ERC20MockInstance,
-    IERC20Contract, IERC165Contract
+    IERC165Contract
 } from "../../../../typechain-truffle";
+import { requiredEventArgsFrom } from "../../../utils/Web3EventDecoder";
+import { impersonateContract, stopImpersonatingContract, transferWithSuicide } from "../../../utils/contract-test-helpers";
+import { calcGasCost, calculateReceivedNat } from "../../../utils/eth";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
-import { impersonateContract, stopImpersonatingContract, transferWithSuicide } from "../../../utils/contract-test-helpers";
-import { MAX_BIPS } from "../../../../lib/utils/helpers";
-import { eventArgs } from "../../../../lib/utils/events/truffle";
-import { requiredEventArgsFrom } from "../../../utils/Web3EventDecoder";
-import { calcGasCost, calculateReceivedNat } from "../../../utils/eth";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -515,12 +513,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // agent is forced to payout by the asset manager
                 const payload = collateralPool.contract.methods.payout(accounts[1], ETH(50), ETH(100)).encodeABI();
                 await assetManager.callFunctionAt(collateralPool.address, payload);
-                // check that agent has no tokens left and that wNat was transfered to acc1
+                // check that agent has no tokens left and that wNat was transferred to acc1
                 const agentTokens = await collateralPoolToken.balanceOf(agent);
                 assertEqualBN(agentTokens, BN_ZERO);
                 const wNatBalanceAcc1 = await wNat.balanceOf(accounts[1]);
                 assertEqualBN(wNatBalanceAcc1, ETH(50));
-                // agent responsibility - amount transfered to acc1 stayed in the pool
+                // agent responsibility - amount transferred to acc1 stayed in the pool
                 const poolWNatBalance = await collateralPool.totalCollateral();
                 assertEqualBN(poolWNatBalance, ETH(50));
             });
@@ -1156,7 +1154,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // user cannot self-exit because pool being at exitCR requires redeemed f-assets, which agent cannot redeem,
             // as his max redemption is 0
             const prms = collateralPool.selfCloseExit(account0Tokens, true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "amount of sent tokens is too small after agent max redempton correction");
+            await expectRevert(prms, "amount of sent tokens is too small after agent max redemption correction");
         });
 
         it("should do an incomplete self-close exit, where agent's max redeemed f-assets is non-zero but less than required", async () => {

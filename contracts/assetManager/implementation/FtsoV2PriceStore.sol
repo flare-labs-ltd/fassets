@@ -102,7 +102,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
 
             bytes32 feedHash = keccak256(abi.encode(feed));
             bytes32 merkleRoot = relay.merkleRoots(ftsoProtocolId, votingRoundId);
-            require(proof.merkleProof.verifyCalldata(merkleRoot, feedHash), "merkle proof invalid");
+            require(proof.proof.verifyCalldata(merkleRoot, feedHash), "merkle proof invalid");
 
             PriceStore storage priceStore = latestPrices[feedId];
             priceStore.votingRoundId = feed.votingRoundId;

@@ -42,7 +42,7 @@ interface IFAsset is IERC20, IERC20Metadata {
 
     /**
      * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
-     * NOTE: more than `_amount` will be transfered from `msg.sender`.
+     * NOTE: more than `_amount` will be transferred from `msg.sender`.
      */
     function transferExactDest(address _to, uint256 _amount)
         external
@@ -50,19 +50,12 @@ interface IFAsset is IERC20, IERC20Metadata {
 
     /**
      * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
-     * NOTE: more than `_amount` will be transfered from the `_from` account.
-     * Preceeding call to `approve()` must account for this, otherwise the transfer will fail.
+     * NOTE: more than `_amount` will be transferred from the `_from` account.
+     * Preceding call to `approve()` must account for this, otherwise the transfer will fail.
      */
     function transferExactDestFrom(address _from, address _to, uint256 _amount)
         external
         returns (bool);
-
-    /**
-     * Return the amount of fees that will be charged for the transfer of _transferAmount.
-     */
-    function transferFeeAmount(uint256 _transferAmount)
-        external view
-        returns (uint256);
 
     /**
      * Return the exact amount the `_to` will receive, if `_from` transfers `_sentAmount`.
