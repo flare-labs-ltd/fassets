@@ -1,21 +1,21 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AgentInfo, AgentSetting, AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentSetting, AgentSettings, AgentStatus, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
-import { createTestAgentSettings } from "../../utils/test-settings";
 import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
+import { createTestAgentSettings } from "../../utils/test-settings";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
-import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -270,8 +270,8 @@ export class Agent extends AssetContextClient {
         return await this.agentVault.redeemCollateralPoolTokens(amountWei, this.ownerWorkAddress, { from: this.ownerWorkAddress });
     }
 
-    async withdrawPoolFees(amountUBA: BNish) {
-        await this.agentVault.withdrawPoolFees(amountUBA, this.ownerWorkAddress, { from: this.ownerWorkAddress });
+    async withdrawPoolFees(amountUBA: BNish, recipient = this.ownerWorkAddress) {
+        await this.agentVault.withdrawPoolFees(amountUBA, recipient, { from: this.ownerWorkAddress });
     }
 
     async poolFeeBalance() {
@@ -325,15 +325,22 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
     }
 
-    async performRedemptions(requests: EventArgs<RedemptionRequested>[]) {
+    static async performRedemptions(agents: Agent[], requests: EventArgs<RedemptionRequested>[]) {
         const results: Record<string, Truffle.TransactionResponse<AssetManagerEvents>> = {};
         for (const request of requests) {
-            if (request.agentVault !== this.vaultAddress) continue;
-            const txHash = await this.performRedemptionPayment(request);
-            const proof = await this.attestationProvider.provePayment(txHash, this.underlyingAddress, request.paymentAddress);
-            const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+            const agent = agents.find(ag => ag.vaultAddress === request.agentVault);
+            if (!agent) assert.fail(`No agent for redemption ${request.paymentReference}`);
+            // perform redemption
+            const txHash = await agent.performRedemptionPayment(request);
+            const proof = await agent.attestationProvider.provePayment(txHash, agent.underlyingAddress, request.paymentAddress);
+            const res = await agent.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
             results[String(request.requestId)] = res;
         }
+        return results;
+    }
+
+    async performRedemptions(requests: EventArgs<RedemptionRequested>[]) {
+        return await Agent.performRedemptions([this], requests);
     }
 
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
@@ -386,6 +393,11 @@ export class Agent extends AssetContextClient {
 
     async getRedemptionPaymentDefaultValue(lots: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
         const uba = this.context.convertLotsToUBA(lots);
+        return await this.getRedemptionPaymentDefaultValueForUBA(uba, selfCloseExit);
+    }
+
+    async getRedemptionPaymentDefaultValueForUBA(redemptionAmountUBA: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
+        const uba = toBN(redemptionAmountUBA);
         const agentInfo = await this.getAgentInfo();
         const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
         const maxRedemptionCollateral = toBN(agentInfo.totalVaultCollateralWei).mul(uba).div(totalUBA);
@@ -403,7 +415,7 @@ export class Agent extends AssetContextClient {
             redemptionDefaultPool = toBN(0);
         }
         if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
-            const extraPoolAmg = this.context.convertLotsToAMG(lots).mul
+            const extraPoolAmg = this.context.convertUBAToAmg(uba).mul
                 (redemptionDefaultAgent.sub(maxRedemptionCollateral)).divRound(redemptionDefaultAgent);
             return [maxRedemptionCollateral, redemptionDefaultPool.add(priceNat.convertAmgToTokenWei(extraPoolAmg))];
         }
@@ -468,7 +480,12 @@ export class Agent extends AssetContextClient {
         const transactionHash = await this.wallet.addTransaction(randomAddr, this.underlyingAddress, depositUBA, PaymentReference.selfMint(this.agentVault.address));
         const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
         const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerWorkAddress });
-        return requiredEventArgs(res, 'MintingExecuted');
+        return requiredEventArgs(res, 'SelfMint');
+    }
+
+    async mintFromFreeUnderlying(lots: BNish) {
+        const res = await this.assetManager.mintFromFreeUnderlying(this.agentVault.address, lots, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'SelfMint');
     }
 
     async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {
@@ -528,6 +545,15 @@ export class Agent extends AssetContextClient {
     async buybackAgentCollateral() {
         const [,, buybackCost] = await this.getBuybackAgentCollateralValue()
         await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
+    }
+
+    async transferFeeShare(maxEpochs: BNish) {
+        return await this.context.assetManager.agentTransferFeeShare(this.vaultAddress, maxEpochs);
+    }
+
+    async claimTransferFees(recipient: string, maxEpochs: BNish) {
+        const res = await this.context.assetManager.claimTransferFees(this.vaultAddress, recipient, maxEpochs, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "TransferFeesClaimed");
     }
 
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
@@ -646,8 +672,8 @@ export class Agent extends AssetContextClient {
         return price;
     }
 
-    poolFeeShare(feeUBA: BNish) {
-        return toBN(feeUBA).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+    poolFeeShare(fee: BNish) {
+        return toBN(fee).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
     }
 
     // pool's CR can fall below exitCR
@@ -657,5 +683,33 @@ export class Agent extends AssetContextClient {
         const totalBackedUBA = await this.getTotalBackedAssetUBA();
         const toMintUBA = poolBalanceWei.mul(assetPriceDiv).muln(MAX_BIPS).div(assetPriceMul).divn(ratioBIPS).sub(totalBackedUBA);
         return this.context.convertUBAToLots(toMintUBA);
+    }
+
+    async getRedemptionQueue(pageSize: BNish) {
+        const result: RedemptionTicketInfo[] = [];
+        let firstTicketId = BN_ZERO;
+        do {
+            const { 0: chunk, 1: nextId } = await this.assetManager.agentRedemptionQueue(this.vaultAddress, firstTicketId, pageSize);
+            result.splice(result.length, 0, ...chunk);
+            firstTicketId = nextId;
+        } while (!firstTicketId.eqn(0));
+        return result;
+    }
+
+    async poolCRFee(lots: BNish) {
+        const crFee = await this.assetManager.collateralReservationFee(lots);
+        return this.poolFeeShare(crFee);
+    }
+
+    async wnatToPoolTokens(wnat: BNish) {
+        const totalCollateral = await this.collateralPool.totalCollateral();
+        const totalTokens = await this.collateralPoolToken.totalSupply();
+        return totalCollateral.eq(BN_ZERO) ? toBN(wnat) : toBN(wnat).mul(totalTokens).div(totalCollateral);
+    }
+
+    async poolTokensToWnat(wnat: BNish) {
+        const totalCollateral = await this.collateralPool.totalCollateral();
+        const totalTokens = await this.collateralPoolToken.totalSupply();
+        return totalTokens.eq(BN_ZERO) ? toBN(wnat) : toBN(wnat).mul(totalCollateral).div(totalTokens);
     }
 }

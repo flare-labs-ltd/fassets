@@ -37,4 +37,9 @@ interface IIFAsset is IFAsset, ICheckPointable, IICleanable {
      * Usually this will be an instance of CleanupBlockNumberManager.
      */
     function cleanupBlockNumberManager() external view returns (address);
+
+    /**
+     * Transfer without charging fee. Used for transferring fees to agents.
+     */
+    function transferInternally(address _to, uint256 _amount) external;
 }

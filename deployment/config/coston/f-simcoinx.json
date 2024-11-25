@@ -99,5 +99,14 @@
     "diamondCutMinTimelockSeconds": 7200,
     "maxEmergencyPauseDurationSeconds": 86400,
     "emergencyPauseDurationResetAfterSeconds": 604800,
-    "redemptionPaymentExtensionSeconds": 30
+    "redemptionPaymentExtensionSeconds": 30,
+    "cancelCollateralReservationAfterSeconds": 30,
+    "rejectRedemptionRequestWindowSeconds": 120,
+    "takeOverRedemptionRequestWindowSeconds": 120,
+    "rejectedRedemptionDefaultFactorVaultCollateralBIPS": 10500,
+    "rejectedRedemptionDefaultFactorPoolBIPS": 0,
+    "transferFeeMillionths": 0,
+    "transferFeeClaimFirstEpochStartTs": 1727784000,
+    "transferFeeClaimEpochDurationSeconds": 604800,
+    "transferFeeClaimMaxUnexpiredEpochs": 16
 }

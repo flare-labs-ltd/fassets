@@ -1,26 +1,38 @@
+import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { abiEncodeCall, erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { abiEncodeCall, erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { FAssetInstance } from "../../../../typechain-truffle";
+import { impersonateContract } from "../../../utils/contract-test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
+const MockContract = artifacts.require('MockContract');
 
 contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async accounts => {
-    let fAsset: FAssetInstance;
     const governance = accounts[10];
-    const assetManager = accounts[11];
+    let fAsset: FAssetInstance;
+    let assetManager: string;
 
     async function initialize() {
         const fAssetImpl = await FAsset.new();
         const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, "FEthereum", "FETH", "Ethereum", "ETH", 18, { from: governance });
+        const assetManagerMock = await MockContract.new();
+        await assetManagerMock.givenMethodReturnUint(web3.eth.abi.encodeFunctionSignature("fassetFeeForTransfer(uint256)"), 0);
+        await assetManagerMock.givenMethodReturn(web3.eth.abi.encodeFunctionSignature("fassetTransferFeePaid(uint256)"), "0x");
+        assetManager = assetManagerMock.address;
+        await impersonateContract(assetManager, toBNExp(1000, 18), accounts[0]);
         fAsset = await FAsset.at(fAssetProxy.address);
-        return { fAsset };
+        return { fAsset, assetManager };
     }
 
     beforeEach(async () => {
-        ({ fAsset } = await loadFixtureCopyVars(initialize));
+        ({ fAsset, assetManager } = await loadFixtureCopyVars(initialize));
+    });
+
+    after(async () => {
+        await stopImpersonatingAccount(assetManager);
     });
 
     describe("basic tests", () => {
@@ -288,7 +300,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it("should upgrade via upgradeTo", async () => {
             const proxyAddress = fAsset.address;
-            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            const fAssetProxy = await FAsset.at(proxyAddress);
             assertWeb3Equal(await fAsset.symbol(), "FETH");
             // upgrade
             const newFAssetImpl = await FAsset.new();
@@ -303,7 +315,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it("should upgrade via upgradeToAndCall", async () => {
             const proxyAddress = fAsset.address;
-            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            const fAssetProxy = await FAsset.at(proxyAddress);
             assertWeb3Equal(await fAsset.symbol(), "FETH");
             // upgrade
             const newFAssetImpl = await FAsset.new();
@@ -321,7 +333,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it("calling initialize in upgradeToAndCall should fail and pass the revert message to outside", async () => {
             const proxyAddress = fAsset.address;
-            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            const fAssetProxy = await FAsset.at(proxyAddress);
             assertWeb3Equal(await fAsset.symbol(), "FETH");
             // upgrade
             const newFAssetImpl = await FAsset.new();
@@ -331,7 +343,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
         });
 
         it("only asset manager can upgrade", async () => {
-            const fAssetProxy = await FAssetProxy.at(fAsset.address);
+            const fAssetProxy = await FAsset.at(fAsset.address);
             // upgrade
             const newFAssetImpl = await FAsset.new();
             await expectRevert(fAssetProxy.upgradeTo(newFAssetImpl.address), "only asset manager");

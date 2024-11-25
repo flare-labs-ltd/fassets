@@ -5,9 +5,14 @@
     "address": "0xD11CB940C8375c119CAe7b8A75844ec35371F2E0"
   },
   {
-    "name": "StateConnector",
-    "contractName": "StateConnector.sol",
-    "address": "0x0c13aDA1C7143Cf0a0795FFaB93eEBb6FAD6e4e3"
+    "name": "Relay",
+    "contractName": "Relay.sol",
+    "address": "0x92a6E1127262106611e1e129BB64B6D8654273F7"
+  },
+  {
+    "name": "FdcHub",
+    "contractName": "FdcHub.sol",
+    "address": "0x1c78A073E3BD2aCa4cc327d55FB0cD4f0549B55b"
   },
   {
     "name": "FlareDaemon",
@@ -218,12 +223,17 @@
     "mustSwitchToProduction": true
   },
   {
-    "name": "SCProofVerifier",
-    "contractName": "SCProofVerifier.sol",
-    "address": "0xde391cE5122aB3428EDA629C1312f578Fd559Ed2"
+    "name": "FdcVerification",
+    "contractName": "FdcVerification.sol",
+    "address": "0x57a2db68fb40f6C61342FF4beF283AE185eA8E51"
   },
   {
     "name": "PriceReader",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
+  },
+  {
+    "name": "FtsoV2PriceStore",
     "contractName": "FtsoV2PriceStore.sol",
     "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   },
@@ -448,15 +458,5 @@
     "name": "EmergencyPauseFacet",
     "contractName": "EmergencyPauseFacet.sol",
     "address": "0x9421dE62Ed391b0B37Bec6B720661b43DEDB36dd"
-  },
-  {
-    "name": "Relay",
-    "contractName": "Relay.sol",
-    "address": "0x32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
-  },
-  {
-    "name": "FtsoV2PriceStore",
-    "contractName": "FtsoV2PriceStore.sol",
-    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   }
 ]

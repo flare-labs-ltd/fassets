@@ -10,7 +10,7 @@ import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
-import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deploySCProofVerifier, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
+import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
@@ -30,7 +30,6 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await deploySCProofVerifier(hre, contracts);
         await deployPriceReaderV2(hre, contracts);
         await deployAgentOwnerRegistry(hre, contracts);
         await deployUserWhitelist(hre, contracts);
@@ -40,7 +39,7 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
     });
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
+    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and FdcVerification")
     .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
     .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
     .setAction(async ({ managers, deployController, all }, hre) => {

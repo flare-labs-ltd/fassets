@@ -1,7 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
@@ -34,7 +34,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
-    let mockStateConnectorClient: MockStateConnectorClient;
+    let mockFlareDataConnectorClient: MockFlareDataConnectorClient;
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
@@ -45,7 +45,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     beforeEach(async () => {
         ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
-        mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
+        mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
     describe("simple scenarios - creating and converting dust", () => {

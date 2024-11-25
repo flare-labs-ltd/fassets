@@ -89,7 +89,7 @@ export async function verifyAllAssetManagerFacets(hre: HardhatRuntimeEnvironment
 
 async function qualifiedName(contract: Contract) {
     const artifact = await findArtifact(contract.contractName);
-    return `${artifact}:${contract.name}`;
+    return `${artifact}:${contract.contractName.replace(/\.sol$/, "")}`;
 }
 
 async function findArtifact(fname: string) {

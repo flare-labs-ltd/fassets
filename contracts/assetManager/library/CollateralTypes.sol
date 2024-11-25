@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./Globals.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 
 
 library CollateralTypes {
@@ -56,7 +56,7 @@ library CollateralTypes {
         token.minCollateralRatioBIPS = _minCollateralRatioBIPS.toUint32();
         token.ccbMinCollateralRatioBIPS = _ccbMinCollateralRatioBIPS.toUint32();
         token.safetyMinCollateralRatioBIPS = _safetyMinCollateralRatioBIPS.toUint32();
-        emit AMEvents.CollateralRatiosChanged(uint8(_collateralClass), address(_token),
+        emit IAssetManagerEvents.CollateralRatiosChanged(uint8(_collateralClass), address(_token),
             _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
     }
 
@@ -73,7 +73,7 @@ library CollateralTypes {
         require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
         uint256 validUntil = block.timestamp + _invalidationTimeSec;
         token.validUntil = validUntil.toUint64();
-        emit AMEvents.CollateralTypeDeprecated(uint8(_collateralClass), address(_token), validUntil);
+        emit IAssetManagerEvents.CollateralTypeDeprecated(uint8(_collateralClass), address(_token), validUntil);
     }
 
     function setPoolWNatCollateralType(
@@ -167,8 +167,8 @@ library CollateralTypes {
             safetyMinCollateralRatioBIPS: _data.safetyMinCollateralRatioBIPS.toUint32()
         }));
         state.collateralTokenIndex[tokenKey] = newTokenIndex + 1;   // 0 means empty
-        emit AMEvents.CollateralTypeAdded(uint8(_data.collateralClass), address(_data.token), _data.decimals,
-            _data.directPricePair, _data.assetFtsoSymbol, _data.tokenFtsoSymbol,
+        emit IAssetManagerEvents.CollateralTypeAdded(uint8(_data.collateralClass), address(_data.token),
+            _data.decimals, _data.directPricePair, _data.assetFtsoSymbol, _data.tokenFtsoSymbol,
             _data.minCollateralRatioBIPS, _data.ccbMinCollateralRatioBIPS, _data.safetyMinCollateralRatioBIPS);
         return newTokenIndex;
     }

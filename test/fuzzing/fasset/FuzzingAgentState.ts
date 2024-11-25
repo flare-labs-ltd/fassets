@@ -19,7 +19,7 @@ import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated,
-    RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
@@ -152,6 +152,16 @@ export class FuzzingAgentState extends TrackedAgentState {
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
             this.deleteCollateralReservation(args.$event, collateralReservationId);
         }
+    }
+
+    override handleSelfMint(args: EvmEventArgs<SelfMint>) {
+        super.handleSelfMint(args);
+        // update underlying free balance
+        const depositUBA = toBN(args.depositedAmountUBA);
+        this.addUnderlyingBalanceChange(args.$event, 'minting', depositUBA);
+        // update balance tracking
+        const mintFeeAgent = depositUBA.sub(toBN(args.poolFeeUBA));
+        this.addBalanceTrackingRow(args.$event, { requestId: "0", mintAmount: args.mintedAmountUBA, mintFeeAgent: mintFeeAgent, mintFeePool: args.poolFeeUBA });
     }
 
     override handleMintingPaymentDefault(args: EvmEventArgs<MintingPaymentDefault>) {

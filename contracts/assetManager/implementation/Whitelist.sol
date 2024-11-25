@@ -7,6 +7,8 @@ import "../../userInterfaces/IWhitelist.sol";
 
 
 contract Whitelist is IWhitelist, Governed, IERC165 {
+    event ManagerChanged(address manager);
+
     /**
      * When true, governance can remove addresses from whitelist.
      */
@@ -18,7 +20,18 @@ contract Whitelist is IWhitelist, Governed, IERC165 {
      */
     bool public allowAll;
 
+    /**
+     * When nonzero, this is the address that can perform whitelisting operations
+     * instead of the governance.
+     */
+    address public manager;
+
     mapping(address => bool) private whitelist;
+
+    modifier onlyGovernanceOrManager {
+        require(msg.sender == manager || msg.sender == governance(), "only governance or manager");
+        _;
+    }
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportsRevoke)
         Governed(_governanceSettings, _initialGovernance)
@@ -27,23 +40,28 @@ contract Whitelist is IWhitelist, Governed, IERC165 {
         allowAll = false;
     }
 
-    function addAddressToWhitelist(address _address) external onlyImmediateGovernance {
+    function addAddressToWhitelist(address _address) external onlyGovernanceOrManager {
         _addAddressToWhitelist(_address);
     }
 
-    function addAddressesToWhitelist(address[] memory _addresses) external onlyImmediateGovernance {
+    function addAddressesToWhitelist(address[] memory _addresses) external onlyGovernanceOrManager {
         for (uint256 i = 0; i < _addresses.length; i++) {
             _addAddressToWhitelist(_addresses[i]);
         }
     }
 
-    function revokeAddress(address _address) external onlyGovernance {
+    function revokeAddress(address _address) external onlyGovernanceOrManager {
         require(supportsRevoke, "revoke not supported");
         _removeAddressFromWhitelist(_address);
     }
 
     function setAllowAll(bool _allowAll) external onlyGovernance {
         allowAll = _allowAll;
+    }
+
+    function setManager(address _manager) external onlyGovernance {
+        manager = _manager;
+        emit ManagerChanged(_manager);
     }
 
     function isWhitelisted(address _address) public view returns (bool) {

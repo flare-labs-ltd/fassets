@@ -14,14 +14,14 @@ interface ICollateralPoolToken is IERC20 {
         returns (address);
 
     /**
-     * Returns the amount of tokens that is locked for transfering.
+     * Returns the amount of tokens that is locked for transferring.
      */
     function lockedBalanceOf(address _account)
         external view
         returns (uint256);
 
     /**
-     * Returns the amount of tokens that can be transfered.
+     * Returns the amount of tokens that can be transferred.
      */
     function transferableBalanceOf(address _account)
         external view

@@ -7,11 +7,12 @@ import "../../utils/lib/SafeMath64.sol";
 import "../interfaces/IIAgentVault.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
 import "./CollateralTypes.sol";
 import "./AgentCollateral.sol";
+import "./TransferFees.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -106,6 +107,15 @@ library Agents {
         _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
+    function setHandshakeType(
+        Agent.State storage _agent,
+        uint256 _handshakeType
+    )
+        internal
+    {
+        _agent.handshakeType = _handshakeType.toUint32();
+    }
+
     function allocateMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG
@@ -113,6 +123,7 @@ library Agents {
         internal
     {
         _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
+        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function releaseMintedAssets(
@@ -122,6 +133,7 @@ library Agents {
         internal
     {
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function startRedeemingAssets(
@@ -135,7 +147,7 @@ library Agents {
         if (!_poolSelfCloseRedemption) {
             _agent.poolRedeemingAMG += _valueAMG;
         }
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        releaseMintedAssets(_agent, _valueAMG);
     }
 
     function endRedeemingAssets(
@@ -159,9 +171,19 @@ library Agents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         address vaultAddress = _agent.vaultAddress();
-        uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
-        uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
-        emit AMEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
+        uint64 lastTicketId = state.redemptionQueue.lastTicketId;
+        RedemptionQueue.Ticket storage lastTicket = state.redemptionQueue.getTicket(lastTicketId);
+        if (lastTicket.agentVault == vaultAddress) {
+            // last ticket is from the same agent - merge the new ticket with the last
+            lastTicket.valueAMG += _ticketValueAMG;
+            uint256 ticketValueUBA = Conversion.convertAmgToUBA(lastTicket.valueAMG);
+            emit IAssetManagerEvents.RedemptionTicketUpdated(vaultAddress, lastTicketId, ticketValueUBA);
+        } else {
+            // either queue is empty or the last ticket belongs to another agent - create new ticket
+            uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
+            uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
+        emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
+        }
     }
 
     function changeDust(
@@ -173,7 +195,7 @@ library Agents {
         if (_agent.dustAMG == _newDustAMG) return;
         _agent.dustAMG = _newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_newDustAMG);
-        emit AMEvents.DustChanged(_agent.vaultAddress(), dustUBA);
+        emit IAssetManagerEvents.DustChanged(_agent.vaultAddress(), dustUBA);
     }
 
     function increaseDust(

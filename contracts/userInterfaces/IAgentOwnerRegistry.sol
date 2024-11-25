@@ -20,7 +20,8 @@ interface IAgentOwnerRegistry is IWhitelist {
         address indexed managementAddress,
         string name,
         string description,
-        string iconUrl);
+        string iconUrl,
+        string termsOfUseUrl);
 
     /**
      * Return agent owner's name.
@@ -31,7 +32,7 @@ interface IAgentOwnerRegistry is IWhitelist {
         returns (string memory);
 
     /**
-     * Return agent owner's decription.
+     * Return agent owner's description.
      * @param _managementAddress agent owner's management address
      */
     function getAgentDescription(address _managementAddress)
@@ -43,6 +44,14 @@ interface IAgentOwnerRegistry is IWhitelist {
      * @param _managementAddress agent owner's management address
      */
     function getAgentIconUrl(address _managementAddress)
+        external view
+        returns (string memory);
+
+    /**
+     * Return url of the agent's page with terms of use.
+     * @param _managementAddress agent owner's management address
+     */
+    function getAgentTermsOfUseUrl(address _managementAddress)
         external view
         returns (string memory);
 

@@ -5,14 +5,13 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, newAssetManagerController } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
 const MockContract = artifacts.require('MockContract');
 const ERC20Mock = artifacts.require("ERC20Mock");
@@ -32,7 +31,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     let assetManagerMock: AssetManagerMockInstance;
     let collaterals: CollateralType[];
     let fAsset: FAssetInstance;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     const owner = accounts[1];
@@ -73,7 +72,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create FTSOs for nat, stablecoins and asset and set some price
         ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create asset manager controller (don't switch to production)
-        assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
+        assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
@@ -81,8 +80,8 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         // create attestation provider
         const chain = new MockChain(await time.latest());
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager mock (for tests that use AgentVault.new)
         assetManagerMock = await AssetManagerMock.new(wNat.address);
         await assetManagerMock.setCommonOwner(owner);
@@ -310,21 +309,23 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("should claim ftso rewards", async () => {
+    it("should claim rewards", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const rewardManagerMock = await MockContract.new();
-        await agentVault.claimFtsoRewards(rewardManagerMock.address, 5, owner, { from: owner });
+        await agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: owner });
         const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim",
-            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint256" }, { name: "_wrap", type: "bool" }]} as AbiItem,
-            [agentVault.address, owner, 5, false] as any[]);
+            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
+                {components: [{name: "merkleProof", type: "bytes32[]"}, {components: [{name: "rewardEpochId", type: "uint24"}, {name: "beneficiary", type: "bytes20"},
+                {name: "amount",type: "uint120"}, {name: "claimType", type: "uint8"}], name: "body", type: "tuple"}], name: "_proofs",type: "tuple[]"}]} as AbiItem,
+            [agentVault.address, owner, 5, false, []] as any[]);
         const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("cannot claim ftso rewards if not owner", async () => {
+    it("cannot claim rewards if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const rewardManagerMock = await MockContract.new();
-        const claimPromise = agentVault.claimFtsoRewards(rewardManagerMock.address, 5, owner, { from: accounts[2] });
+        const claimPromise = agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: accounts[2] });
         await expectRevert(claimPromise, "only owner");
     });
 
@@ -496,12 +497,11 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     describe("ERC-165 interface identification for Agent Vault Factory", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAgentVaultFactory = artifacts.require("IAgentVaultFactory");
-            const iERC165 = await IERC165.at(contracts.agentVaultFactory.address);
-            const iAgentVaultFactory = await IAgentVaultFactory.at(contracts.agentVaultFactory.address);
-            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iAgentVaultFactory.abi)));
+            const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IAgentVaultFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.agentVaultFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

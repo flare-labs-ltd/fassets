@@ -3,9 +3,9 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import "flare-smart-contracts/contracts/userInterfaces/IVPToken.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IRewardManager.sol";
 import "./ICollateralPool.sol";
 
 interface IAgentVault {
@@ -66,19 +66,19 @@ interface IAgentVault {
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient) external;
 
     /**
-     * Delegate FTSO vote power for a collateral token held in this vault.
+     * Delegate WNat vote power for a collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
     function delegate(IVPToken _token, address _to, uint256 _bips) external;
 
     /**
-     * Undelegate FTSO vote power for a collateral token held in this vault.
+     * Undelegate WNat vote power for a collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
     function undelegateAll(IVPToken _token) external;
 
     /**
-     * Revoke FTSO vote power delegation for a block in the past for a collateral token held in this vault.
+     * Revoke WNat vote power delegation for a block in the past for a collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
     function revokeDelegationAt(IVPToken _token, address _who, uint256 _blockNumber) external;
@@ -96,14 +96,15 @@ interface IAgentVault {
     function undelegateGovernance(IVPToken _token) external;
 
     /**
-     * Claim the FTSO rewards earned by delegating.
-     * Alternatively, you can set a claim executor and then claim directly from FtsoRewardManager.
+     * Claim the rewards earned by delegating.
+     * Alternatively, you can set a claim executor and then claim directly from RewardManager.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256 _lastRewardEpoch,
-        address payable _recipient
+    function claimDelegationRewards(
+        IRewardManager _rewardManager,
+        uint24 _lastRewardEpoch,
+        address payable _recipient,
+        IRewardManager.RewardClaimWithProof[] calldata _proofs
     ) external
         returns (uint256);
 

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
@@ -17,11 +17,12 @@ library RedemptionFailures {
     using AgentCollateral for Collateral.Data;
 
     function redemptionPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _nonPayment,
+        IReferencedPaymentNonexistence.Proof calldata _nonPayment,
         uint64 _redemptionRequestId
     )
         internal
     {
+        require(!_nonPayment.data.requestBody.checkSourceAddresses, "source addresses not supported");
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
@@ -51,8 +52,33 @@ library RedemptionFailures {
         request.status = Redemption.Status.DEFAULTED;
     }
 
+     function rejectedRedemptionPaymentDefault(
+        uint64 _redemptionRequestId
+    )
+        internal
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage agent = Agent.get(request.agentVault);
+        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
+        require(request.rejectionTimestamp != 0, "only rejected redemption");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds <= block.timestamp,
+            "rejected redemption default too early");
+        // We allow only redeemers or agents to trigger rejected redemption default, since they may want
+        // to do it at some particular time. (Agent might want to call default to unstick redemption when
+        // the redeemer is unresponsive.)
+        require(msg.sender == request.redeemer || msg.sender == request.executor || Agents.isOwner(agent, msg.sender),
+            "only redeemer, executor or agent");
+        // pay redeemer in collateral
+        executeDefaultPayment(agent, request, _redemptionRequestId);
+        // pay the executor if the executor called this
+        Redemptions.payOrBurnExecutorFee(request);
+        // delete redemption request at end
+        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+    }
+
     function finishRedemptionWithoutPayment(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _redemptionRequestId
     )
         internal
@@ -101,7 +127,7 @@ library RedemptionFailures {
         Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
+        emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
             _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
     }
 
@@ -126,12 +152,15 @@ library RedemptionFailures {
             // if there is not enough vault collateral, just reduce the payment
             _vaultCollateralWei = Math.min(_vaultCollateralWei, maxVaultCollateralWei);
         } else {
+            bool isRejection = _request.rejectionTimestamp != 0;
             _vaultCollateralWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdAgent.amgToTokenWeiPrice)
-                .mulBips(settings.redemptionDefaultFactorVaultCollateralBIPS);
+                .mulBips(isRejection ? settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS :
+                    settings.redemptionDefaultFactorVaultCollateralBIPS);
             // calculate paid amount and max available amount from the pool
             Collateral.Data memory cdPool = AgentCollateral.poolCollateralData(_agent);
             _poolWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdPool.amgToTokenWeiPrice)
-                .mulBips(settings.redemptionDefaultFactorPoolBIPS);
+                .mulBips(isRejection ? settings.rejectedRedemptionDefaultFactorPoolBIPS :
+                    settings.redemptionDefaultFactorPoolBIPS);
             uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _request.valueAMG);
             // if there is not enough collateral held by agent, pay more from the pool
             if (_vaultCollateralWei > maxVaultCollateralWei) {

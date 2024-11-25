@@ -2,80 +2,95 @@
 pragma solidity 0.8.23;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@flarenetwork/state-connector-protocol/contracts/interface/external/IMerkleRootStorage.sol";
-import "../interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IRelay.sol";
 
 
-contract SCProofVerifier is ISCProofVerifier {
+contract FdcVerificationMock is IFdcVerification {
     using MerkleProof for bytes32[];
 
-    IMerkleRootStorage public immutable merkleRootStorage;
+    IRelay public immutable relay;
+    uint8 public immutable fdcProtocolId;
 
-    constructor(IMerkleRootStorage _merkleRootStorage) {
-        merkleRootStorage = _merkleRootStorage;
+    constructor(IRelay _relay, uint8 _fdcProtocolId) {
+        relay = _relay;
+        fdcProtocolId = _fdcProtocolId;
     }
 
     function verifyPayment(
-        Payment.Proof calldata _proof
+        IPayment.Proof calldata _proof
     )
         external view
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("Payment") &&
             _proof.merkleProof.verifyCalldata(
-                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))
             );
     }
 
     function verifyBalanceDecreasingTransaction(
-        BalanceDecreasingTransaction.Proof calldata _proof
+        IBalanceDecreasingTransaction.Proof calldata _proof
     )
         external view
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("BalanceDecreasingTransaction") &&
             _proof.merkleProof.verifyCalldata(
-                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))
             );
     }
 
     function verifyReferencedPaymentNonexistence(
-        ReferencedPaymentNonexistence.Proof calldata _proof
+        IReferencedPaymentNonexistence.Proof calldata _proof
     )
         external view
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("ReferencedPaymentNonexistence") &&
             _proof.merkleProof.verifyCalldata(
-                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))
             );
     }
 
     function verifyConfirmedBlockHeightExists(
-        ConfirmedBlockHeightExists.Proof calldata _proof
+        IConfirmedBlockHeightExists.Proof calldata _proof
     )
         external view
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("ConfirmedBlockHeightExists") &&
             _proof.merkleProof.verifyCalldata(
-                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))
             );
     }
 
     function verifyAddressValidity(
-        AddressValidity.Proof calldata _proof
+        IAddressValidity.Proof calldata _proof
     )
         external view
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("AddressValidity") &&
             _proof.merkleProof.verifyCalldata(
-                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
+    }
+
+    function verifyEVMTransaction(
+        IEVMTransaction.Proof calldata _proof
+    )
+        external view
+        returns (bool _proved)
+    {
+        return _proof.data.attestationType == bytes32("EVMTransaction") &&
+            _proof.merkleProof.verifyCalldata(
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))
             );
     }

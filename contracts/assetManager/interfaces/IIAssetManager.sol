@@ -5,24 +5,15 @@ import "../../diamond/interfaces/IDiamondCut.sol";
 import "../../governance/interfaces/IGoverned.sol";
 import "../../userInterfaces/IAssetManager.sol";
 import "./IWNat.sol";
+import "./IISettingsManagement.sol";
 
 
 /**
  * Asset Manager methods used internally in AgentVault, CollateralPool and AssetManagerController.
  */
-interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
+interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsManagement {
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings update
-
-    /**
-     * Update all settings with validation.
-     * This method cannot be called directly, it has to be called through assetManagerController.
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function updateSettings(
-        bytes32 _method,
-        bytes calldata _params
-    ) external;
 
     /**
      * When `attached` is true, asset manager has been added to the asset manager controller.
@@ -152,7 +143,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     /**
      * To avoid unlimited work, the maximum number of redemption tickets closed in redemption, self close
      * or liquidation is limited. This means that a single redemption/self close/liquidation is limited.
-     * This function calculates the maximum single rededemption amount.
+     * This function calculates the maximum single redemption amount.
      */
     function maxRedemptionFromAgent(address _agentVault)
         external view
@@ -182,7 +173,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // View functions used internally by agent valt and collateral pool.
+    // View functions used internally by agent vault and collateral pool.
 
     /**
      * Get current WNat contract set in the asset manager.
@@ -222,7 +213,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
 
     /**
      * Check if `_token` is either vault collateral token for `_agentVault` or the pool token.
-     * These types of tokens cannot be simply transfered from the agent vault, but can only be
+     * These types of tokens cannot be simply transferred from the agent vault, but can only be
      * withdrawn after announcement if they are not backing any f-assets.
      * Used internally by agent vault.
      */
@@ -237,5 +228,4 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     function isAgentVaultOwner(address _agentVault, address _address)
         external view
         returns (bool);
-
 }

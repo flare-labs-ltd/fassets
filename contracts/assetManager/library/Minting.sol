@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingBalance.sol";
 import "./CollateralReservations.sol";
@@ -14,18 +14,22 @@ import "./TransactionAttestation.sol";
 
 library Minting {
     using SafePct for *;
+    using SafeCast for *;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;
 
+    enum MintingType { PUBLIC, SELF_MINT, FROM_FREE_UNDERLYING }
+
     function executeMinting(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint64 _crtId
     )
         internal
     {
         CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(_crtId);
+        require(crt.handshakeStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_payment);
@@ -37,6 +41,9 @@ library Minting {
             "invalid minting reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "not minting agent's address");
+        require(crt.sourceAddressesRoot == bytes32(0) ||
+                crt.sourceAddressesRoot == _payment.data.responseBody.sourceAddressesRoot, // handshake was required
+            "invalid minter underlying addresses root");
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
             "minting payment too small");
@@ -45,8 +52,8 @@ library Minting {
         require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, uint256(_payment.data.responseBody.receivedAmount),
-            calculatePoolFee(agent, crt.underlyingFeeUBA));
+        _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
+            uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt.underlyingFeeUBA));
         // pay to executor if they called this method
         uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
         if (msg.sender == crt.executor) {
@@ -55,13 +62,14 @@ library Minting {
             unclaimedExecutorFee = 0;
         }
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
-        Agents.burnDirectNAT(crt.reservationFeeNatWei + unclaimedExecutorFee);
+        CollateralReservations.distributeCollateralReservationFee(agent,
+            crt.reservationFeeNatWei + unclaimedExecutorFee);
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
     }
 
     function selfMint(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault,
         uint64 _lots
     )
@@ -93,11 +101,34 @@ library Minting {
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);  // guarded by require
         if (_lots > 0) {
-            _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
+            _performMinting(agent, MintingType.SELF_MINT, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
         } else {
             UnderlyingBalance.increaseBalance(agent, receivedAmount);
-            emit AMEvents.MintingExecuted(_agentVault, 0, 0, receivedAmount, 0);
+            emit IAssetManagerEvents.SelfMint(_agentVault, false, 0, receivedAmount, 0);
         }
+    }
+
+    function mintFromFreeUnderlying(
+        address _agentVault,
+        uint64 _lots
+    )
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        Agents.requireAgentVaultOwner(agent);
+        Agents.requireWhitelistedAgentVaultOwner(agent);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+        require(state.mintingPausedAt == 0, "minting paused");
+        require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
+        require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
+        uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
+        checkMintingCap(valueAMG);
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
+        uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
+        uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
+        require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
+        _performMinting(agent, MintingType.FROM_FREE_UNDERLYING, 0, msg.sender, valueAMG, 0, poolFeeUBA);
     }
 
     function checkMintingCap(
@@ -127,6 +158,7 @@ library Minting {
 
     function _performMinting(
         Agent.State storage _agent,
+        MintingType _mintingType,
         uint64 _crtId,
         address _minter,
         uint64 _mintValueAMG,
@@ -150,15 +182,22 @@ library Minting {
         Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
         Agents.createRedemptionTicket(_agent, ticketValueAMG);
         Agents.changeDust(_agent, newDustAMG);
-        // update agent balance with deposited amount
+        // update agent balance with deposited amount (received amount is 0 in mintFromFreeUnderlying)
         UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
         // perform minting
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
-        uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
         Globals.getFAsset().mint(_minter, mintValueUBA);
         Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
         _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
         // notify
-        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, mintValueUBA, agentFeeUBA, _poolFeeUBA);
+        if (_mintingType == MintingType.PUBLIC) {
+            uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
+            emit IAssetManagerEvents.MintingExecuted(_agent.vaultAddress(), _crtId,
+                mintValueUBA, agentFeeUBA, _poolFeeUBA);
+        } else {
+            bool fromFreeUnderlying = _mintingType == MintingType.FROM_FREE_UNDERLYING;
+            emit IAssetManagerEvents.SelfMint(_agent.vaultAddress(), fromFreeUnderlying,
+                mintValueUBA, _receivedAmountUBA, _poolFeeUBA);
+        }
     }
 }

@@ -8,10 +8,11 @@ import "../interfaces/ICollateralPoolFactory.sol";
 import "../interfaces/ICollateralPoolTokenFactory.sol";
 import "../interfaces/IAgentVaultFactory.sol";
 import "../interfaces/IIAssetManagerController.sol";
+import "../../utils/interfaces/IUpgradableProxy.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
@@ -34,7 +35,7 @@ library AgentsCreateDestroy {
     }
 
     function claimAddressWithEOAProof(
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         internal
     {
@@ -57,7 +58,7 @@ library AgentsCreateDestroy {
 
     function createAgentVault(
         IIAssetManager _assetManager,
-        AddressValidity.Proof calldata _addressProof,
+        IAddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
         internal
@@ -73,7 +74,7 @@ library AgentsCreateDestroy {
         Agents.requireWhitelisted(ownerManagementAddress);
         // require valid address
         TransactionAttestation.verifyAddressValidity(_addressProof);
-        AddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
+        IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
         require(avb.isValid, "address invalid");
         // create agent vault
         IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(Globals.getSettings().agentVaultFactory);
@@ -108,6 +109,8 @@ library AgentsCreateDestroy {
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
         agent.setPoolTopupTokenPriceFactorBIPS(_settings.poolTopupTokenPriceFactorBIPS);
+        // handshake type
+        agent.setHandshakeType(_settings.handshakeType);
         // add to the list of all agents
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
@@ -134,7 +137,7 @@ library AgentsCreateDestroy {
             agent.status = Agent.Status.DESTROYING;
             uint256 destroyAllowedAt = block.timestamp + settings.withdrawalWaitMinSeconds;
             agent.destroyAllowedAt = destroyAllowedAt.toUint64();
-            emit AMEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
+            emit IAssetManagerEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
         }
         return agent.destroyAllowedAt;
     }
@@ -169,7 +172,21 @@ library AgentsCreateDestroy {
         AgentSettingsUpdater.clearPendingUpdates(agent);
         Agent.deleteStorage(agent);
         // notify
-        emit AMEvents.AgentDestroyed(_agentVault);
+        emit IAssetManagerEvents.AgentDestroyed(_agentVault);
+    }
+
+    function upgradeAgentVaultAndPool(address _agentVault)
+        internal
+        onlyAgentVaultOwner(_agentVault)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        ICollateralPool collateralPool = Agent.get(_agentVault).collateralPool;
+        ICollateralPoolToken collateralPoolToken = collateralPool.poolToken();
+        _upgradeContract(IAgentVaultFactory(settings.agentVaultFactory), _agentVault);
+        _upgradeContract(ICollateralPoolFactory(settings.collateralPoolFactory),
+            address(collateralPool));
+        _upgradeContract(ICollateralPoolTokenFactory(settings.collateralPoolTokenFactory),
+            address(collateralPoolToken));
     }
 
     function isPoolTokenSuffixReserved(string memory _suffix)
@@ -178,6 +195,25 @@ library AgentsCreateDestroy {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.reservedPoolTokenSuffixes[_suffix];
+    }
+
+    function _upgradeContract(
+        IUpgradableContractFactory _factory,
+        address _proxyAddress
+    )
+        private
+    {
+        IUpgradableProxy proxy = IUpgradableProxy(_proxyAddress);
+        address newImplementation = _factory.implementation();
+        address currentImplementation = proxy.implementation();
+        if (currentImplementation != newImplementation) {
+            bytes memory initCall = _factory.upgradeInitCall(_proxyAddress);
+            if (initCall.length > 0) {
+                proxy.upgradeToAndCall(newImplementation, initCall);
+            } else {
+                proxy.upgradeTo(newImplementation);
+            }
+        }
     }
 
     function _createCollateralPool(
@@ -219,7 +255,7 @@ library AgentsCreateDestroy {
         }
     }
 
-    // Basically the same as `emit AMEvents.AgentVaultCreated`.
+    // Basically the same as `emit IAssetManagerEvents.AgentVaultCreated`.
     // Must be a separate method as workaround for EVM 16 stack variables limit.
     function _emitAgentVaultCreated(
         address _ownerManagementAddress,
@@ -230,7 +266,7 @@ library AgentsCreateDestroy {
     )
         private
     {
-        AMEvents.AgentVaultCreationData memory data;
+        IAssetManagerEvents.AgentVaultCreationData memory data;
         data.collateralPool = address(_collateralPool);
         data.collateralPoolToken = address(_collateralPool.poolToken());
         data.vaultCollateralToken = address(_settings.vaultCollateralToken);
@@ -244,7 +280,8 @@ library AgentsCreateDestroy {
         data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
         data.poolTopupCollateralRatioBIPS = _settings.poolTopupCollateralRatioBIPS;
         data.poolTopupTokenPriceFactorBIPS = _settings.poolTopupTokenPriceFactorBIPS;
-        emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
+        data.handshakeType = _settings.handshakeType;
+        emit IAssetManagerEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }
 
     // Returns management owner's address, given either work or management address.

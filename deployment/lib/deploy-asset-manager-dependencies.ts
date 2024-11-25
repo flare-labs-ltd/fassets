@@ -3,20 +3,6 @@ import { FAssetContractStore } from "./contracts";
 import { loadDeployAccounts, waitFinalize, ZERO_ADDRESS } from "./deploy-utils";
 
 
-export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
-    console.log(`Deploying SCProofVerifier`);
-
-    const artifacts = hre.artifacts as Truffle.Artifacts;
-
-    const SCProofVerifier = artifacts.require("SCProofVerifier");
-
-    const { deployer } = loadDeployAccounts(hre);
-
-    const scProofVerifier = await waitFinalize(hre, deployer, () => SCProofVerifier.new(contracts.StateConnector.address, { from: deployer }));
-
-    contracts.add("SCProofVerifier", "SCProofVerifier.sol", scProofVerifier.address);
-}
-
 export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying UserWhitelist`);
 

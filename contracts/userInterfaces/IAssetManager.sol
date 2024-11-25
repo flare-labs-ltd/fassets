@@ -1,23 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../diamond/interfaces/IDiamondLoupe.sol";
-import "../stateConnector/interfaces/ISCProofVerifier.sol";
 import "./data/AssetManagerSettings.sol";
 import "./data/CollateralType.sol";
 import "./data/AgentInfo.sol";
 import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
+import "./data/RedemptionTicketInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
+import "./ITransferFees.sol";
 
 
 /**
  * Asset manager publicly callable methods.
  */
-interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPing, IRedemptionTimeExtension {
+interface IAssetManager is
+    IERC165,
+    IDiamondLoupe,
+    IAssetManagerEvents,
+    IAgentPing,
+    IRedemptionTimeExtension,
+    ITransferFees
+{
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
 
@@ -140,7 +149,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(
-        ConfirmedBlockHeightExists.Proof calldata _proof
+        IConfirmedBlockHeightExists.Proof calldata _proof
     ) external;
 
     /**
@@ -184,7 +193,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     ) external;
 
     /**
@@ -197,7 +206,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @return _agentVault new agent vault address
      */
     function createAgentVault(
-        AddressValidity.Proof calldata _addressProof,
+        IAddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     ) external
         returns (address _agentVault);
@@ -228,6 +237,18 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
     function destroyAgent(
         address _agentVault,
         address payable _recipient
+    ) external;
+
+    /**
+     * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults
+     * automatically get the new implementation from the factory. But the existing agent vaults must
+     * be upgraded by their owners using this method.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault address of the agent's vault; both vault, its corresponding pool, and
+     *  its pool token will be upgraded to the newest implementations
+     */
+    function upgradeAgentVaultAndPool(
+        address _agentVault
     ) external;
 
     /**
@@ -331,7 +352,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _agentVault agent vault address
      */
     function confirmTopupPayment(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault
     ) external;
 
@@ -360,7 +381,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _agentVault agent vault address
      */
     function confirmUnderlyingWithdrawal(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault
     ) external;
 
@@ -527,12 +548,16 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * On success the minter receives instructions for underlying payment (value, fee and payment reference)
-     * in event `CollateralReserved`. Then the minter has to pay `value + fee` on the underlying chain.
-     * If the minter pays the underlying amount, the collateral reservation fee is burned and the minter obtains
+     * If the agent requires handshake, then HandshakeRequired event is emitted and
+     * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
+     * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
+     * If handshake is not required, the minter receives instructions for underlying payment
+     * (value, fee and payment reference) in event CollateralReserved.
+     * Then the minter has to pay `value + fee` on the underlying chain.
+     * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * NOTE: the owner of the agent vault must be on the allowed agent list.
+     * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
@@ -540,13 +565,45 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
      * @param _executor the account that is allowed to execute minting (besides minter and agent)
+     * @param _minterUnderlyingAddresses array of minter's underlying addresses - needed only if handshake is required
      */
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
         uint256 _maxMintingFeeBIPS,
-        address payable _executor
+        address payable _executor,
+        string[] calldata _minterUnderlyingAddresses
     ) external payable;
+
+    /**
+     * Agent approves the collateral reservation request after checking the minter's identity.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _collateralReservationId collateral reservation id
+     */
+    function approveCollateralReservation(
+        uint256 _collateralReservationId
+    ) external;
+
+    /**
+     * Agent rejects the collateral reservation request after checking the minter's identity.
+     * The collateral reservation fee is returned to the minter.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _collateralReservationId collateral reservation id
+     */
+    function rejectCollateralReservation(
+        uint256 _collateralReservationId
+    ) external;
+
+    /**
+     * Minter cancels the collateral reservation request if the agent didn't respond in time.
+     * The collateral reservation fee is returned to the minter.
+     * It can only be called after `cancelCollateralReservationAfterSeconds` from the collateral reservation request.
+     * NOTE: may only be called by the minter.
+     * @param _collateralReservationId collateral reservation id
+     */
+    function cancelCollateralReservation(
+        uint256 _collateralReservationId
+    ) external;
 
     /**
      * Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
@@ -564,6 +621,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
+     * NOTE: In case handshake was required, the payment must be done using only all provided addresses,
+     * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
@@ -571,7 +630,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _collateralReservationId collateral reservation id
      */
     function executeMinting(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint256 _collateralReservationId
     ) external;
 
@@ -579,12 +638,15 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * When the time for the minter to pay the underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects the collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
+     * NOTE: In case handshake was required, the attestation request must be done using `checkSourceAddresses=true`
+     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no handshake required,
+     * the attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
      * @param _collateralReservationId id of a collateral reservation created by the minter
      */
     function mintingPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _proof,
+        IReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _collateralReservationId
     ) external;
 
@@ -601,13 +663,13 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _collateralReservationId
     ) external payable;
 
     /**
-     * Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation
-     * and no collateral reservation fee payment.
+     * Agent can mint against himself.
+     * This is a one-step process, skipping collateral reservation and collateral reservation fee payment.
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: the caller must be a whitelisted agent.
@@ -617,9 +679,23 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _lots number of lots to mint
      */
     function selfMint(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault,
         uint256 _lots
+    ) external;
+
+    /**
+     * If an agent has enough free underlying, they can mint immediatelly without any underlying payment.
+     * This is a one-step process, skipping collateral reservation and collateral reservation fee payment.
+     * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
+     * NOTE: may only be called by the agent vault owner.
+     * NOTE: the caller must be a whitelisted agent.
+     * @param _agentVault agent vault address
+     * @param _lots number of lots to mint
+     */
+    function mintFromFreeUnderlying(
+        address _agentVault,
+        uint64 _lots
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -640,7 +716,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
-     * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
@@ -651,8 +727,30 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         returns (uint256 _redeemedAmountUBA);
 
     /**
-     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
-     * from the state connector. With this, the agent's obligations are fulfiled and they can keep the underlying.
+     * In case agent requires handshake the redemption request can be rejected by the agent.
+     * Any other agent can take over the redemption request.
+     * If no agent takes over the redemption, the redeemer can request the default payment.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectRedemptionRequest(
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
+     * The agent can take over the rejected redemption request - it cannot be rejected again.
+     * NOTE: may only be called by the owner of the agent vault
+     * @param _agentVault agent vault address
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function takeOverRedemptionRequest(
+        address _agentVault,
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
+     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity from the
+     * Flare data connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      * NOTE: also checks that redeemer's address is normalized, so the redeemer must normalize their address,
      *   otherwise it will be rejected!
@@ -660,7 +758,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _redemptionRequestId id of an existing redemption request
      */
     function rejectInvalidRedemption(
-        AddressValidity.Proof calldata _proof,
+        IAddressValidity.Proof calldata _proof,
         uint256 _redemptionRequestId
     ) external;
 
@@ -680,7 +778,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _redemptionRequestId id of an existing redemption request
      */
     function confirmRedemptionPayment(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint256 _redemptionRequestId
     ) external;
 
@@ -689,6 +787,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
+     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the redeemer (= creator of the redemption request),
      *   the executor appointed by the redeemer,
      *   or the agent owner (= owner of the agent vault in the redemption request)
@@ -696,7 +795,21 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _redemptionRequestId id of an existing redemption request
      */
     function redemptionPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _proof,
+        IReferencedPaymentNonexistence.Proof calldata _proof,
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
+     * If the agent rejected the redemption request and no other agent took over the redemption,
+     * the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
+     *   or the agent owner (= owner of the agent vault in the redemption request)
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectedRedemptionPaymentDefault(
         uint256 _redemptionRequestId
     ) external;
 
@@ -711,7 +824,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _redemptionRequestId
     ) external;
 
@@ -722,7 +835,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
-     * @return _closedAmountUBA the actual self-closed amount, may be less then requested if there are not enough
+     * @return _closedAmountUBA the actual self-closed amount, may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function selfClose(
@@ -730,6 +843,39 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         uint256 _amountUBA
     ) external
         returns (uint256 _closedAmountUBA);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Redemption info
+
+    /**
+     * Return (part of) the redemption queue.
+     * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
+     * @param _pageSize the maximum number of redemption tickets to return
+     * @return _queue the (part of) the redemption queue; maximum length is _pageSize
+     * @return _nextRedemptionTicketId works as a cursor - if the _pageSize is reached and there are more tickets,
+     *  it is the first ticket id not returned; if the end is reached, it is 0
+     */
+    function redemptionQueue(
+        uint256 _firstRedemptionTicketId,
+        uint256 _pageSize
+    ) external view
+        returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId);
+
+    /**
+     * Return (part of) the redemption queue for a specific agent.
+     * @param _agentVault the agent vault address of the queried agent
+     * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
+     * @param _pageSize the maximum number of redemption tickets to return
+     * @return _queue the (part of) the redemption queue; maximum length is _pageSize
+     * @return _nextRedemptionTicketId works as a cursor - if the _pageSize is reached and there are more tickets,
+     *  it is the first ticket id not returned; if the end is reached, it is 0
+     */
+    function agentRedemptionQueue(
+        address _agentVault,
+        uint256 _firstRedemptionTicketId,
+        uint256 _pageSize
+    ) external view
+        returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Dust
@@ -812,7 +958,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        BalanceDecreasingTransaction.Proof calldata _transaction,
+        IBalanceDecreasingTransaction.Proof calldata _transaction,
         address _agentVault
     ) external;
 
@@ -826,8 +972,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _agentVault agent vault address
      */
     function doublePaymentChallenge(
-        BalanceDecreasingTransaction.Proof calldata _payment1,
-        BalanceDecreasingTransaction.Proof calldata _payment2,
+        IBalanceDecreasingTransaction.Proof calldata _payment1,
+        IBalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     ) external;
 
@@ -841,7 +987,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _agentVault agent vault address
      */
     function freeBalanceNegativeChallenge(
-        BalanceDecreasingTransaction.Proof[] calldata _payments,
+        IBalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     ) external;
 }

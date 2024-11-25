@@ -53,12 +53,8 @@ nul
 .DS_Store
 
 ## Test deploys info
-deployment/deploys/*
-!deployment/deploys/staging.json
-!deployment/deploys/coston.json
-!deployment/deploys/coston.libraries.json
-!deployment/deploys/coston2.json
-!deployment/deploys/coston2.libraries.json
+deployment/deploys/hardhat*.json
+deployment/deploys/history/hardhat*.json
 
 ## .env
 .env

@@ -2,10 +2,10 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
@@ -20,7 +20,7 @@ library Challenges {
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function illegalPaymentChallenge(
-        BalanceDecreasingTransaction.Proof calldata _payment,
+        IBalanceDecreasingTransaction.Proof calldata _payment,
         address _agentVault
     )
         internal
@@ -68,12 +68,12 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.IllegalPaymentConfirmed(_agentVault, _payment.data.requestBody.transactionId);
+        emit IAssetManagerEvents.IllegalPaymentConfirmed(_agentVault, _payment.data.requestBody.transactionId);
     }
 
     function doublePaymentChallenge(
-        BalanceDecreasingTransaction.Proof calldata _payment1,
-        BalanceDecreasingTransaction.Proof calldata _payment2,
+        IBalanceDecreasingTransaction.Proof calldata _payment1,
+        IBalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     )
         internal
@@ -99,12 +99,12 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.data.requestBody.transactionId,
+        emit IAssetManagerEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.data.requestBody.transactionId,
             _payment2.data.requestBody.transactionId);
     }
 
     function paymentsMakeFreeBalanceNegative(
-        BalanceDecreasingTransaction.Proof[] calldata _payments,
+        IBalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     )
         internal
@@ -117,7 +117,7 @@ library Challenges {
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
-            BalanceDecreasingTransaction.Proof calldata pmi = _payments[i];
+            IBalanceDecreasingTransaction.Proof calldata pmi = _payments[i];
             TransactionAttestation.verifyBalanceDecreasingTransaction(pmi);
             // check there are no duplicate transactions
             for (uint256 j = 0; j < i; j++) {
@@ -147,7 +147,7 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.UnderlyingBalanceTooLow(_agentVault, balanceAfterPayments, requiredBalance);
+        emit IAssetManagerEvents.UnderlyingBalanceTooLow(_agentVault, balanceAfterPayments, requiredBalance);
     }
 
     function _liquidateAndRewardChallenger(

@@ -73,6 +73,9 @@ export class TrackedState {
         this.assetManagerEvent('MintingExecuted').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
         });
+        this.assetManagerEvent('SelfMint').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
+        });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
         });
@@ -142,6 +145,7 @@ export class TrackedState {
         this.assetManagerEvent('MintingExecuted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleMintingExecuted(args));
         this.assetManagerEvent('MintingPaymentDefault').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleMintingPaymentDefault(args));
         this.assetManagerEvent('CollateralReservationDeleted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleCollateralReservationDeleted(args));
+        this.assetManagerEvent('SelfMint').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSelfMint(args));
         // redemption and self-close
         this.assetManagerEvent('RedemptionRequested').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionRequested(args));
         this.assetManagerEvent('RedemptionPerformed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPerformed(args));
@@ -224,6 +228,7 @@ export class TrackedState {
                 poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
                 poolTopupCollateralRatioBIPS: agentInfo.poolTopupCollateralRatioBIPS,
                 poolTopupTokenPriceFactorBIPS: agentInfo.poolTopupTokenPriceFactorBIPS,
+                handshakeType: agentInfo.handshakeType,
             }
         });
         agent.initializeState(agentInfo);

@@ -3,12 +3,13 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interfaces/IICollateralPoolToken.sol";
 import "../interfaces/IICollateralPool.sol";
 
 
-contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
+contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     using SafeCast for uint256;
 
     struct Timelock {
@@ -256,5 +257,23 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IERC20).interfaceId
             || _interfaceId == type(ICollateralPoolToken).interfaceId;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // UUPS proxy upgrade
+
+    function implementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    /**
+     * Upgrade calls can only arrive through asset manager.
+     * See UUPSUpgradeable._authorizeUpgrade.
+     */
+    function _authorizeUpgrade(address /* _newImplementation */)
+        internal virtual override
+    {
+        IIAssetManager assetManager = IICollateralPool(collateralPool).assetManager();
+        require(msg.sender == address(assetManager), "only asset manager");
     }
 }

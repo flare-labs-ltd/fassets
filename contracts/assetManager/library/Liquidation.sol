@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Globals.sol";
 import "./Agents.sol";
 import "./Conversion.sol";
@@ -48,7 +48,9 @@ library Liquidation {
         }
         // upgrade liquidation based on CR and time
         CRData memory cr = getCollateralRatiosBIPS(agent);
-        _liquidationPhase = _upgradeLiquidationPhase(agent, cr);
+        bool liquidationUpgraded;
+        (_liquidationPhase, liquidationUpgraded) = _upgradeLiquidationPhase(agent, cr);
+        require(liquidationUpgraded, "liquidation not started");
         _liquidationStartTs = getLiquidationStartTimestamp(agent);
     }
 
@@ -67,7 +69,7 @@ library Liquidation {
         // calculate both CRs
         CRData memory cr = getCollateralRatiosBIPS(agent);
         // allow one-step liquidation (without calling startLiquidation first)
-        Agent.LiquidationPhase currentPhase = _upgradeLiquidationPhase(agent, cr);
+        (Agent.LiquidationPhase currentPhase,) = _upgradeLiquidationPhase(agent, cr);
         require(currentPhase == Agent.LiquidationPhase.LIQUIDATION, "not in liquidation");
         // liquidate redemption tickets
         (uint64 liquidatedAmountAMG, uint256 payoutC1Wei, uint256 payoutPoolWei) =
@@ -81,12 +83,17 @@ library Liquidation {
             uint256 agentResponsibilityWei = _agentResponsibilityWei(agent, payoutPoolWei);
             _amountPaidPool = Agents.payoutFromPool(agent, msg.sender, payoutPoolWei, agentResponsibilityWei);
         }
+        // if the agent was already safe due to price changes, there should be no LiquidationPerformed event
+        // we do not revert, because it still marks agent as healthy (so there will still be a LiquidationEnded event)
+        if (_liquidatedAmountUBA > 0) {
+            // burn liquidated fassets
+            Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
+            // notify about liquidation
+            emit IAssetManagerEvents.LiquidationPerformed(_agentVault, msg.sender,
+                _liquidatedAmountUBA, _amountPaidC1, _amountPaidPool);
+        }
         // try to pull agent out of liquidation
         endLiquidationIfHealthy(agent);
-        // burn liquidated fassets
-        Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
-        // notify about liquidation
-        emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
     }
 
     // Cancel liquidation, requires that agent is healthy.
@@ -116,7 +123,7 @@ library Liquidation {
             _agent.initialLiquidationPhase = Agent.LiquidationPhase.LIQUIDATION;
         }
         _agent.status = Agent.Status.FULL_LIQUIDATION;
-        emit AMEvents.FullLiquidationStarted(_agent.vaultAddress(), block.timestamp);
+        emit IAssetManagerEvents.FullLiquidationStarted(_agent.vaultAddress(), block.timestamp);
     }
 
     // Cancel liquidation if the agent is healthy.
@@ -139,7 +146,7 @@ library Liquidation {
             _agent.liquidationStartedAt = 0;
             _agent.initialLiquidationPhase = Agent.LiquidationPhase.NONE;
             _agent.collateralsUnderwater = 0;
-            emit AMEvents.LiquidationEnded(_agent.vaultAddress());
+            emit IAssetManagerEvents.LiquidationEnded(_agent.vaultAddress());
         }
     }
 
@@ -255,7 +262,7 @@ library Liquidation {
         CRData memory _cr
     )
         private
-        returns (Agent.LiquidationPhase)
+        returns (Agent.LiquidationPhase, bool)
     {
         Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
         // calculate new phase for both collaterals and if any is underwater, set its flag
@@ -278,13 +285,26 @@ library Liquidation {
             _agent.collateralsUnderwater =
                 (newPhase == newPhaseVault ? Agent.LF_VAULT : 0) | (newPhase == newPhasePool ? Agent.LF_POOL : 0);
             if (newPhase == Agent.LiquidationPhase.CCB) {
-                emit AMEvents.AgentInCCB(_agent.vaultAddress(), block.timestamp);
+                emit IAssetManagerEvents.AgentInCCB(_agent.vaultAddress(), block.timestamp);
             } else {
-                emit AMEvents.LiquidationStarted(_agent.vaultAddress(), block.timestamp);
+                emit IAssetManagerEvents.LiquidationStarted(_agent.vaultAddress(), block.timestamp);
             }
-            return newPhase;
+            return (newPhase, true);
+        } else if (
+            _agent.status == Agent.Status.LIQUIDATION &&
+            _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB &&
+            currentPhase == Agent.LiquidationPhase.LIQUIDATION
+        ) {
+            // If the liquidation starts because CCB time expired and CR didn't go up, then we still want
+            // the LiquidationStarted event to be sent, but it has to be sent just once.
+            // So we reset the initial phase to liquidation and send events.
+            uint256 liquidationStartedAt = _agent.liquidationStartedAt + Globals.getSettings().ccbTimeSeconds;
+            _agent.liquidationStartedAt = liquidationStartedAt.toUint64();
+            _agent.initialLiquidationPhase = Agent.LiquidationPhase.LIQUIDATION;
+            emit IAssetManagerEvents.LiquidationStarted(_agent.vaultAddress(), liquidationStartedAt);
+            return (currentPhase, true);
         }
-        return currentPhase;
+        return (currentPhase, false);
     }
 
     function _performLiquidation(
@@ -304,7 +324,7 @@ library Liquidation {
             _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, Collateral.Kind.POOL));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
-        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG, true);
+        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG, true, false);
         // calculate payouts to liquidator
         _payoutC1Wei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(vaultFactor), _cr.amgToC1WeiPrice);
         _payoutPoolWei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(poolFactor), _cr.amgToPoolWeiPrice);

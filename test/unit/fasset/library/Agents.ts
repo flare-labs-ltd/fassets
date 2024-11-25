@@ -11,7 +11,7 @@ import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerIn
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import {
     TestFtsos, TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts,
@@ -34,7 +34,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     // addresses
@@ -69,17 +69,17 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
     beforeEach(async () => {
-        ({ contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should prove EOA address", async () => {
@@ -148,6 +148,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         assert.notEqual(args.creationData.collateralPoolToken, ZERO_ADDRESS);
         assert.equal(args.creationData.vaultCollateralToken, usdc.address);
         assert.notEqual(args.creationData.collateralPoolToken, contracts.wNat.address);
+        assert.equal(args.creationData.handshakeType, toBN(0));
     });
 
     it("should create agent from owner's work address", async () => {
@@ -306,9 +307,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     }
 
     async function forceProveResponse(attestationType: string, response: ARESBase) {
-        const definition = stateConnectorClient.definitionStore.getDefinitionForDecodedAttestationType(attestationType);
+        const definition = flareDataConnectorClient.definitionStore.getDefinitionForDecodedAttestationType(attestationType);
         const hash = web3.utils.keccak256(web3.eth.abi.encodeParameters([definition!.responseAbi], [response]));
-        await stateConnectorClient.stateConnector.setMerkleRoot(response.votingRound, hash);
+        await flareDataConnectorClient.relay.setMerkleRoot(200, response.votingRound, hash);
     }
 
     it("should require verified proof", async () => {

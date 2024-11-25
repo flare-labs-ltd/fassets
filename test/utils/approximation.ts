@@ -68,8 +68,8 @@ class RelativeApproximation extends Approximation {
     }
 }
 
-export function assertApproximateMatch(value: BNish, expected: Approximation) {
-    return expected.assertMatches(value);
+export function assertApproximateMatch(value: BNish, expected: Approximation, message?: string) {
+    return expected.assertMatches(value, message);
 }
 
 export function assertApproximatelyEqual(value: BNish, expected: BNish, approximationType: 'absolute' | 'relative', maxError: BNish, message?: string) {

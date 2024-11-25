@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { MintingExecuted } from "../../typechain-truffle/IIAssetManager";
+import { MintingExecuted, SelfMint } from "../../typechain-truffle/IIAssetManager";
 import { TrackedAgentState } from "../state/TrackedAgentState";
 import { TrackedState } from "../state/TrackedState";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
@@ -22,6 +22,7 @@ export class LiquidationTrigger extends ActorBase {
         this.state.pricesUpdated.subscribe(() => this.checkAllAgentsForLiquidation());
         // also check for liquidation after every minting
         this.assetManagerEvent('MintingExecuted').subscribe(args => this.handleMintingExecuted(args));
+        this.assetManagerEvent('SelfMint').subscribe(args => this.handleMintingExecuted(args));
     }
 
     async checkAllAgentsForLiquidation() {
@@ -31,7 +32,7 @@ export class LiquidationTrigger extends ActorBase {
         }
     }
 
-    handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
+    handleMintingExecuted(args: EvmEventArgs<MintingExecuted> | EvmEventArgs<SelfMint>) {
         const agent = this.state.getAgent(args.agentVault);
         if (!agent) return;
         this.runner.startThread(async (scope) => {

@@ -3,14 +3,14 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../userInterfaces/data/AssetManagerSettings.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../userInterfaces/IRedemptionTimeExtension.sol";
 import "../library/data/RedemptionTimeExtension.sol";
 import "../library/SettingsUpdater.sol";
 import "../../diamond/library/LibDiamond.sol";
-import "../../diamond/facets/GovernedFacet.sol";
 import "./AssetManagerBase.sol";
 
-contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedFacet, IRedemptionTimeExtension {
+contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtension {
     bytes32 internal constant SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS =
         keccak256("RedemptionTimeExtensionFacet.setRedemptionPaymentExtensionSeconds(uint256)");
 
@@ -28,15 +28,17 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedFacet, IRedem
 
     function setRedemptionPaymentExtensionSeconds(uint256 _value)
         external
-        onlyImmediateGovernance
+        onlyAssetManagerController
     {
-        SettingsUpdater.checkEnoughTimeSinceLastUpdate(SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS);
+        SettingsUpdater.checkEnoughTimeSinceLastUpdate();
+        // validate
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
+        // update
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
-        emit RedemptionPaymentExtensionSecondsChanged(_value);
+        emit IAssetManagerEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);
     }
 
     function redemptionPaymentExtensionSeconds()

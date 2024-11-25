@@ -8,7 +8,7 @@ import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerIn
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
@@ -28,7 +28,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     let agentVault: AgentVaultInstance;
@@ -78,7 +78,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         // perform minting
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [underlyingMinterAddress], { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -119,8 +119,8 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
@@ -131,11 +131,11 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
         agentTxHash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, toWei(1), PaymentReference.redemption(1));
         agentTxProof = await attestationProvider.proveBalanceDecreasingTransaction(agentTxHash, underlyingAgent1);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, agentVault, agentVault2, agentTxHash, agentTxProof };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, agentVault, agentVault2, agentTxHash, agentTxProof };
     };
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, agentVault, agentVault2, agentTxHash, agentTxProof } =
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, agentVault, agentVault2, agentTxHash, agentTxProof } =
             await loadFixtureCopyVars(initialize));
     });
 

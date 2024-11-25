@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
+import { basename, dirname, join } from "path";
 
 export interface Contract {
     name: string;
@@ -7,16 +8,22 @@ export interface Contract {
     mustSwitchToProduction?: boolean;
 }
 
+export interface ContractHistory {
+    name: string;
+    contractName: string;
+    addresses: string[];
+}
+
 export interface FAssetContracts {
     // flare smart contract
     GovernanceSettings: Contract;
     AddressUpdater: Contract;
-    StateConnector: Contract;
     WNat: Contract;
-    FtsoRegistry: Contract;
-    FtsoManager: Contract;
+    Relay: Contract;
+    FdcHub: Contract;
+    FdcVerification?: Contract;
     // fasset
-    SCProofVerifier?: Contract;
+    FtsoV2PriceStore?: Contract;
     AgentVaultFactory?: Contract;
     CollateralPoolFactory?: Contract;
     CollateralPoolTokenFactory?: Contract;
@@ -30,13 +37,32 @@ export type NewContractOptions = Omit<Contract, 'name' | 'contractName' | 'addre
 
 export class ContractStore {
     protected readonly map: Map<string, Contract>;
+    protected readonly history: Map<string, ContractHistory>;
 
     constructor(
         public readonly filename: string,
         public autosave: boolean,
+        public readonly historyFilename: string = ContractStore.historyDefaultFilename(filename),
     ) {
         const list: Contract[] = existsSync(filename) ? JSON.parse(readFileSync(filename).toString()) : [];
-        this.map = new Map(list.map(it => [it.name, it]));
+        this.map = ContractStore.listToMap(list, filename);
+        const historyList: ContractHistory[] = existsSync(historyFilename) ? JSON.parse(readFileSync(historyFilename).toString()) : [];
+        this.history = ContractStore.listToMap(historyList, historyFilename);
+    }
+
+    public static historyDefaultFilename(filename: string) {
+        return join(dirname(filename), "history", basename(filename));
+    }
+
+    public static listToMap<T extends { name: string }>(list: T[], filename: string) {
+        const map: Map<string, T> = new Map();
+        for (const item of list) {
+            if (map.has(item.name)) {
+                throw new Error(`Duplicate constract "${item.name}" in ${filename}`);
+            }
+            map.set(item.name, item);
+        }
+        return map;
     }
 
     public get(name: string) {
@@ -60,8 +86,20 @@ export class ContractStore {
 
     public addContract(contract: Contract) {
         this.map.set(contract.name, contract);
+        this.addHistoryItem(contract);
         if (this.autosave) {
             this.save();
+        }
+    }
+
+    public addHistoryItem({ name, contractName, address }: Contract) {
+        let contractHistory = this.history.get(name);
+        if (contractHistory == null) {
+            contractHistory = { name, contractName, addresses: [] };
+            this.history.set(name, contractHistory);
+        }
+        if (!contractHistory.addresses.includes(address)) {
+            contractHistory.addresses.push(address);
         }
     }
 
@@ -69,8 +107,13 @@ export class ContractStore {
         return Array.from(this.map.values());
     }
 
+    public historyList() {
+        return Array.from(this.history.values());
+    }
+
     public save() {
         writeFileSync(this.filename, JSON.stringify(this.list(), null, 2));
+        writeFileSync(this.historyFilename, JSON.stringify(this.historyList(), null, 2));
     }
 }
 
@@ -78,13 +121,12 @@ export class FAssetContractStore extends ContractStore implements FAssetContract
     // flare smart contract
     get GovernanceSettings() { return this.getRequired('GovernanceSettings'); }
     get AddressUpdater() { return this.getRequired('AddressUpdater'); }
-    get StateConnector() { return this.getRequired('StateConnector'); }
     get WNat() { return this.getRequired('WNat'); }
-    get FtsoRegistry() { return this.getRequired('FtsoRegistry'); }
-    get FtsoManager() { return this.getRequired('FtsoManager'); }
     get Relay() { return this.getRequired('Relay'); }
+    get FdcHub() { return this.getRequired('FdcHub'); }
+    get FdcVerification() { return this.get('FdcVerification'); }
     // fasset
-    get SCProofVerifier() { return this.get('SCProofVerifier'); }
+    get FtsoV2PriceStore() { return this.get('FtsoV2PriceStore'); }
     get AgentVaultFactory() { return this.get('AgentVaultFactory'); }
     get CollateralPoolFactory() { return this.get('CollateralPoolFactory'); }
     get CollateralPoolTokenFactory() { return this.get('CollateralPoolTokenFactory'); }

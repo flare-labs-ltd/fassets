@@ -19,4 +19,14 @@ contract(`MathUtils.sol; ${getTestFile(__filename)};  MathUtils unit tests`, asy
         let result = await mathUtils.roundUp(20, 4);
         expect(result.toNumber()).to.equals(20);
     });
+
+    it("should calculate correctly - sub or zero (positive result)", async () => {
+        let result = await mathUtils.subOrZero(20, 4);
+        expect(result.toNumber()).to.equals(16);
+    });
+
+    it("should calculate correctly - sub or zero (positive result)", async () => {
+        let result = await mathUtils.subOrZero(4, 20);
+        expect(result.toNumber()).to.equals(0);
+    });
 });

@@ -2,9 +2,9 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingBalance.sol";
 import "./TransactionAttestation.sol";
@@ -28,11 +28,11 @@ library UnderlyingWithdrawalAnnouncements {
         agent.announcedUnderlyingWithdrawalId = announcementId;
         agent.underlyingWithdrawalAnnouncedAt = block.timestamp.toUint64();
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
-        emit AMEvents.UnderlyingWithdrawalAnnounced(_agentVault, announcementId, paymentReference);
+        emit IAssetManagerEvents.UnderlyingWithdrawalAnnounced(_agentVault, announcementId, paymentReference);
     }
 
     function confirmUnderlyingWithdrawal(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault
     )
         internal
@@ -67,7 +67,7 @@ library UnderlyingWithdrawalAnnouncements {
                 Agents.convertUSD5ToVaultCollateralWei(agent, settings.confirmationByOthersRewardUSD5));
         }
         // send event
-        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,
+        emit IAssetManagerEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,
             _payment.data.responseBody.spentAmount, _payment.data.requestBody.transactionId);
     }
 
@@ -87,6 +87,6 @@ library UnderlyingWithdrawalAnnouncements {
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // send event
-        emit AMEvents.UnderlyingWithdrawalCancelled(_agentVault, announcementId);
+        emit IAssetManagerEvents.UnderlyingWithdrawalCancelled(_agentVault, announcementId);
     }
 }

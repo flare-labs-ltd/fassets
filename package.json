@@ -28,7 +28,6 @@
     "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile && yarn typechain-prepare && yarn typechain-truffle-v5 && yarn typechain-after",
     "c": "yarn compile && yarn lint",
-    "precompile": "env bash scripts/create-events-interface.sh",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
     "typechain-prepare": "env bash scripts/remove-flattened-duplicates.sh",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info|flattened)/**/+([a-zA-Z0-9_]).json\"",
@@ -68,7 +67,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.9.2",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
-    "@flarenetwork/state-connector-protocol": "1.0.0-beta.3"
+    "flare-smart-contracts-v2": "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git",
+    "@flarenetwork/state-connector-protocol": "1.0.0-beta.6"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",

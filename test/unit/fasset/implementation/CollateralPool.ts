@@ -16,7 +16,7 @@ import { impersonateContract, stopImpersonatingContract, transferWithSuicide } f
 import { MAX_BIPS } from "../../../../lib/utils/helpers";
 import { eventArgs } from "../../../../lib/utils/events/truffle";
 import { requiredEventArgsFrom } from "../../../utils/Web3EventDecoder";
-import { calcGasCost } from "../../../utils/eth";
+import { calcGasCost, calculateReceivedNat } from "../../../utils/eth";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -884,6 +884,39 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBNWithError(debtTokensBefore.mul(freeTokensAfter), debtTokensAfter.mul(freeTokensBefore), tokenBalance.sub(BN_ONE));
         });
 
+        it("should exit and collect fees with recipient", async () => {
+            // account0 enters the pool
+            await collateralPool.enter(0, true, { value: ETH(20), from: accounts[0] });
+            // collateral pool collects fees
+            await givePoolFAssetFees(ETH(10));
+            // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
+            const exitTokens = ETH(10);
+            const poolFees = await collateralPool.totalFAssetFees();
+            const receipt = await collateralPool.exitTo(exitTokens, accounts[2], TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[0] });
+            const holderReceivedNat = await calculateReceivedNat(receipt, accounts[0]);
+            const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
+            const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
+            const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
+            assertEqualBN(holderReceivedNat, BN_ZERO);
+            assertEqualBN(receiverReceivedNat, exitTokens);
+            assertEqualBN(holderReceivedFAssets, BN_ZERO);
+            assertEqualBN(receiverReceivedFAssets, poolFees.divn(2));   // since half tokens are redeemed, expact half fees
+        });
+
+        it("should withdraw fees with recipient", async () => {
+            // account0 enters the pool
+            await collateralPool.enter(0, true, { value: ETH(20), from: accounts[0] });
+            // collateral pool collects fees
+            await givePoolFAssetFees(ETH(10));
+            // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
+            const withdrawFees = ETH(10);
+            const poolFees = await collateralPool.totalFAssetFees();
+            const receipt = await collateralPool.withdrawFeesTo(withdrawFees, accounts[2], { from: accounts[0] });
+            const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
+            const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
+            assertEqualBN(holderReceivedFAssets, BN_ZERO);
+            assertEqualBN(receiverReceivedFAssets, withdrawFees);
+        });
     });
 
     describe("self-close exits", async () => {
@@ -1201,6 +1234,27 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(agentRedemption._amountUBA, requiredFAssets.subn(1));
         });
 
+        it("should self-close exit and collect fees with recipient", async () => {
+            // account0 enters the pool
+            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            // collateral pool collects fees
+            await givePoolFAssetFees(ETH(10));
+            // someone else add some backing
+            await collateralPool.enter(0, false, { value: ETH(3), from: accounts[0] });
+            // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
+            const exitTokens = ETH(10);
+            // const receipt = await collateralPool.exitTo(exitTokens, accounts[2], TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[0] });
+            const receipt = await collateralPool.selfCloseExitTo(exitTokens, true, accounts[2], "underlying_1", ZERO_ADDRESS, { from: accounts[0] });
+            await expectEvent.inTransaction(receipt.tx, assetManager, "AgentRedemptionInCollateral", { _recipient: accounts[2], _amountUBA: ETH(5) });
+            const holderReceivedNat = await calculateReceivedNat(receipt, accounts[0]);
+            const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
+            const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
+            const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
+            assertEqualBN(holderReceivedNat, BN_ZERO);
+            assertEqualBN(receiverReceivedNat, exitTokens);
+            assertEqualBN(holderReceivedFAssets, BN_ZERO);
+            assertEqualBN(receiverReceivedFAssets, ETH(5));   // half fees get redeemed, so expact half fees to be paid out
+        });
     });
 
     describe("externally dealing with fasset debt", async () => {
@@ -1503,12 +1557,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectEvent.inTransaction(resp.tx, distributionToDelegators, "OptedOutOfAirdrop", { account: collateralPool.address });
         });
 
-        it("should claim rewards from ftso reward manager", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
-            await wNat.mintAmount(distributionToDelegators.address, ETH(1));
-            await collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: agent });
-            const collateralPoolBalance = await wNat.balanceOf(collateralPool.address);
-            assertEqualBN(collateralPoolBalance, ETH(1));
+        it("should claim rewards from reward manager", async () => {
+            const rewardManagerMock = await MockContract.new();
+            await collateralPool.claimDelegationRewards(rewardManagerMock.address, 5, [], { from: agent });
+            const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim",
+                inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
+                    {components: [{name: "merkleProof", type: "bytes32[]"}, {components: [{name: "rewardEpochId", type: "uint24"}, {name: "beneficiary", type: "bytes20"},
+                    {name: "amount",type: "uint120"}, {name: "claimType", type: "uint8"}], name: "body", type: "tuple"}], name: "_proofs",type: "tuple[]"}]} as AbiItem,
+                [collateralPool.address, collateralPool.address, 5, true, []] as any[]);
+            const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
+            assert.equal(invocationCount.toNumber(), 1);
         });
 
     });
@@ -1530,39 +1588,34 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("ERC-165 interface identification for CollateralPoolFactory", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const ICollateralPoolFactory = artifacts.require("ICollateralPoolFactory");
-            const iERC165 = await IERC165.at(contracts.collateralPoolFactory.address);
-            const iCollateralPoolFactory = await ICollateralPoolFactory.at(contracts.collateralPoolFactory.address);
-            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(iCollateralPoolFactory.abi)));
+            const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
+            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(ICollateralPoolFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.collateralPoolFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 
     describe("ERC-165 interface identification for CollateralPoolTokenFactory", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const ICollateralPoolTokenFactory = artifacts.require("ICollateralPoolTokenFactory");
-            const iERC165 = await IERC165.at(contracts.collateralPoolTokenFactory.address);
-            const iCollateralPoolTokenFactory = await ICollateralPoolTokenFactory.at(contracts.collateralPoolTokenFactory.address);
-            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(iCollateralPoolTokenFactory.abi)));
+            const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(ICollateralPoolTokenFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.collateralPoolTokenFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 
     describe("ERC-165 interface identification for Collateral Pool Token", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
-            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as any) as any as IERC20Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
+            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
             const ICollateralPoolToken = artifacts.require("ICollateralPoolToken");
-            const iERC165 = await IERC165.at(collateralPoolToken.address);
-            const iERC20 = await IERC20.at(collateralPoolToken.address);
-            const iCollateralPoolToken = await ICollateralPoolToken.at(collateralPoolToken.address);
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iCollateralPoolToken.abi, [iERC20.abi])));
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC20.abi)));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(IERC165)));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(ICollateralPoolToken, [IERC20])));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(IERC20)));
             assert.isFalse(await collateralPoolToken.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
@@ -1622,10 +1675,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(res, "only asset manager");
         });
 
-        it("random address shouldn't be able to claim rewards from ftso reward manager", async () => {
+        it("random address shouldn't be able to claim rewards from reward manager", async () => {
             const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
-            let res = collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: accounts[5] });
+            let res = collateralPool.claimDelegationRewards(distributionToDelegators.address, 0, [], { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
 

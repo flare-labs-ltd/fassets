@@ -7,7 +7,7 @@ import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerIn
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -28,7 +28,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     // addresses
@@ -68,7 +68,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, noExecutorAddress, { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, noExecutorAddress, [underlyingMinterAddress], { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -96,17 +96,17 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should not liquidate if collateral ratio is ok", async () => {
@@ -167,7 +167,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info3.status, 3);
     });
 
-    it("should not do anything if callig startLiquidation twice", async () => {
+    it("should revert if callig startLiquidation twice", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
@@ -181,7 +181,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await fAsset.transfer(liquidatorAddress1, minted.mintedAmountUBA.divn(2), { from: minterAddress1 });
         await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
         await ftsos.asset.setCurrentPrice(toBNExp(3521, 5), 0);
-        await assetManager.startLiquidation(agentVault.address);
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         await assetManager.endLiquidation(agentVault.address);
         const info3 = await assetManager.getAgentInfo(agentVault.address);
@@ -198,8 +198,8 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
-        //Starting liquidation now should not do anything
-        await assetManager.startLiquidation(agentVault.address);
+        //Starting liquidation now should revert, because it can't change status
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 0);
         // act
@@ -317,7 +317,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // act
         await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
         await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 0);
-        await assetManager.startLiquidation(agentVault.address);
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         assertWeb3Equal(info1.status, AgentStatus.NORMAL);

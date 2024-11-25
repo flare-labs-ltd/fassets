@@ -154,7 +154,7 @@ export class FuzzingAgent extends FuzzingActor {
             res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, 0, { from: this.ownerWorkAddress })
                 .catch(e => scope.exitOnExpectedError(e, ['self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old', "self-mint not agent's address"]));
         }
-        const args = requiredEventArgs(res, 'MintingExecuted'); // event must happen even for 0 lots
+        const args = requiredEventArgs(res, 'SelfMint'); // event must happen even for 0 lots
     }
 
     async selfClose(scope: EventScope) {
@@ -362,6 +362,7 @@ export class FuzzingAgent extends FuzzingActor {
             poolExitCollateralRatioBIPS: agentState.poolExitCollateralRatioBIPS,
             poolTopupCollateralRatioBIPS: agentState.poolTopupCollateralRatioBIPS,
             poolTopupTokenPriceFactorBIPS: agentState.poolTopupTokenPriceFactorBIPS,
+            handshakeType: agentState.handshakeType,
         };
         const underlyingAddress = this.agent.underlyingAddress;
         // destroy old agent vault in parallel

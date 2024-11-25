@@ -14,6 +14,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
+     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the redeemer (= creator of the redemption request),
      *   the executor appointed by the redeemer,
      *   or the agent owner (= owner of the agent vault in the redemption request)
@@ -21,12 +22,30 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function redemptionPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _proof,
+        IReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
         external
     {
         RedemptionFailures.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
+    }
+
+    /**
+     * If the agent rejected the redemption request and no other agent took over the redemption,
+     * the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
+     *   or the agent owner (= owner of the agent vault in the redemption request)
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectedRedemptionPaymentDefault(
+        uint256 _redemptionRequestId
+    )
+        external
+    {
+        RedemptionFailures.rejectedRedemptionPaymentDefault(_redemptionRequestId.toUint64());
     }
 
     /**
@@ -40,7 +59,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
         external

@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { expectErrors } from "../../../lib/utils/helpers";
-import { MintingExecuted } from "../../../typechain-truffle/IIAssetManager";
+import { MintingExecuted, SelfMint } from "../../../typechain-truffle/IIAssetManager";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingAgentState } from "./FuzzingAgentState";
@@ -24,6 +24,7 @@ export class FuzzingKeeper extends FuzzingActor {
         this.state.pricesUpdated.subscribe(() => this.checkAllAgentsForLiquidation());
         // also check for liquidation after every minting
         this.assetManagerEvent('MintingExecuted').subscribe(args => this.handleMintingExecuted(args));
+        this.assetManagerEvent('SelfMint').subscribe(args => this.handleMintingExecuted(args));
     }
 
     async checkAllAgentsForLiquidation() {
@@ -33,7 +34,7 @@ export class FuzzingKeeper extends FuzzingActor {
         }
     }
 
-    handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
+    handleMintingExecuted(args: EvmEventArgs<MintingExecuted> | EvmEventArgs<SelfMint>) {
         const agent = this.state.getAgent(args.agentVault);
         if (!agent) {
             this.comment(`Invalid agent address ${args.agentVault}`);

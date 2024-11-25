@@ -19,13 +19,16 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     console.log(`Deploying AssetManagerController`);
 
     const AssetManagerController = artifacts.require("AssetManagerController");
+    const AssetManagerControllerProxy = artifacts.require("AssetManagerControllerProxy");
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const assetManagerController = await waitFinalize(hre, deployer,
-        () => AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address, { from: deployer }));
+    const assetManagerControllerImplAddress = await deployFacet(hre, "AssetManagerControllerImplementation", contracts, deployer, "AssetManagerController");
+    const assetManagerControllerProxy = await waitFinalize(hre, deployer,
+        () => AssetManagerControllerProxy.new(assetManagerControllerImplAddress, contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address, { from: deployer }));
+    const assetManagerController = await AssetManagerController.at(assetManagerControllerProxy.address);
 
-    contracts.add("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
+    contracts.add("AssetManagerController", "AssetManagerControllerProxy.sol", assetManagerController.address, { mustSwitchToProduction: true });
 
     // add asset managers before switching to production governance
     for (const parameterFile of managerParameterFiles) {
@@ -83,6 +86,18 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
         },
         { execute: true, verbose: false });
 
+    await deployCutsOnDiamond(hre, contracts,
+        {
+            diamond: assetManager.address,
+            facets: [{ contract: "TransferFeeFacet", exposedInterfaces: ["ITransferFees"] }],
+            init: {
+                contract: "TransferFeeFacet",
+                method: "initTransferFeeFacet",
+                args: [parameters.transferFeeMillionths, parameters.transferFeeClaimFirstEpochStartTs, parameters.transferFeeClaimEpochDurationSeconds, parameters.transferFeeClaimMaxUnexpiredEpochs]
+            },
+        },
+        { execute: true, verbose: false });
+
     // everything from IIAssetManager must be implemented now
     await checkAllAssetManagerMethodsImplemented(hre, assetManager.address);
 
@@ -130,9 +145,6 @@ export function convertCollateralType(contracts: FAssetContractStore, parameters
 }
 
 export function createAssetManagerSettings(contracts: FAssetContractStore, parameters: AssetManagerParameters, fAsset: FAssetInstance): AssetManagerSettings {
-    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
-        throw new Error("Missing contracts");
-    }
     const ten = new BN(10);
     const assetUnitUBA = ten.pow(new BN(parameters.assetDecimals));
     const assetMintingGranularityUBA = ten.pow(new BN(parameters.assetDecimals - parameters.assetMintingDecimals));
@@ -142,7 +154,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         agentVaultFactory: contracts.getAddress(parameters.agentVaultFactory ?? 'AgentVaultFactory'),
         collateralPoolFactory: contracts.getAddress(parameters.collateralPoolFactory ?? 'CollateralPoolFactory'),
         collateralPoolTokenFactory: contracts.getAddress(parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
-        scProofVerifier: contracts.getAddress(parameters.scProofVerifier ?? 'SCProofVerifier'),
+        fdcVerification: contracts.getAddress(parameters.fdcVerification ?? 'FdcVerification'),
         priceReader: contracts.getAddress(parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? contracts.getAddress(parameters.userWhitelist) : ZERO_ADDRESS,
         agentOwnerRegistry: contracts.getAddress(parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
@@ -191,6 +203,11 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
+        cancelCollateralReservationAfterSeconds: parameters.cancelCollateralReservationAfterSeconds,
+        rejectRedemptionRequestWindowSeconds: parameters.rejectRedemptionRequestWindowSeconds,
+        takeOverRedemptionRequestWindowSeconds: parameters.takeOverRedemptionRequestWindowSeconds,
+        rejectedRedemptionDefaultFactorVaultCollateralBIPS: parameters.rejectedRedemptionDefaultFactorVaultCollateralBIPS,
+        rejectedRedemptionDefaultFactorPoolBIPS: parameters.rejectedRedemptionDefaultFactorPoolBIPS,
     };
 }
 

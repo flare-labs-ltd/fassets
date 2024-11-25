@@ -3,11 +3,11 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
 import "./TransactionAttestation.sol";
@@ -21,7 +21,7 @@ library UnderlyingBalance {
     using Agent for Agent.State;
 
     function confirmTopupPayment(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault
     )
         internal
@@ -39,7 +39,8 @@ library UnderlyingBalance {
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
         increaseBalance(agent, amountUBA.toUint128());
-        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId, amountUBA);
+        emit IAssetManagerEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId,
+            amountUBA);
     }
 
     function updateBalance(
@@ -51,11 +52,11 @@ library UnderlyingBalance {
         int256 newBalance = _agent.underlyingBalanceUBA + _balanceChange;
         uint256 requiredBalance = requiredUnderlyingUBA(_agent);
         if (newBalance < requiredBalance.toInt256()) {
-            emit AMEvents.UnderlyingBalanceTooLow(_agent.vaultAddress(), newBalance, requiredBalance);
+            emit IAssetManagerEvents.UnderlyingBalanceTooLow(_agent.vaultAddress(), newBalance, requiredBalance);
             Liquidation.startFullLiquidation(_agent);
         }
         _agent.underlyingBalanceUBA = newBalance.toInt128();
-        emit AMEvents.UnderlyingBalanceChanged(_agent.vaultAddress(), _agent.underlyingBalanceUBA);
+        emit IAssetManagerEvents.UnderlyingBalanceChanged(_agent.vaultAddress(), _agent.underlyingBalanceUBA);
     }
 
     // Like updateBalance, but it can never make balance negative and trigger liquidation.
@@ -67,7 +68,7 @@ library UnderlyingBalance {
         internal
     {
         _agent.underlyingBalanceUBA += _balanceIncrease.toInt256().toInt128();
-        emit AMEvents.UnderlyingBalanceChanged(_agent.vaultAddress(), _agent.underlyingBalanceUBA);
+        emit IAssetManagerEvents.UnderlyingBalanceChanged(_agent.vaultAddress(), _agent.underlyingBalanceUBA);
     }
 
     // The minimum underlying balance that has to be held by the agent. Below this, agent is liquidated.

@@ -28,6 +28,8 @@
 
 **CollateralReservationDeleted** - Both minter and agent failed to present any proof within attestation time window, so the agent called `unstickMinting` to release reserved collateral.
 
+**SelfMint** - Agent performed self minting, either by executing selfMint with underlying deposit or by executing mintFromFreeUnderlying (in this case, `mintFromFreeUnderlying` is true and `depositedAmountUBA` is zero).
+
 **RedemptionRequested** - Redeemer started the redemption process and provided fassets. The amount of fassets corresponding to valueUBA was burned. Several RedemptionRequested events are emitted, one for every agent redeemed against (but multiple tickets for the same agent are combined). The agent's collateral is still locked.
 
 **RedemptionRequestIncomplete** - In case there were not enough tickets or more than allowed number would have to be redeemed, only partial redemption is done and the `remainingLots` lots of the fassets are returned to the redeemer.

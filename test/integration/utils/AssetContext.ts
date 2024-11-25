@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AgentOwnerRegistryEvents, AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
@@ -8,15 +8,15 @@ import { TokenPriceReader } from "../../../lib/state/TokenPrice";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
+import { IFlareDataConnectorClient } from "../../../lib/underlying-chain/interfaces/IFlareDataConnectorClient";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, BNish, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { AgentOwnerRegistryInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { createTestCollaterals, createTestSettings } from "../../utils/test-settings";
+import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
+import { createTestCollaterals, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -27,6 +27,7 @@ const Whitelist = artifacts.require('Whitelist');
 export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
+    testSettings?: TestSettingOptions;
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
@@ -41,7 +42,7 @@ export class AssetContext implements IAssetContext {
         public chainInfo: TestChainInfo,
         public chain: IBlockChain,
         public chainEvents: UnderlyingChainEvents,
-        public stateConnectorClient: IStateConnectorClient,
+        public flareDataConnectorClient: IFlareDataConnectorClient,
         public attestationProvider: AttestationHelper,
         public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public agentOwnerRegistry: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>,
@@ -56,11 +57,12 @@ export class AssetContext implements IAssetContext {
     governance = this.common.governance;
     addressUpdater = this.common.addressUpdater;
     assetManagerController = this.common.assetManagerController;
-    stateConnector = this.common.stateConnector;
+    relay = this.common.relay;
+    fdcHub = this.common.fdcHub;
     agentVaultFactory = this.common.agentVaultFactory;
     collateralPoolFactory = this.common.collateralPoolFactory;
     collateralPoolTokenFactory = this.common.collateralPoolTokenFactory;
-    scProofVerifier = this.common.scProofVerifier;
+    fdcVerification = this.common.fdcVerification;
     priceReader = this.common.priceReader;
     priceStore = this.common.priceStore;
     natInfo = this.common.natInfo;
@@ -143,6 +145,15 @@ export class AssetContext implements IAssetContext {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.attestationWindowSeconds());
         await this.assetManager.updateCurrentBlock(proof);
         return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
+    }
+
+    async transferFAsset(from: string, to: string, amount: BNish, addFee: boolean = false) {
+        const res = addFee
+            ? await this.fAsset.transferExactDest(to, amount, { from })
+            : await this.fAsset.transfer(to, amount, { from });
+        const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
+        assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
+        return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };
     }
 
     attestationWindowSeconds() {
@@ -233,6 +244,17 @@ export class AssetContext implements IAssetContext {
         return governanceVotePower;
     }
 
+    async getRedemptionQueue(pageSize: BNish) {
+        const result: RedemptionTicketInfo[] = [];
+        let firstTicketId = BN_ZERO;
+        do {
+            const { 0: chunk, 1: nextId } = await this.assetManager.redemptionQueue(firstTicketId, pageSize);
+            result.splice(result.length, 0, ...chunk);
+            firstTicketId = nextId;
+        } while (!firstTicketId.eqn(0));
+        return result;
+    }
+
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {
         // create mock chain
         const chain = new MockChain(await time.latest());
@@ -240,21 +262,21 @@ export class AssetContext implements IAssetContext {
         // chain event listener
         const chainEvents = new UnderlyingChainEvents(chain, chain /* as IBlockChainEvents */, null);
         // create mock attestation provider
-        const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
-        const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
+        const flareDataConnectorClient = new MockFlareDataConnectorClient(common.fdcHub, common.relay, { [chainInfo.chainId]: chain }, 'on_wait');
+        const attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainInfo.chainId);
         // create allow-all agent owner registry
         const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance, true);
         await agentOwnerRegistry.setAllowAll(true, { from: common.governance });
         // create collaterals
         const testSettingsContracts = { ...common, agentOwnerRegistry };
         // create settings
-        const settings = createTestSettings(testSettingsContracts, chainInfo);
+        const settings = createTestSettings(testSettingsContracts, chainInfo, options.testSettings);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol);
         // collect
-        return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider,
+        return new AssetContext(common, chainInfo, chain, chainEvents, flareDataConnectorClient, attestationProvider,
             options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);
     }
 }

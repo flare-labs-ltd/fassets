@@ -2,9 +2,9 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IRewardManager.sol";
 import "./ICollateralPoolToken.sol";
 
 
@@ -94,9 +94,62 @@ interface ICollateralPool {
 
     /**
      * Collect f-asset fees by locking an appropriate ratio of transferable tokens
-     * @param _amount  The amount of f-asset fees to withdraw
+     * @param _amount  The amount of f-asset fees to withdraw.
+     *                 Must be positive and smaller or equal to the sender's fAsset fees.
      */
     function withdrawFees(uint256 _amount) external;
+
+    /**
+     * Exits the pool by redeeming the given amount of pool tokens for a share of NAT and f-asset fees.
+     * Exiting with non-transferable tokens awards the user with NAT only, while transferable tokens also entitle
+     * one to a share of f-asset fees. As there are multiple ways to split spending transferable and
+     * non-transferable tokens, the method also takes a parameter called `_exitType`.
+     * Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
+     *  will revert. In that case, see selfCloseExit.
+     * @param _tokenShare   The amount of pool tokens to be redeemed
+     * @param _recipient    The address to which NATs and FAsset fees will be transfered
+     * @param _exitType     The ratio used to redeem transferable and non-transferable tokens
+     */
+    function exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
+        external
+        returns (uint256 _natShare, uint256 _fassetShare);
+
+    /**
+     * Exits the pool by redeeming the given amount of pool tokens and burning f-assets in a way that doesn't
+     * endanger the pool collateral ratio. Specifically, if pool's collateral ratio is above exit CR, then
+     * the method burns an amount of user's f-assets that do not lower collateral ratio below exit CR. If, on
+     * the other hand, collateral pool is below exit CR, then the method burns an amount of user's f-assets
+     * that preserve the pool's collateral ratio.
+     * F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
+     *  `_redeemToCollateral` value.
+     * Method first tries to satisfy the condition by taking f-assets out of sender's f-asset fee share,
+     *  specified by `_tokenShare`. If it is not enough it moves on to spending total sender's f-asset fees. If they
+     *  are not enough, it takes from the sender's f-asset balance. Spending sender's f-asset fees means that
+     *  transferable tokens are converted to non-transferable.
+     * In case of self-close via redemption, the user can set executor to trigger possible default.
+     * In this case, some NAT can be sent with transaction, to pay the executor's fee.
+     * @param _tokenShare                   The amount of pool tokens to be liquidated
+     * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
+     *                                      by the agent
+     * @param _recipient                    The address to which NATs and FAsset fees will be transfered
+     * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
+     * @param _executor                     The account that is allowed to execute redemption default
+     */
+    function selfCloseExitTo(
+        uint256 _tokenShare,
+        bool _redeemToCollateral,
+        address payable _recipient,
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
+    ) external payable;
+
+    /**
+     * Collect f-asset fees by locking an appropriate ratio of transferable tokens
+     * @param _amount       The amount of f-asset fees to withdraw.
+     *                      Must be positive and smaller or equal to the sender's fAsset fees.
+     * @param _recipient    The address to which FAsset fees will be transfered
+     */
+    function withdrawFeesTo(uint256 _amount, address _recipient) external;
 
     /**
      * Unlock pool tokens by paying f-asset fee debt
@@ -123,30 +176,26 @@ interface ICollateralPool {
     ) external;
 
     /**
-     * Delegate FTSO vote power for the wrapped native tokens held in this vault.
+     * Delegate WNat vote power for the wrapped native tokens held in this vault.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
      */
     function delegate(address _to, uint256 _bips) external;
 
     /**
-     * Clear FTSO delegation.
+     * Clear WNat delegation.
      */
     function undelegateAll() external;
 
     /**
-     * Claim the FTSO rewards earned by delegating the vote power for the pool.
+     * Claim the rewards earned by delegating the vote power for the pool.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
      */
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256 _lastRewardEpoch
+    function claimDelegationRewards(
+        IRewardManager _rewardManager,
+        uint24 _lastRewardEpoch,
+        IRewardManager.RewardClaimWithProof[] calldata _proofs
     ) external
         returns(uint256 _claimedAmount);
-
-    /**
-     * In case of f-asset termination, withdraw all of sender's collateral
-     */
-    function withdrawCollateralWhenFAssetTerminated() external;
 
     /**
      * Get the ERC20 pool token used by this collateral pool
