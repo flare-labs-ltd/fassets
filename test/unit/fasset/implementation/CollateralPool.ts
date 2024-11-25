@@ -8,7 +8,7 @@ import {
     CollateralPoolInstance, CollateralPoolTokenInstance,
     DistributionToDelegatorsInstance,
     ERC20MockInstance,
-    IERC20Contract, IERC165Contract
+    IERC165Contract
 } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";

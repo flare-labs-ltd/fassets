@@ -95,4 +95,18 @@ contract AgentInfoFacet is AssetManagerBase {
     {
         return AgentsExternal.getLiquidationFactorsAndMaxAmount(_agentVault);
     }
+
+    function getAgentMinPoolCollateralRatioBIPS(address _agentVault)
+        external view
+        returns (uint256)
+    {
+        return AgentsExternal.getMinCollateralRatioBIPS(_agentVault, Collateral.Kind.POOL);
+    }
+
+    function getAgentMinVaultCollateralRatioBIPS(address _agentVault)
+        external view
+        returns (uint256)
+    {
+        return AgentsExternal.getMinCollateralRatioBIPS(_agentVault, Collateral.Kind.VAULT);
+    }
 }

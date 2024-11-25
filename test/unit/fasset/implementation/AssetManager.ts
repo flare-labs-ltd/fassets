@@ -6,7 +6,7 @@ import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
@@ -2562,7 +2562,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await time.increase(toBN(minUpdateTime).subn(2));
             const promise = assetManager.setMinUpdateRepeatTimeSeconds(91000, { from: assetManagerController });
             await expectRevert(promise, "too close to previous update");
-            await time.increase(90000 - minUpdateTime + 1);
+            await time.increase(90000 - Number(minUpdateTime) + 1);
             await assetManager.setMinUpdateRepeatTimeSeconds(91000, { from: assetManagerController });
         });
 
@@ -3025,6 +3025,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 expect(liquidationPaymentFactorPoolBIPS.toString()).to.equal("0");
                 expect(maxLiquidationAmountUBA.toString()).to.equal("0");
             })
+            it("should get agent's minimum collateral ratios", async () => {
+                const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+                const info = await assetManager.getAgentInfo(agentVault.address);
+                const minVaultCR = await assetManager.getAgentMinVaultCollateralRatioBIPS(agentVault.address);
+                const vaultToken = collaterals.filter(x => x.token == info.vaultCollateralToken)[0];
+                expect(minVaultCR.toString()).to.equal(vaultToken.minCollateralRatioBIPS.toString());
+                const minPoolCR = await assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault.address);
+                const poolToken = collaterals.filter(x => x.token == wNat.address)[0];
+                expect(minPoolCR.toString()).to.equal(poolToken.minCollateralRatioBIPS.toString());
+        })
         })
 
         describe("emergency pause", () => {

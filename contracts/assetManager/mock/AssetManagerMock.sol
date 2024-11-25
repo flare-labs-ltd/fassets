@@ -21,6 +21,7 @@ contract AssetManagerMock {
     uint256 public assetPriceMul = 1;
     uint256 public assetPriceDiv = 2;
     uint256 public lotSize = 1;
+    uint public minPoolCollateralRatioBIPS = 0;
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -116,6 +117,10 @@ contract AssetManagerMock {
         return fasset;
     }
 
+    function getAgentMinPoolCollateralRatioBIPS(address /* _agentVault */) external view returns (uint256) {
+        return minPoolCollateralRatioBIPS;
+    }
+
     /////////////////////////////////////////////////////////////////////////////
     // artificial setters for testing
 
@@ -134,5 +139,9 @@ contract AssetManagerMock {
 
     function setTimelockDuration(uint256 _timelockDuration) external {
         timelockDuration = _timelockDuration;
+    }
+
+    function setMinPoolCollateralRatioBIPS(uint256 _minPoolCollateralRatioBIPS) external {
+        minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS;
     }
 }

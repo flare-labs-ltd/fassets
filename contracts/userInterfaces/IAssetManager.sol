@@ -485,6 +485,20 @@ interface IAssetManager is
             uint256 maxLiquidationAmountUBA
         );
 
+    /**
+     * Return the minimum collateral ratio of the pool collateral owned by vault `_agentVault`.
+     */
+    function getAgentMinPoolCollateralRatioBIPS(address _agentVault)
+        external view
+        returns (uint256);
+
+    /**
+     * Return the minimum collateral ratio of the vault collateral owned by vault `_agentVault`.
+     */
+    function getAgentMinVaultCollateralRatioBIPS(address _agentVault)
+        external view
+        returns (uint256);
+
     ////////////////////////////////////////////////////////////////////////////////////
     // List of available agents (i.e. publicly available for minting).
 

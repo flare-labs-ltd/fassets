@@ -271,4 +271,12 @@ library AgentsExternal {
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         return Liquidation.getLiquidationFactorsAndMaxAmount(agent, cr);
     }
+
+    function getMinCollateralRatioBIPS(address _agentVault, Collateral.Kind _kind)
+        internal view
+        returns (uint256)
+    {
+        (, uint256 sysMinCR) = AgentCollateral.mintingMinCollateralRatio(Agent.get(_agentVault), _kind);
+        return sysMinCR;
+    }
 }

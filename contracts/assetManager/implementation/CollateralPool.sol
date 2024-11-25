@@ -27,6 +27,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     using SafeERC20 for IWNat;
 
     struct AssetData {
+        uint256 exitCR;
         uint256 poolTokenSupply;
         uint256 agentBackedFAsset;
         uint256 poolNatBalance;
@@ -239,7 +240,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             _transferWNat(_recipient, natShare);
             return (natShare, 0);
         }
-        require(_staysAboveCR(assetData, natShare, exitCollateralRatioBIPS),
+        require(_staysAboveCR(assetData, natShare, assetData.exitCR),
             "collateral ratio falls below exitCR");
         (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare) = _getDebtAndFreeFAssetFeesFromTokenShare(
             assetData, msg.sender, _tokenShare, _exitType);
@@ -545,18 +546,18 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         AssetData memory _assetData,
         uint256 _natShare
     )
-        internal view
+        internal pure
         returns (uint256)
     {
         // calculate f-assets required for CR to stay above min(exitCR, poolCR) when taking out _natShare
         // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
         // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
-        if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
+        if (_staysAboveCR(_assetData, 0, _assetData.exitCR)) {
             // f-asset required for CR to stay above exitCR (might not be needed)
             // solve (N - n) / (p / q (F - f)) >= cr get f = max(0, F - q (N - n) / (p cr))
             return MathUtils.subOrZero(_assetData.agentBackedFAsset, _assetData.assetPriceDiv *
                 (_assetData.poolNatBalance - _natShare) * SafePct.MAX_BIPS /
-                (_assetData.assetPriceMul * exitCollateralRatioBIPS)
+                (_assetData.assetPriceMul * _assetData.exitCR)
             ); // _assetPriceMul > 0, exitCR > 1
         } else {
             // f-asset that preserves pool CR (assume poolNatBalance >= natShare > 0)
@@ -569,18 +570,18 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         AssetData memory _assetData,
         uint256 _fAssetShare
     )
-        internal view
+        internal pure
         returns (uint256)
     {
         // calculate nat required to keep CR above min(exitCR, poolCR) when taking out _fAssetShare
         // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
         // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
-        if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
+        if (_staysAboveCR(_assetData, 0, _assetData.exitCR)) {
             // nat required for CR to stay above exitCR (might not be needed)
             // solve (N - n) / (p / q (F - f)) >= cr get n = max(0, N - p (F - f) cr / q)
             return MathUtils.subOrZero(_assetData.poolNatBalance,
                 (_assetData.assetPriceMul * (_assetData.agentBackedFAsset - _fAssetShare))
-                .mulBips(exitCollateralRatioBIPS) / _assetData.assetPriceDiv
+                .mulBips(_assetData.exitCR) / _assetData.assetPriceDiv
             );
         } else {
             // nat that preserves pool CR (agentBackedFAsset > 0 otherwise else path not taken)
@@ -654,6 +655,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 _totalFAssetFees = totalFAssetFees;
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         return AssetData({
+            exitCR: _safeExitCollateralRatioBIPS(),
             poolTokenSupply: token.totalSupply(),
             agentBackedFAsset: assetManager.getFAssetsBackedByPool(agentVault),
             poolNatBalance: totalCollateral,
@@ -662,6 +664,15 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             assetPriceMul: assetPriceMul,
             assetPriceDiv: assetPriceDiv
         });
+    }
+
+    // if governance changes `minPoolCollateralRatioBIPS` it can be higher than `exitCollateralRatioBIPS`
+    function _safeExitCollateralRatioBIPS()
+        internal view
+        returns (uint256)
+    {
+        uint256 minPoolCollateralRatioBIPS = assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault);
+        return Math.max(minPoolCollateralRatioBIPS, exitCollateralRatioBIPS);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
