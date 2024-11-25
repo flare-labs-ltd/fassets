@@ -52,7 +52,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
 
-    const fAssetImplAddress = await deployFacet(hre, "FAsset", contracts, deployer);
+    const fAssetImplAddress = await deployFacet(hre, "FAssetImplementation", contracts, deployer, "FAsset");
     const fAssetProxy = await waitFinalize(hre, deployer,
         () => FAssetProxy.new(fAssetImplAddress, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
     const fAsset = await FAsset.at(fAssetProxy.address);
