@@ -245,218 +245,238 @@
   {
     "name": "AgentOwnerRegistry",
     "contractName": "AgentOwnerRegistry.sol",
-    "address": "0x090a3E40E9E1e0Acfc5D78Ed201Ef25Deb3aB8C1",
+    "address": "0x48985D96B5758285cB2c1A528c02da08BB874651",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x91bf8625cd844c52F4431dB141fd80930a360B6a",
+    "address": "0x009049fd8d9921e0De5a8a562bC2f880419B397d",
     "mustSwitchToProduction": true
   },
   {
     "name": "AgentVaultProxyImplementation",
     "contractName": "AgentVault.sol",
-    "address": "0x83084520DcA7fBa41799EFD8671E3d1a61d5CDf7"
+    "address": "0xF8216fCda0Dd7b759f4B1240AD1A76A3E937d26a"
   },
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0xf6CE28FaD8fb81FB0B2f173A5bA83b493BE714F1"
+    "address": "0x3F6349e2dC845ce561065a3E93ef536C228376E8"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
     "contractName": "CollateralPoolToken.sol",
-    "address": "0x55e986572b7f9788Dd93dAfC4e1b321E2de5f2a4"
+    "address": "0xaa5D44B0D9156D186CC6e4F1EF596fBa1b0e0258"
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0x50d9e61bb25Ae20D4BA4cf561e2477f7322Bb0F8"
+    "address": "0xCf1bF872C15D094f2A71A0D8Bbf724B49E315FE7"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x8e55f0FB69bC33B806Dd4b6ceBafdD3a0124E7E9"
+    "address": "0x19160eaF63942aB273CA77aa0A354F1e18103eF4"
   },
   {
     "name": "CollateralPoolTokenFactory",
     "contractName": "CollateralPoolTokenFactory.sol",
-    "address": "0x1EAc8D6308a060B2ae5be6D120eFD01d693F97AA"
+    "address": "0x68F88E92f5C31E6bac63F1Ef8bAA1988767997Be"
+  },
+  {
+    "name": "AssetManagerControllerImplementation",
+    "contractName": "AssetManagerController.sol",
+    "address": "0x493aaBd1f34e64b987F9a11C7De36B65418795Ce"
   },
   {
     "name": "AssetManagerController",
-    "contractName": "AssetManagerController.sol",
-    "address": "0x98Ee34e84f58F7054D21146cD03ee9FE9305131d",
+    "contractName": "AssetManagerControllerProxy.sol",
+    "address": "0x8f3f0a0Aa5F6aa754Dfcb7E6c7080225aeEd8F7F",
     "mustSwitchToProduction": true
   },
   {
-    "name": "FAsset",
+    "name": "FAssetImplementation",
     "contractName": "FAsset.sol",
-    "address": "0x1A17a573fe5b57eBBFc47Fd537Ce6d79480f375b"
+    "address": "0x6A3e43D0Cc226A0E03e5BeF735062cA480F88116"
   },
   {
     "name": "AssetManager_FTestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0xD2636Aef71ac0A468e10eF6686dDBe47B69B7EbE",
+    "address": "0xC61379091f33eBF417279DC6AE04CC4fCc4A90F4",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestXRP",
     "contractName": "FAssetProxy.sol",
-    "address": "0xb0215B63CEA8aEa0231EEB817a2f3F0b35dF2F66"
+    "address": "0xB7115cDB5Bb9a176c8d34CD5083a558b8Fa0d430"
   },
   {
     "name": "AssetManager_FSimCoinX",
     "contractName": "AssetManager.sol",
-    "address": "0xBb3BA8C50e673a2BBCE4c74fb9C67d37D9925155",
+    "address": "0x7356997aE3FcfAb4a0fceae35D14F0e9fD9C24Ca",
     "mustSwitchToProduction": true
   },
   {
     "name": "FSimCoinX",
     "contractName": "FAssetProxy.sol",
-    "address": "0xDD5A6dC08E51120864D35711a5791AE1bB3AA1F2"
+    "address": "0x81a31d0afeCdf960B0406F3015F5a57BFcE4c237"
   },
   {
     "name": "AssetManager_FTestBTC",
     "contractName": "AssetManager.sol",
-    "address": "0x93C425022aA3fB3c58f8bca9B2978dC58Ce72A2A",
+    "address": "0xc49A0D98f43d83aB495E3D707E4a3cF30a08FAa4",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestBTC",
     "contractName": "FAssetProxy.sol",
-    "address": "0x40fdf17549B32591AcBe17b9af0cc8c13Be6A5FA"
+    "address": "0x005660A7099Dc13379c28A376872B74552e22049"
   },
   {
     "name": "AssetManager_FTestDOGE",
     "contractName": "AssetManager.sol",
-    "address": "0x8070985e61C51030bDB7baEa3A04c5314BC6F12e",
+    "address": "0x621Be381C2595d83C1CA9DDD46540d6Aa48111C2",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestDOGE",
     "contractName": "FAssetProxy.sol",
-    "address": "0xC6d27C4636563Cb2bF0641E0c47CE274156e80dD"
+    "address": "0xa9C38FA9B230EF0B7b91Fab1264E7742c194F7C2"
   },
   {
     "name": "AssetManagerInit",
     "contractName": "AssetManagerInit.sol",
-    "address": "0x2475a8750163DF54907664eFAB3114FCd03C857a"
+    "address": "0x059a3afaF7003D2780Ab4229F484e4D241feE281"
   },
   {
     "name": "AssetManagerDiamondCutFacet",
     "contractName": "AssetManagerDiamondCutFacet.sol",
-    "address": "0x87Ae3e93381A003403A6455DCa8E5b8EbE44229e"
+    "address": "0x2f376377359138b7c4E8e286e99Df6c736029E75"
   },
   {
     "name": "DiamondLoupeFacet",
     "contractName": "DiamondLoupeFacet.sol",
-    "address": "0x392A2A96C9A2F896d6097833239C35f41EA7e9d1"
+    "address": "0xa75f9d166f6831BaD68CF8D78b9A5Af6F62AdBC5"
   },
   {
     "name": "AgentInfoFacet",
     "contractName": "AgentInfoFacet.sol",
-    "address": "0x259b71BEAd04a2C652A7dAcBB08E698C6978880C"
+    "address": "0x71373EF4349c5f6D40F1a67F4F2e2cB162529e40"
   },
   {
     "name": "AvailableAgentsFacet",
     "contractName": "AvailableAgentsFacet.sol",
-    "address": "0xAd542bDbf92335c60569F931f18a79afc8EE0505"
+    "address": "0xb0b8bA00Cf033F35502104adbB566989F5D7b3C0"
+  },
+  {
+    "name": "CollateralReservationsFacet",
+    "contractName": "CollateralReservationsFacet.sol",
+    "address": "0xDB745169606D13084e697B35A2c6da05653Fd850"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0xFf4abBc21F8b769ba69B0B6Fe65dc166Fa3dAF66"
+    "address": "0xa9fe38f22EF3FfD3A4374c65b663b1134Ae976Ba"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x45FA10Bfd2D589e1738bD110a17392998b8a2DaC"
+    "address": "0xfCa81aaf29B0166623e70F25203975Eb781D347A"
   },
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0x2E65744086235ec5538acD406614894989b987e8"
+    "address": "0xE0641eEa8F86c01127B82f5b90A5190033889031"
   },
   {
     "name": "RedemptionDefaultsFacet",
     "contractName": "RedemptionDefaultsFacet.sol",
-    "address": "0x90805C6520972f4497e6c127b2f6eA38b57e529F"
+    "address": "0x684E50A79192af063A7e69716c156CfA34bfB686"
   },
   {
     "name": "LiquidationFacet",
     "contractName": "LiquidationFacet.sol",
-    "address": "0x47aA567A09277d13513bD10911c435b870C2c7aA"
+    "address": "0xc1249C806a203ccFDdcbe4C6e227EB5FfaF3E4a9"
   },
   {
     "name": "ChallengesFacet",
     "contractName": "ChallengesFacet.sol",
-    "address": "0x707B71d7619fDA325c54f69857AF29968f1Ad128"
+    "address": "0x26B19F0a7e6F33a58A21a509B198F6A00b8FB6FC"
   },
   {
     "name": "UnderlyingBalanceFacet",
     "contractName": "UnderlyingBalanceFacet.sol",
-    "address": "0x2ADB5B1cdB0f4Ab83D9dc216d53644D555C41d95"
+    "address": "0x77262B690b3329ec9677526bF7E429d12350361d"
   },
   {
     "name": "UnderlyingTimekeepingFacet",
     "contractName": "UnderlyingTimekeepingFacet.sol",
-    "address": "0x861E2F23C747CFB5F286F441E0741f2BBb1de98E"
+    "address": "0xa0Fb4B926CBC6f059271Fd4cb7AF22d21Ad0De55"
   },
   {
     "name": "AgentVaultManagementFacet",
     "contractName": "AgentVaultManagementFacet.sol",
-    "address": "0x792c6FD051f3D150E6a13D81f1abf1265cCC84d3"
+    "address": "0x8143EFbA5245dCB16A809A1E61191d2DBDaFfDfC"
   },
   {
     "name": "AgentSettingsFacet",
     "contractName": "AgentSettingsFacet.sol",
-    "address": "0xF7d9B4cB6cEB86109FC99C109F7dbcd8d180d212"
+    "address": "0xe16B52354cB8C8C40b83FC6C0ecbe24eEa95B245"
   },
   {
     "name": "CollateralTypesFacet",
     "contractName": "CollateralTypesFacet.sol",
-    "address": "0x6D78DEb3C42Ad542cd5563288Be2c7087bdbfD77"
+    "address": "0x7dC3E03D20Df7dfbAe0Ece93ce3Bf228fAC666BE"
   },
   {
     "name": "AgentCollateralFacet",
     "contractName": "AgentCollateralFacet.sol",
-    "address": "0x52112eA77C4BF996E03297333c7b281F368eC7A6"
+    "address": "0x99BD4Cc24cb95D5c101E6d171C597E34bF75975f"
   },
   {
     "name": "SettingsReaderFacet",
     "contractName": "SettingsReaderFacet.sol",
-    "address": "0x116994eB6482B139397C5f001321bB9496506169"
+    "address": "0x5E09653B8A5e4647fEdb172B0F76b7cCcE39C686"
   },
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0xDFFafE16EFfE4d9a741eDa8Ffd3C9F4dB0D34F9b"
+    "address": "0xCeFb2A6FDE8bE332b43A38BBC9767194E734C112"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",
     "contractName": "AgentVaultAndPoolSupportFacet.sol",
-    "address": "0xC319FfA5f25E4Eb51BDA266EAA074F6F14960520"
+    "address": "0x8d4821F2242E3b8B4a0379324240f2f221a9129E"
   },
   {
     "name": "SystemStateManagementFacet",
     "contractName": "SystemStateManagementFacet.sol",
-    "address": "0x686B876DcE947A2410413dCe18065d511b9E2AF4"
+    "address": "0x8ffeDCB1f38711F08D1be87c107c6f4947866ddb"
   },
   {
-    "name": "AgentPingFacet",
-    "contractName": "AgentPingFacet.sol",
-    "address": "0xF9aDe251401d8B1f5a66C57F39B91021Fe1bD76D"
-  },
-  {
-    "name": "RedemptionTimeExtensionFacet",
-    "contractName": "RedemptionTimeExtensionFacet.sol",
-    "address": "0x5b15D474Ef690f7454540F5E0FFBDB1D119bE3E1"
+    "name": "SystemInfoFacet",
+    "contractName": "SystemInfoFacet.sol",
+    "address": "0xb02Ed8457A01D00182c289a4AB2C46F6f7Ef8e0F"
   },
   {
     "name": "EmergencyPauseFacet",
     "contractName": "EmergencyPauseFacet.sol",
-    "address": "0x9421dE62Ed391b0B37Bec6B720661b43DEDB36dd"
+    "address": "0xdC741Ffbf2F2235c4f663D3eDC785a50a52Ed532"
+  },
+  {
+    "name": "AgentPingFacet",
+    "contractName": "AgentPingFacet.sol",
+    "address": "0x03868cd72133477426253Ebba89d5CB67ac22417"
+  },
+  {
+    "name": "RedemptionTimeExtensionFacet",
+    "contractName": "RedemptionTimeExtensionFacet.sol",
+    "address": "0x4846253E4b790Df76665C5f4C77ff84909efB8b1"
+  },
+  {
+    "name": "TransferFeeFacet",
+    "contractName": "TransferFeeFacet.sol",
+    "address": "0x9128eE78c64c46EF7CF5C128fa028F8E94F9D0AE"
   }
 ]
