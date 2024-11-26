@@ -2,7 +2,7 @@ import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
+import { erc165InterfaceId, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController } from "../../../utils/fasset/CreateAssetManager";
@@ -11,6 +11,7 @@ import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDat
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { impersonateContract } from "../../../utils/contract-test-helpers";
 
 const AgentVault = artifacts.require("AgentVault");
 const MockContract = artifacts.require('MockContract');
@@ -18,6 +19,8 @@ const ERC20Mock = artifacts.require("ERC20Mock");
 const AssetManagerMock = artifacts.require("AssetManagerMock");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPool = artifacts.require("CollateralPool");
+const FAsset = artifacts.require('FAsset');
+const FAssetProxy = artifacts.require('FAssetProxy');
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let contracts: TestSettingsContracts;
@@ -104,10 +107,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         it("should withdraw pool fees", async () => {
             // mock fAsset
             const ci = testChainInfo.eth;
-            const fAsset = await ERC20Mock.new(ci.name, ci.symbol);
+            const fAssetImpl = await FAsset.new();
+            const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, ci.name, ci.symbol, ci.assetName, ci.assetSymbol, ci.decimals, { from: governance });
+            fAsset = await FAsset.at(fAssetProxy.address);
+            fAsset = await FAsset.at(fAssetProxy.address);
+            await fAsset.setAssetManager(assetManagerMock.address, { from: governance });
             // create agent with mocked fAsset
             await assetManagerMock.setCheckForValidAgentVaultAddress(false);
             await assetManagerMock.registerFAssetForCollateralPool(fAsset.address);
+            await impersonateContract(assetManagerMock.address, toBNExp(1000, 18), accounts[0]);
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
@@ -117,12 +125,14 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             // deposit nat
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
-            await fAsset.mintAmount(pool.address, toWei(10));
+            await fAsset.mint(pool.address, toWei(10), { from: assetManagerMock.address });
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
             // withdraw pool fees
             await agentVault.withdrawPoolFees(toWei(10), owner, { from: owner });
+            const transferFeeMillionths = await assetManagerMock.transferFeeMillionths();
+            const transferFee = toWei(10).mul(transferFeeMillionths).divn(1e6);
             const ownerFassets = await fAsset.balanceOf(owner);
-            assertWeb3Equal(ownerFassets, toWei(10));
+            assertWeb3Equal(ownerFassets, toWei(10).sub(transferFee));
         });
 
         it("should redeem collateral from pool", async () => {
@@ -284,8 +294,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const governanceVP = await createGovernanceVP();
         await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
         await agentVault.delegateGovernance(wNat.address, accounts[2], { from: owner });
-        const delegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "delegate",
-            inputs: [{name: "_to", type: "address"}]} as AbiItem,
+        const delegate = web3.eth.abi.encodeFunctionCall({
+            type: "function", name: "delegate",
+            inputs: [{ name: "_to", type: "address" }]
+        } as AbiItem,
             [accounts[2]] as any[]);
         const invocationCount = await governanceVP.invocationCountForCalldata.call(delegate);
         assert.equal(invocationCount.toNumber(), 1);
@@ -302,8 +314,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const governanceVP = await createGovernanceVP();
         await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
         await agentVault.undelegateGovernance(wNat.address, { from: owner });
-        const undelegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "undelegate",
-            inputs: []} as AbiItem,
+        const undelegate = web3.eth.abi.encodeFunctionCall({
+            type: "function", name: "undelegate",
+            inputs: []
+        } as AbiItem,
             [] as any[]);
         const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
         assert.equal(invocationCount.toNumber(), 1);
@@ -313,10 +327,16 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const rewardManagerMock = await MockContract.new();
         await agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: owner });
-        const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim",
+        const claimReward = web3.eth.abi.encodeFunctionCall({
+            type: "function", name: "claim",
             inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
-                {components: [{name: "merkleProof", type: "bytes32[]"}, {components: [{name: "rewardEpochId", type: "uint24"}, {name: "beneficiary", type: "bytes20"},
-                {name: "amount",type: "uint120"}, {name: "claimType", type: "uint8"}], name: "body", type: "tuple"}], name: "_proofs",type: "tuple[]"}]} as AbiItem,
+            {
+                components: [{ name: "merkleProof", type: "bytes32[]" }, {
+                    components: [{ name: "rewardEpochId", type: "uint24" }, { name: "beneficiary", type: "bytes20" },
+                    { name: "amount", type: "uint120" }, { name: "claimType", type: "uint8" }], name: "body", type: "tuple"
+                }], name: "_proofs", type: "tuple[]"
+            }]
+        } as AbiItem,
             [agentVault.address, owner, 5, false, []] as any[]);
         const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
         assert.equal(invocationCount.toNumber(), 1);
@@ -333,8 +353,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const distributionMock = await MockContract.new();
         await agentVault.optOutOfAirdrop(distributionMock.address, { from: owner });
-        const optOutOfAirdrop = web3.eth.abi.encodeFunctionCall({type: "function", name: "optOutOfAirdrop",
-            inputs: []} as AbiItem,
+        const optOutOfAirdrop = web3.eth.abi.encodeFunctionCall({
+            type: "function", name: "optOutOfAirdrop",
+            inputs: []
+        } as AbiItem,
             [] as any[]);
         const invocationCount = await distributionMock.invocationCountForCalldata.call(optOutOfAirdrop);
         assert.equal(invocationCount.toNumber(), 1);
@@ -351,8 +373,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const distributionMock = await MockContract.new();
         await agentVault.claimAirdropDistribution(distributionMock.address, 2, owner, { from: owner });
-        const claim = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim",
-            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_month", type: "uint256" }, { name: "_wrap", type: "bool" }]} as AbiItem,
+        const claim = web3.eth.abi.encodeFunctionCall({
+            type: "function", name: "claim",
+            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_month", type: "uint256" }, { name: "_wrap", type: "bool" }]
+        } as AbiItem,
             [agentVault.address, owner, 2, false] as any[]);
         const invocationCount = await distributionMock.invocationCountForCalldata.call(claim);
         assert.equal(invocationCount.toNumber(), 1);
@@ -379,7 +403,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
         await time.increase(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
-        const undelegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "undelegate", inputs: []} as AbiItem, []);
+        const undelegate = web3.eth.abi.encodeFunctionCall({ type: "function", name: "undelegate", inputs: [] } as AbiItem, []);
         const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
         assert.equal(invocationCount.toNumber(), 1);
     });
@@ -510,10 +534,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         it("random address shouldn't be able to withdraw pool fees", async () => {
             // mock fAsset
             const ci = testChainInfo.eth;
-            const fAsset = await ERC20Mock.new(ci.name, ci.symbol);
-            // create agent with mocked fAsset
+            const fAssetImpl = await FAsset.new();
+            const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, ci.name, ci.symbol, ci.assetName, ci.assetSymbol, ci.decimals, { from: governance });
+            fAsset = await FAsset.at(fAssetProxy.address);
+            fAsset = await FAsset.at(fAssetProxy.address);
+            await fAsset.setAssetManager(assetManagerMock.address, { from: governance });
             await assetManagerMock.setCheckForValidAgentVaultAddress(false);
             await assetManagerMock.registerFAssetForCollateralPool(fAsset.address);
+            await impersonateContract(assetManagerMock.address, toBNExp(1000, 18), accounts[0]);
+            // create agent with mocked fAsset
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
@@ -523,7 +552,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             // deposit nat
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
-            await fAsset.mintAmount(pool.address, toWei(10));
+            await fAsset.mint(pool.address, toWei(10), { from: assetManagerMock.address });
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
             // withdraw pool fees
             const res = agentVault.withdrawPoolFees(toWei(10), owner, { from: accounts[14] });
