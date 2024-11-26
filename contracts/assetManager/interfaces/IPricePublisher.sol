@@ -15,7 +15,7 @@ interface IPricePublisher {
 
     /// The FTSO feed with proof struct.
     struct FeedWithProof {
-        bytes32[] merkleProof;
+        bytes32[] proof;
         Feed body;
     }
 
