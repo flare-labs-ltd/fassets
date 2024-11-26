@@ -352,7 +352,7 @@
             "type": "integer"
         },
         "transferFeeClaimMaxUnexpiredEpochs": {
-            "description": "After a while, the epochs become unclaimable and the fees in there are transfered to the latest epoch.\nThis setting is the epoch duration (in seconds).",
+            "description": "After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.\nThis setting is the epoch duration (in seconds).",
             "type": "integer"
         },
         "transferFeeMillionths": {

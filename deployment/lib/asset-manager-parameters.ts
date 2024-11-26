@@ -538,7 +538,7 @@ export interface AssetManagerParameters {
     transferFeeClaimEpochDurationSeconds: integer;
 
     /**
-     * After a while, the epochs become unclaimable and the fees in there are transfered to the latest epoch.
+     * After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.
      * This setting is the epoch duration (in seconds).
      */
     transferFeeClaimMaxUnexpiredEpochs: integer;

@@ -122,7 +122,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     /**
      * @dev See {ERC20-transfer}.
      *
-     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transfered amount.
+     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transferred amount.
      * NOTE: less than `_amount` will be delivered to `_to`.
      */
     function transfer(address _to, uint256 _amount)
@@ -139,7 +139,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     /**
      * @dev See {ERC20-transferFrom}.
      *
-     * Perform transfer (like ERC20.transferFrom) and pay fee by subtracting it from the transfered amount.
+     * Perform transfer (like ERC20.transferFrom) and pay fee by subtracting it from the transferred amount.
      * NOTE: less than `_amount` will be delivered to `_to`.
      */
     function transferFrom(address _from, address _to, uint256 _amount)
@@ -156,14 +156,14 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
 
     /**
      * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
-     * NOTE: more than `_amount` will be transfered from `msg.sender`.
+     * NOTE: more than `_amount` will be transferred from `msg.sender`.
      */
     function transferExactDest(address _to, uint256 _amount)
         external
         returns (bool)
     {
         address owner = _msgSender();
-        uint256 transferFee = _transferFeeAmount(_amount);
+        uint256 transferFee = _transferFeeAmountExactDest(_amount);
         _transfer(owner, _to, _amount);
         _payTransferFee(owner, transferFee);
         return true;
@@ -171,15 +171,15 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
 
     /**
      * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
-     * NOTE: more than `_amount` will be transfered from the `_from` account.
-     * Preceeding call to `approve()` must account for this, otherwise the transfer will fail.
+     * NOTE: more than `_amount` will be transferred from the `_from` account.
+     * Preceding call to `approve()` must account for this, otherwise the transfer will fail.
      */
     function transferExactDestFrom(address _from, address _to, uint256 _amount)
         external
         returns (bool)
     {
         address spender = _msgSender();
-        uint256 transferFee = _transferFeeAmount(_amount);
+        uint256 transferFee = _transferFeeAmountExactDest(_amount);
         _spendAllowance(_from, spender, _amount + transferFee);
         _transfer(_from, _to, _amount);
         _payTransferFee(_from, transferFee);
@@ -187,7 +187,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     }
 
     /**
-     * Transfer without charging fee. Used for transfering fees to agents.
+     * Transfer without charging fee. Used for transferring fees to agents.
      * Can only be used by asset manager.
      */
     function transferInternally(address _to, uint256 _amount)
@@ -287,16 +287,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     }
 
     /**
-     * Return the amount of fees that will be charged for the transfer of _transferAmount.
-     */
-    function transferFeeAmount(uint256 _transferAmount)
-        external view
-        returns (uint256)
-    {
-        return _transferFeeAmount(_transferAmount);
-    }
-
-    /**
      * Return the exact amount the `_to` will receive, if `_from` transfers `_sentAmount`.
      */
     function getReceivedAmount(address /*_from*/, address /*_to*/, uint256 _sentAmount)
@@ -314,8 +304,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         external view
         returns (uint256 _sendAmount, uint256 _feeAmount)
     {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
-        _feeAmount = SafePct.mulDiv(_receivedAmount, feeMillionths, 1e6 - feeMillionths);
+        _feeAmount = _transferFeeAmountExactDest(_receivedAmount);
         _sendAmount = _receivedAmount + _feeAmount;
     }
 
@@ -349,7 +338,15 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         returns (uint256)
     {
         uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
-        return SafePct.mulDiv(_transferAmount, feeMillionths, 1e6);
+        return SafePct.mulDivRoundUp(_transferAmount, feeMillionths, 1e6);
+    }
+
+    function _transferFeeAmountExactDest(uint256 _receivedAmount)
+        internal view
+        returns (uint256)
+    {
+        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
+        return SafePct.mulDivRoundUp(_receivedAmount, feeMillionths, 1e6 - feeMillionths);
     }
 
     /**

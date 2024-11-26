@@ -484,7 +484,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await stopImpersonatingContract(context.assetManager.address);
         //
         const tokenBalance = await agent.collateralPoolToken.balanceOf(minter.address);
-        // self close exit will fail transfering fassets
+        // self close exit will fail transferring fassets
         await context.fAsset.approve(agent.collateralPool.address, toBNExp(1, 30), { from: minter.address });
         await expectRevert(agent.collateralPool.selfCloseExit(tokenBalance, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }), "f-asset terminated");
         // ordinary exit will work
