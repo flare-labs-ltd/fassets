@@ -409,6 +409,31 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "increase too big")
         });
 
+        it("should always be able to update exitCR to 1.2 minCR (even if minCR grows so fast that the increase is higher that 3/2)", async () => {
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const ct = await assetManager.getCollateralType(CollateralClass.POOL, wNat.address);
+            const newMinCR = toBN(ct.minCollateralRatioBIPS).muln(2);
+            // cannot increase before the minCR grows
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", newMinCR.muln(119).divn(100), { from: agentOwner1 });
+            await time.increase(agentPoolExitCRChangeTimelock);
+            let res1 = assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            await expectRevert(res1, "increase too big")
+            //
+            await assetManager.setCollateralRatiosForToken(CollateralClass.POOL, wNat.address,
+                newMinCR, toBN(ct.ccbMinCollateralRatioBIPS).muln(2), toBN(ct.safetyMinCollateralRatioBIPS).muln(2),
+                { from: assetManagerController });
+            // still can't increase too much
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", newMinCR.muln(121).divn(100), { from: agentOwner1 });
+            await time.increase(agentPoolExitCRChangeTimelock);
+            let res2 = assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            await expectRevert(res2, "increase too big")
+            // but can increase up to 1.2 minCR
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", newMinCR.muln(119).divn(100), { from: agentOwner1 });
+            await time.increase(agentPoolExitCRChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+        });
+
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
