@@ -262,12 +262,12 @@
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0x3F6349e2dC845ce561065a3E93ef536C228376E8"
+    "address": "0xcf8728867cB59766BaEF19c7907c328F3E554E06"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
     "contractName": "CollateralPoolToken.sol",
-    "address": "0xaa5D44B0D9156D186CC6e4F1EF596fBa1b0e0258"
+    "address": "0xbee494C28C028c896532f44b9bB570626E5481fB"
   },
   {
     "name": "AgentVaultFactory",
@@ -277,12 +277,12 @@
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x19160eaF63942aB273CA77aa0A354F1e18103eF4"
+    "address": "0x13E85DA39cEF7552488E5f675048a1b942A43B7d"
   },
   {
     "name": "CollateralPoolTokenFactory",
     "contractName": "CollateralPoolTokenFactory.sol",
-    "address": "0x68F88E92f5C31E6bac63F1Ef8bAA1988767997Be"
+    "address": "0x42Bd2334d9b75A6373841eD1d69C003B9e26DBc1"
   },
   {
     "name": "AssetManagerControllerImplementation",
@@ -292,7 +292,7 @@
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerControllerProxy.sol",
-    "address": "0xB5c3225aBA92FFB271343f03e5490B5901835456",
+    "address": "0x37ECBfcb4f3196Cc26D5aAaC1e248463811D9C3E",
     "mustSwitchToProduction": true
   },
   {
@@ -303,46 +303,46 @@
   {
     "name": "AssetManager_FTestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x4695A687d824bbc1Db33476DDa4a4c0790b84D65",
+    "address": "0x0bbF0B267Cf85b694201dAdD76E2AFAAd4a32365",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestXRP",
     "contractName": "FAssetProxy.sol",
-    "address": "0x34Bb05412D9d3fb997866E9717cd9be565fDc2fc"
+    "address": "0x249a862aA80775421d38bfabBC13f8b23563d04d"
   },
   {
     "name": "AssetManager_FSimCoinX",
     "contractName": "AssetManager.sol",
-    "address": "0xc140af00DEB63c6e3BcdEbeACf4657947907795b",
+    "address": "0x65ede06e4E83Eb8290A82618ea0bFfB7588634DA",
     "mustSwitchToProduction": true
   },
   {
     "name": "FSimCoinX",
     "contractName": "FAssetProxy.sol",
-    "address": "0x685c62101b5F6ecb6ce5eBd4160eAA9787633c5d"
+    "address": "0x4299A94183755a0e4315C398D78F7E37005B1D3F"
   },
   {
     "name": "AssetManager_FTestBTC",
     "contractName": "AssetManager.sol",
-    "address": "0xb49D8A3bF13F53e712841c3d4Bcda3a3D5aBD19A",
+    "address": "0xA368aAC429b5BE1018269F02B4E9ba9b1203666a",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestBTC",
     "contractName": "FAssetProxy.sol",
-    "address": "0x4D39980ae06cbEd4B63795a0267C2708729Fb63F"
+    "address": "0xB1a0cC940B269Ea77F5F88DE0F05B42080625c95"
   },
   {
     "name": "AssetManager_FTestDOGE",
     "contractName": "AssetManager.sol",
-    "address": "0x3709Bd793571875394B7abDaCB29961c918Cd6a1",
+    "address": "0x3f6d79F32Faa5D50a42d7e07c55A4cA0D6e727aE",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestDOGE",
     "contractName": "FAssetProxy.sol",
-    "address": "0xCec6d16775527Dbd3C0a2c03FD9a265df31a09fE"
+    "address": "0xFf5c8EEAa2A2daBd31D8071a7E194e2458EAcc3d"
   },
   {
     "name": "AssetManagerInit",
