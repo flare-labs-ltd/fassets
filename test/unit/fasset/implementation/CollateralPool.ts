@@ -1069,16 +1069,20 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBNWithError(fAssetBalance.add(transferFee), ETH(50).sub(fAssetRequired), BN_ONE);
         });
 
-        it.skip("should do a simple self-close exit with one user who has no f-asset debt", async () => {
+        it("should do a simple self-close exit with one user who has no f-asset debt", async () => {
             const collateral = ETH(100);
             const fassetBalanceBefore = ETH(100);
             const fee = await calculateFee(fassetBalanceBefore, true);
-            await fAsset.mint(accounts[0], fassetBalanceBefore.add(fee), { from: assetManager.address });
+            await fAsset.mint(accounts[0], fassetBalanceBefore, { from: assetManager.address });
             await fAsset.approve(collateralPool.address, fassetBalanceBefore.add(fee));
             await collateralPool.enter(0, true, { value: collateral });
-            await collateralPool.enter(0, false, { value: ETH(1), from: accounts[1] });
+            if (!(await assetManager.transferFeeMillionths()).eqn(0)) {
+                await collateralPool.enter(0, false, { value: ETH(1), from: accounts[1] });
+            }
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const natBefore = toBN(await web3.eth.getBalance(accounts[0]));
+            const fAssetRequired = await getFAssetRequiredToNotSpoilCR(ETH(100));
+            const transferFee = await calculateFee(fAssetRequired, true);
             const receipt = await collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
             const gas = calcGasCost(receipt);
             const natAfter = toBN(await web3.eth.getBalance(accounts[0]));
@@ -1086,7 +1090,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fassetBalanceAfter = await fAsset.balanceOf(accounts[0]);
             // taking all collateral out of the pool and keeping CR the same
             // means you have to destroy all existing f-assets
-            assertEqualBN(fassetBalanceAfter, BN_ZERO);
+            assertEqualBN(fassetBalanceAfter, fassetBalanceBefore.sub(fAssetRequired).sub(transferFee));
         });
 
         it("should do a simple self-close exit with one user who has f-asset debt", async () => {
