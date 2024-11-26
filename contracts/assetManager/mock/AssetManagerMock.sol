@@ -21,7 +21,7 @@ contract AssetManagerMock {
     uint256 public assetPriceMul = 1;
     uint256 public assetPriceDiv = 2;
     uint256 public lotSize = 1;
-    uint public minPoolCollateralRatioBIPS = 0;
+    uint256 public minPoolCollateralRatioBIPS = 0;
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -121,7 +121,7 @@ contract AssetManagerMock {
         return minPoolCollateralRatioBIPS;
     }
 
-    function transferFeeMillionths() public view returns (uint256) {
+    function transferFeeMillionths() public pure returns (uint256) {
         return 200;
     }
 
