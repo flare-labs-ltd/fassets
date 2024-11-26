@@ -4,11 +4,11 @@ pragma solidity 0.8.23;
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IICollateralPool.sol";
-import "./ERC20Mock.sol";
+import "../../fassetToken/interfaces/IIFAsset.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
-    ERC20Mock public fasset;
+    IIFAsset public fasset;
     address private commonOwner;
     bool private checkForValidAgentVaultAddress = true;
     address private collateralPool;
@@ -54,7 +54,7 @@ contract AssetManagerMock {
         return _address == commonOwner;
     }
 
-    function updateCollateral(address /* _agentVault */, IERC20 /*_token*/) external {
+    function updateCollateral(address /* _agentVault */, IIFAsset /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
         require(!checkForValidAgentVaultAddress, "invalid agent vault address");
     }
@@ -78,18 +78,18 @@ contract AssetManagerMock {
         address /* _agentVault */, address _redeemer, uint256 _amountUBA,
         string memory _receiverUnderlyingAddress, address payable _executor
     ) external {
-        fasset.burnAmount(msg.sender, _amountUBA);
+        fasset.burn(msg.sender, _amountUBA);
         emit AgentRedemption(_redeemer, _receiverUnderlyingAddress, _amountUBA, _executor);
     }
 
     function redeemFromAgentInCollateral(
         address /* _agentVault */, address _redeemer, uint256 _amountUBA
     ) external {
-        fasset.burnAmount(msg.sender, _amountUBA);
+        fasset.burn(msg.sender, _amountUBA);
         emit AgentRedemptionInCollateral(_redeemer, _amountUBA);
     }
 
-    function registerFAssetForCollateralPool(ERC20Mock _fasset) external {
+    function registerFAssetForCollateralPool(IIFAsset _fasset) external {
         fasset = _fasset;
     }
 
@@ -111,9 +111,20 @@ contract AssetManagerMock {
 
     function fAsset()
         external view
-        returns (IERC20)
+        returns (IIFAsset)
     {
         return fasset;
+    }
+
+    function transferFeeMillionths() public view returns (uint256) {
+        return 200;
+    }
+
+    function fassetTransferFeePaid(uint256 _fee)
+        external
+    {
+        // TransferFeeTracking.Data storage data = _getTransferFeeData();
+        // data.addFees(_fee);
     }
 
     /////////////////////////////////////////////////////////////////////////////
