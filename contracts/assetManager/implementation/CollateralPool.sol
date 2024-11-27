@@ -857,6 +857,15 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         _depositWNat();
     }
 
+    function donateNat()
+        external payable
+    {
+        require(msg.value >= MIN_NAT_TO_ENTER && msg.value < totalCollateral / 100,
+            "donation must be between 1 NAT and 1% of the total pool collateral");
+        _depositWNat();
+        emit Donated(msg.sender, msg.value);
+    }
+
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function payout(
         address _recipient,

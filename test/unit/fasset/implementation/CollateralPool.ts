@@ -1676,6 +1676,25 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
     });
 
+    describe("Donating collateral", async () => {
+        it("should donate some native collateral to the pool", async () => {
+            const donator = accounts[12]
+            await agentVault.enterPool(collateralPool.address, { value: ETH(1000) });
+            const totalCollateral = await collateralPool.totalCollateral();
+            const resp = await collateralPool.donateNat({ value: ETH(5), from: donator });
+            const newTotalCollateral = await collateralPool.totalCollateral();
+            assertEqualBN(newTotalCollateral, totalCollateral.add(ETH(5)));
+            await expectEvent.inTransaction(resp.tx, collateralPool, "Donated", { amountNatWei: ETH(5), donator });
+        });
+        it("should fail to donate inappropriate amount of native collateral to the pool", async () => {
+            await agentVault.enterPool(collateralPool.address, { value: ETH(1000) });
+            const prms1 = collateralPool.donateNat({ value: ETH(1).divn(2) });
+            await expectRevert(prms1, "donation must be between 1 NAT and 1% of the total pool collateral");
+            const prms2 = collateralPool.donateNat({ value: ETH(10) });
+            await expectRevert(prms2, "donation must be between 1 NAT and 1% of the total pool collateral");
+        });
+    })
+
     describe("branch tests", () => {
         it("random address shouldn't be able to set exit collateral RatioBIPS", async () => {
             const setTo = BN_ONE.addn(Math.floor(10_000 * topupCR));
