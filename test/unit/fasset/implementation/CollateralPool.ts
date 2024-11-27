@@ -77,7 +77,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         assetManager = await AssetManager.new(wNat.address);
         await assetManager.setCommonOwner(agent);
         await assetManager.setCheckForValidAgentVaultAddress(false);
-        // fAsset = await ERC20Mock.new("fBitcoin", "fBTC");
         const fAssetImpl = await FAsset.new();
         const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, "fBitcoin", "fBTC", "Bitcoin", "BTC", 18, { from: governance });
         fAsset = await FAsset.at(fAssetProxy.address);

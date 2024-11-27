@@ -1483,17 +1483,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isAtLeast(blocks1[9] - blocks1[0], 5);
         });
 
-        it("should not extend redemption payment time when setting is 0", async () => {
+        it("should not extend redemption payment time much when setting is 1", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];
             const underlyingRedeemer = "redeemer"
             // create available agentVault and mint f-assets
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
-            // set redemptionPaymentExtensionSeconds setting to 0 (needs two steps and timeskip due to validation)
+            // set redemptionPaymentExtensionSeconds setting to 1 (needs two steps and timeskip due to validation)
             await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: assetManagerController });
             await time.increase(86400);
-            await assetManager.setRedemptionPaymentExtensionSeconds(0, { from: assetManagerController });
+            await assetManager.setRedemptionPaymentExtensionSeconds(1, { from: assetManagerController });
             // default a redemption
             const times1: number[] = [];
             const blocks1: number[] = [];
@@ -1529,7 +1529,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const promise = assetManager.setRedemptionPaymentExtensionSeconds(newExtensionSecs, { from: assetManagerController });
             await expectRevert(promise, "increase too big");
         });
-});
+
+        it("should revert setting redemption payment extension time to 0", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
+            // set redemptionPaymentExtensionSeconds setting to 1 (needs two steps and timeskip due to validation)
+            await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: assetManagerController });
+            await time.increase(86400);
+            await expectRevert(assetManager.setRedemptionPaymentExtensionSeconds(0, { from: assetManagerController }), "value must be nonzero");
+        });
+    });
 
     describe("agent underlying", () => {
 
@@ -1595,7 +1607,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // check that change was logged in agentInfo
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, 1000)
-        })
+        });
 
     });
 

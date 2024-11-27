@@ -29,6 +29,12 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFee
         _;
     }
 
+    constructor() {
+        // implementation initialization - to prevent reinitialization
+        TransferFeeTracking.Data storage data = _getTransferFeeData();
+        data.initialize(0, 1, 0);
+    }
+
     /**
      * @dev This method is not accessible through diamond proxy,
      * it is only used for initialization when the contract is added after proxy deploy.
