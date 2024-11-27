@@ -35,7 +35,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         );
         relayMock = await MockContract.new();
         await priceStore.setTrustedProviders(trustedProviders, 1, { from: governance });
-        await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, { from: governance });
+        await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, { from: governance });
         await contracts.addressUpdater.update(["AddressUpdater", "Relay"],
             [contracts.addressUpdater.address, relayMock.address],
             [priceStore.address],
@@ -75,7 +75,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should revert if wrong number of proofs is provided", async () => {
             // update settings
             const feedIds = ["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000"];
-            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], ["FLR"], [6], { from: governance });
+            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], ["FLR"], [6], 50, { from: governance });
 
             await expectRevert(publishPrices(), "wrong number of proofs");
         });
@@ -201,13 +201,133 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(price, 123456);
         });
 
+        it("should calculate median price from 1 trusted price", async () => {
+            const newTrustedProviders = [accounts[1]];
+            await priceStore.setTrustedProviders(newTrustedProviders, 1, { from: governance });
+
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds); // start of voting round 2
+            const feeds0 = [];
+            for (let i = 0; i < feedIds.length; i++) {
+                feeds0.push({ id: feedIds[i], value: 123462, decimals: feedDecimals[i] });
+            }
+            await priceStore.submitTrustedPrices(1, feeds0, { from: newTrustedProviders[0] });
+
+            await publishPrices();
+
+            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
+            assertWeb3Equal(price, 123462);
+
+            await time.increaseTo(startTs + 3 * votingEpochDurationSeconds); // start of voting round 3
+            feeds0[1].value = 50;
+            await priceStore.submitTrustedPrices(2, feeds0, { from: newTrustedProviders[0] });
+
+            await publishPrices(true, 2, 2);
+
+            const { 0: price1, 1: timestamp1, 2: decimals1 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[0]);
+            assert(timestamp1.gt(timestamp)); // timestamp should be updated
+            const { 0: price2, 1: timestamp2, 2: decimals2 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
+            // should change as spread is 0 (only one trusted provider)
+            assert(!price.eq(price2));
+            assert(timestamp2.gt(timestamp)); // timestamp should be updated
+            assertWeb3Equal(decimals, decimals2);
+        });
+
+        it("should calculate median price from 3 trusted prices but not update it with new one if spread is too big", async () => {
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds); // start of voting round 2
+            const feeds0 = [];
+            const feeds1 = [];
+            const feeds2 = [];
+            for (let i = 0; i < feedIds.length; i++) {
+                feeds0.push({ id: feedIds[i], value: 123462, decimals: feedDecimals[i] });
+                feeds1.push({ id: feedIds[i], value: 123453, decimals: feedDecimals[i] });
+                feeds2.push({ id: feedIds[i], value: 123456, decimals: feedDecimals[i] });
+            }
+            await priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
+            await priceStore.submitTrustedPrices(1, feeds1, { from: trustedProviders[1] });
+            await priceStore.submitTrustedPrices(1, feeds2, { from: trustedProviders[2] });
+
+            await publishPrices();
+
+            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
+            assertWeb3Equal(price, 123456);
+
+            await time.increaseTo(startTs + 3 * votingEpochDurationSeconds); // start of voting round 3
+            feeds0[1].value = 50;
+            feeds1[1].value = 7;
+            feeds2[1].value = 5000;
+            await priceStore.submitTrustedPrices(2, feeds0, { from: trustedProviders[0] });
+            await priceStore.submitTrustedPrices(2, feeds1, { from: trustedProviders[1] });
+            await priceStore.submitTrustedPrices(2, feeds2, { from: trustedProviders[2] });
+
+            await publishPrices(true, 2, 2);
+
+            const { 0: price1, 1: timestamp1, 2: decimals1 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[0]);
+            assert(timestamp1.gt(timestamp)); // timestamp should be updated
+            const { 0: price2, 1: timestamp2, 2: decimals2 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
+            // nothing should change as spread is too big
+            assertWeb3Equal(price, price2);
+            assertWeb3Equal(timestamp, timestamp2);
+            assertWeb3Equal(decimals, decimals2);
+        });
+
+        it("should calculate median price from 4 trusted prices but not update it with new one if spread is too big", async () => {
+            const newTrustedProviders = [accounts[1], accounts[2], accounts[3], accounts[4]];
+            await priceStore.setTrustedProviders(newTrustedProviders, 2, { from: governance });
+
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds); // start of voting round 2
+            const feeds0 = [];
+            const feeds1 = [];
+            const feeds2 = [];
+            const feeds3 = [];
+            for (let i = 0; i < feedIds.length; i++) {
+                feeds0.push({ id: feedIds[i], value: 123462, decimals: feedDecimals[i] });
+                feeds1.push({ id: feedIds[i], value: 123453, decimals: feedDecimals[i] });
+                feeds2.push({ id: feedIds[i], value: 123456, decimals: feedDecimals[i] });
+                feeds3.push({ id: feedIds[i], value: 123459, decimals: feedDecimals[i] });
+            }
+            await priceStore.submitTrustedPrices(1, feeds0, { from: newTrustedProviders[0] });
+            await priceStore.submitTrustedPrices(1, feeds1, { from: newTrustedProviders[1] });
+            await priceStore.submitTrustedPrices(1, feeds2, { from: newTrustedProviders[2] });
+            await priceStore.submitTrustedPrices(1, feeds3, { from: newTrustedProviders[3] });
+
+            await publishPrices();
+
+            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
+            // price should be floor(123456 + 123459) / 2 = 123457
+            assertWeb3Equal(price, 123457);
+
+            await time.increaseTo(startTs + 3 * votingEpochDurationSeconds); // start of voting round 3
+            feeds0[1].value = 50;
+            feeds1[1].value = 7;
+            feeds2[1].value = 5000;
+            feeds3[1].value = 6000;
+            await priceStore.submitTrustedPrices(2, feeds0, { from: newTrustedProviders[0] });
+            await priceStore.submitTrustedPrices(2, feeds1, { from: newTrustedProviders[1] });
+            await priceStore.submitTrustedPrices(2, feeds2, { from: newTrustedProviders[2] });
+            await priceStore.submitTrustedPrices(2, feeds3, { from: newTrustedProviders[3] });
+
+            await publishPrices(true, 2, 2);
+
+            const { 0: price1, 1: timestamp1, 2: decimals1 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[0]);
+            assert(timestamp1.gt(timestamp)); // timestamp should be updated
+            const { 0: price2, 1: timestamp2, 2: decimals2 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
+            // nothing should change as spread is too big
+            assertWeb3Equal(price, price2);
+            assertWeb3Equal(timestamp, timestamp2);
+            assertWeb3Equal(decimals, decimals2);
+        });
+
         //// update settings
         it("should revert if not governance", async () => {
-            await expectRevert(priceStore.updateSettings([], [], []), "only governance");
+            await expectRevert(priceStore.updateSettings([], [], [], 50), "only governance");
         });
 
         it("should revert if lengths mismatch", async () => {
-            await expectRevert(priceStore.updateSettings([], [], [6], { from: governance }), "length mismatch");
+            await expectRevert(priceStore.updateSettings([], [], [6], 50, { from: governance }), "length mismatch");
+        });
+
+        it("should revert if max spread too big", async () => {
+            await expectRevert(priceStore.updateSettings([], [], [], 10001, { from: governance }), "max spread too big");
         });
 
         it("should delete trusted price for a symbol if changing decimals", async () => {
@@ -232,7 +352,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(decimals, 5);
 
             // update settings; change trusted decimals for USDC
-            await priceStore.updateSettings(feedIds, feedSymbols, [6, 4], { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, [6, 4], 50, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
@@ -266,7 +386,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
             // update settings; change trusted decimals for USDC
             let newUSDCDecimals = 4;
-            await priceStore.updateSettings(feedIds, feedSymbols, [feedDecimals[0], newUSDCDecimals], { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, [feedDecimals[0], newUSDCDecimals], 50, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
@@ -298,6 +418,10 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         it("should revert if threshold is too high", async () => {
             await expectRevert(priceStore.setTrustedProviders(trustedProviders, 4, { from: governance }), "threshold too high");
+        });
+
+        it("should revert if too many trusted providers", async () => {
+            await expectRevert(priceStore.setTrustedProviders(accounts, 2, { from: governance }), "too many trusted providers");
         });
 
         it("should change trusted providers", async () => {
@@ -389,7 +513,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds1.push({ id: feedIds[i], value: 123455, decimals: newFeedDecimals[i] });
                 feeds2.push({ id: feedIds[i], value: 123456, decimals: newFeedDecimals[i] });
             }
-            await priceStore.updateSettings(feedIds, feedSymbols, newFeedDecimals, { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, newFeedDecimals, 50, { from: governance });
             await priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
             await priceStore.submitTrustedPrices(1, feeds1, { from: trustedProviders[1] });
 
@@ -417,6 +541,11 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             expect(decimals.toString()).to.eq(feedDecimals.toString());
         });
 
+        it("should get supported symbols", async () => {
+            let symbols = await priceStore.getSymbols();
+            expect(symbols.toString()).to.eq(feedSymbols.toString());
+        });
+
         it("should get feed id for symbol", async () => {
             let flrFeed = await priceStore.getFeedId("FLR");
             expect(flrFeed).to.eq(feedIds[0]);
@@ -428,7 +557,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             expect(xdcFeed).to.eq("0x" + "00".repeat(21));
 
             // update settings
-            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000", "0x015452582f55534400000000000000000000000000"], ["FLR", "USDC", "XDC"], [6, 7, 8], { from: governance });
+            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000", "0x015452582f55534400000000000000000000000000"], ["FLR", "USDC", "XDC"], [6, 7, 8], 50, { from: governance });
 
             xdcFeed = await priceStore.getFeedId("XDC");
             expect(xdcFeed).to.eq("0x015452582f55534400000000000000000000000000");

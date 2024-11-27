@@ -29,6 +29,7 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
         ]),
         ["CFLR", "testBTC", "testXRP", "testDOGE", "testETH", "testUSDC", "testUSDT"],
         [7, 2, 5, 5, 3, 5, 5],
+        50, // 0.5%
         { from: deployer });
 
     contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);

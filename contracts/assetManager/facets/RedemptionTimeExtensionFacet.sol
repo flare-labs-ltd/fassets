@@ -11,8 +11,11 @@ import "../../diamond/library/LibDiamond.sol";
 import "./AssetManagerBase.sol";
 
 contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtension {
-    bytes32 internal constant SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS =
-        keccak256("RedemptionTimeExtensionFacet.setRedemptionPaymentExtensionSeconds(uint256)");
+
+    constructor() {
+        // implementation initialization - to prevent reinitialization
+        RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(1);
+    }
 
     // this method is not accessible through diamond proxy
     // it is only used for initialization when the contract is added after proxy deploy
@@ -22,6 +25,7 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtens
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
         ds.supportedInterfaces[type(IRedemptionTimeExtension).interfaceId] = true;
+        require(RedemptionTimeExtension.redemptionPaymentExtensionSeconds() == 0, "already initialized");
         // init settings
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_redemptionPaymentExtensionSeconds);
     }
@@ -36,6 +40,7 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtens
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
+        require(_value > 0, "value must be nonzero");
         // update
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
         emit IAssetManagerEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);

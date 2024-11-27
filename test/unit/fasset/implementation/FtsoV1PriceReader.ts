@@ -47,6 +47,15 @@ contract(`FtsoV1PriceReader.sol; ${getTestFile(__filename)}; FtsoV1PriceReader b
             assertWeb3Equal(decimals, 5);
         });
 
+        it("should get trusted price with quality", async () => {
+            await ftsos.usdc.setCurrentPriceFromTrustedProviders(123456, 10);
+            const { 0: price, 1: timestamp, 2: decimals, 3: numberOfSubmits } = await priceReader.getPriceFromTrustedProvidersWithQuality("USDC");
+            assertWeb3Equal(price, 123456);
+            assertWeb3Equal(timestamp, (await time.latest()).subn(10));
+            assertWeb3Equal(decimals, 5);
+            assertWeb3Equal(numberOfSubmits, 0);
+        });
+
         it("should update contract addresses", async () => {
             await contracts.addressUpdater.update(["AddressUpdater", "FtsoRegistry"],
                 [accounts[79], accounts[80]],

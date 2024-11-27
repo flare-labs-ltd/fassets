@@ -5,6 +5,7 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { coinFlip, randomBN, randomChoice } from "../../../utils/fuzzing-utils";
 import { SparseArray } from "../../../utils/SparseMatrix";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { expectRevert } from "@openzeppelin/test-helpers";
 
 const TransferFeeTrackingMock = artifacts.require("TransferFeeTrackingMock");
 
@@ -159,6 +160,16 @@ contract(`TransferFeeTracking.sol; ${getTestFile(__filename)};  Transfer fee uni
                 assert.isFalse(dataCur.expired);
                 assertWeb3Equal(dataCur.totalFees, (i + 1) * (FEE + 1)) // 1 added, 1 * FEE expired to current per each loop
             }
+        });
+    });
+
+    describe("basic tests", () => {
+        it("should not deploy if epoch duration is zero", async () => {
+            await expectRevert(TransferFeeTrackingMock.new(0, 0, 0), "epoch duration must be nonzero");
+        });
+
+        it("should not reinitialize", async () => {
+            await expectRevert(tracking.reinitialize(0, 2, 5), "already initialized");
         });
     });
 });
