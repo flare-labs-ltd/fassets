@@ -11,7 +11,7 @@ import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestFtsos, TestSettingsContracts, createFtsoMock, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 
@@ -366,6 +366,31 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentFassetBalance = await fAsset.balanceOf(agentOwner1);
         let res = await assetManager.selfClose(agentVault.address, agentFassetBalance, { from: agentOwner1 });
         expectEvent(res, "SelfClose")
+    });
+
+    it("should self close all but 1 amg and get agent info", async () => {
+        ftsos.nat = await createFtsoMock(contracts.ftsoRegistry, "NAT", 10000000000000.42)
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        // perform self-minting
+        const lots = 1;
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const transactionHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
+        const proof = await attestationProvider.provePayment(transactionHash, null, underlyingAgent1);
+        await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
+        // withdraw pool f-asset fees to agent vault (so he owns all minted f-assets and can self-close)
+        const agentPoolFees = await fAsset.balanceOf(await assetManager.getCollateralPool(agentVault.address));
+        await agentVault.withdrawPoolFees(agentPoolFees, agentOwner1, { from: agentOwner1 });
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        // self close everything that was minted except 1 amg
+        const granularity = toBN(settings.assetMintingGranularityUBA);
+        await assetManager.selfClose(agentVault.address, toBN(agentInfo.mintedUBA).sub(granularity.muln(1)), { from: agentOwner1 });
+        // should not revert
+        let info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(toBN(info.mintedUBA).div(granularity), 1);
     });
 
     it("should execute redemption payment default - redeemer", async () => {
