@@ -484,7 +484,7 @@ export interface AssetManagerParameters {
     emergencyPauseDurationResetAfterSeconds: integer;
 
     /**
-     * The amount of time after which the collateral reservation can be cancelled if the
+     * The amount of time after which the collateral reservation can be canceled if the
      * handshake is not completed.
      * @minimum 1
      */
@@ -539,7 +539,7 @@ export interface AssetManagerParameters {
 
     /**
      * After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.
-     * This setting is the epoch duration (in seconds).
+     * This setting is the number of epochs before expiration.
      */
     transferFeeClaimMaxUnexpiredEpochs: integer;
 }
