@@ -2984,10 +2984,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not set transfer fee millionths - millionths value too high", async () => {
-            const transferFeeMillionths = await assetManager.transferFeeMillionths();
-            let transferFeeMillionths_new = transferFeeMillionths.muln(2);
             const ts = await latestBlockTimestamp();
-            let promise = assetManager.setTransferFeeMillionths(1e7, ts + 3600, { from: assetManagerController });
+            let promise = assetManager.setTransferFeeMillionths(1e6, ts + 3600, { from: assetManagerController });
             await expectRevert(promise, "millionths value too high");
         });
 

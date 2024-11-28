@@ -51,7 +51,7 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFee
         require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
         ds.supportedInterfaces[type(ITransferFees).interfaceId] = true;
         // init settings
-        require(_transferFeeMillionths <= 1e6, "millionths value too high");
+        require(_transferFeeMillionths < 1e6, "millionths value too high");
         TransferFees.updateTransferFeeMillionths(_transferFeeMillionths, 0);
         TransferFeeTracking.Data storage data = _getTransferFeeData();
         data.initialize(_firstEpochStartTs.toUint64(), _epochDuration.toUint64(), _maxUnexpiredEpochs.toUint64());
@@ -88,7 +88,7 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFee
         SettingsUpdater.checkEnoughTimeSinceLastUpdate();
         // validate
         uint256 currentValue = TransferFees.transferFeeMillionths();
-        require(_value <= 1e6, "millionths value too high");
+        require(_value < 1e6, "millionths value too high");
         require(_value <= currentValue * 4 + 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
         // update

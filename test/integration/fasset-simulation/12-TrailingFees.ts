@@ -71,13 +71,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
             const currentEpoch = await assetManager.currentTransferFeeEpoch();
-            const trfSettings = await assetManager.transferFeeSettings();
             // perform minting
             const lots = 3;
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
             // transfer and check that fee was subtracted
             const transferAmount = context.lotSize().muln(2);
-            const transferFee = transferAmount.mul(toBN(trfSettings.transferFeeMillionths)).divn(1e6);
+            const transferFee = await calculateFee(transferAmount, false);
             const { 1: fee } = await context.fAsset.getReceivedAmount(minter.address, redeemer.address, transferAmount);
             assertWeb3Equal(transferFee, fee);
             const startBalanceM = await fAsset.balanceOf(minter.address);

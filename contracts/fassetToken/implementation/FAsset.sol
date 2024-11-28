@@ -345,8 +345,8 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         internal view
         returns (uint256)
     {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
-        return SafePct.mulDivRoundUp(_receivedAmount, feeMillionths, 1e6 - feeMillionths);
+        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths(); // < 1e6
+        return SafePct.mulDivRoundUp(_receivedAmount, feeMillionths, 1e6 - feeMillionths); // 1e6 - feeMillionths > 0
     }
 
     /**
