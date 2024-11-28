@@ -196,9 +196,16 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
             await publishPrices();
 
-            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
+            const { 0: price, 1: timestamp, 2: decimals, 3: noOfSubmits } = await priceStore.getPriceFromTrustedProvidersWithQuality(feedSymbols[1]);
+            const { 0: price2, 1: timestamp2, 2: decimals2 } = await priceStore.getPriceFromTrustedProviders(feedSymbols[1]);
             // price should be floor(123456 + 123457) / 2 = 123456
             assertWeb3Equal(price, 123456);
+            assertWeb3Equal(price2, 123456);
+            assertWeb3Equal(timestamp, startTs + 2 * votingEpochDurationSeconds);
+            assertWeb3Equal(timestamp2, startTs + 2 * votingEpochDurationSeconds);
+            assertWeb3Equal(decimals, feedDecimals[1]);
+            assertWeb3Equal(decimals2, feedDecimals[1]);
+            assertWeb3Equal(noOfSubmits, 4);
         });
 
         it("should calculate median price from 1 trusted price", async () => {
