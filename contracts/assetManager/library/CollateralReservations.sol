@@ -307,19 +307,20 @@ library CollateralReservations {
         private
     {
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
+        address minter = crt.minter;
+
+        // release agent's reserved collateral
+        releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
 
         // guarded against reentrancy in CollateralReservationsFacet
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = crt.minter.call{value: totalFee, gas: 100000}("");
+        (bool success, ) = minter.call{value: totalFee, gas: 100000}("");
         /* solhint-enable avoid-low-level-calls */
         if (!success) {
             // if failed, burn the fee
             Agents.burnDirectNAT(totalFee);
         }
-
-        // release agent's reserved collateral
-        releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
 
     function _reservationAMG(

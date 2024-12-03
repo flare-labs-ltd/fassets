@@ -173,7 +173,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 depositedFAsset = _enterWithFullFAssets ? fAssetShare : Math.min(_fAssets, fAssetShare);
         // transfer/mint calculated assets
         if (depositedFAsset > 0) {
-        (, uint256 transferFee) = fAsset.getSendAmount(msg.sender, address(this), depositedFAsset);
+            (, uint256 transferFee) = fAsset.getSendAmount(msg.sender, address(this), depositedFAsset);
             require(fAsset.allowance(msg.sender, address(this)) >= depositedFAsset + transferFee,
                 "f-asset allowance too small");
             _transferFAsset(msg.sender, address(this), depositedFAsset);
