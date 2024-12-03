@@ -1,8 +1,9 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationNotProved, AttestationProof, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "./interfaces/IFlareDataConnectorClient";
+import { requireNotNull } from "../utils/helpers";
 
 export class AttestationHelperError extends Error {
     constructor(message: string) {
@@ -112,6 +113,13 @@ export class AttestationHelper {
             },
         };
         return await this.client.submitRequest(request);
+    }
+
+    static merkleRootOfAddresses(addresses: string[]) {
+        const addressDoubleHashes = addresses.map(address => web3.utils.soliditySha3Raw(web3.utils.soliditySha3Raw(address)));
+        addressDoubleHashes.sort();
+        const tree = new MerkleTree(addressDoubleHashes);
+        return requireNotNull(tree.root);
     }
 
     async requestConfirmedBlockHeightExistsProof(queryWindow: number): Promise<AttestationRequestId | null> {

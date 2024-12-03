@@ -1,5 +1,5 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { BN_ZERO, BNish, DAYS, MAX_BIPS, toBN, toWei, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { FAssetInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { assertApproximatelyEqual } from "../../utils/approximation";
@@ -13,6 +13,8 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { calculateReceivedNat } from "../../utils/eth";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations - transfer fees`, async accounts => {
     const governance = accounts[10];
@@ -128,6 +130,68 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // and no fee was charged
             const epochData = await assetManager.transferFeeEpochData(currentEpoch);
             assertWeb3Equal(epochData.totalFees, 0);
+        });
+
+        it("agent self close with additional collateral provider - after self close exit payout in vault collateral", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(1e8));
+            const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
+            const fullAgentCollateral = toWei(1e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // minter mints
+            const lots = 300;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash1 = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash1);
+            // minter enters the pool
+            const minterPoolDeposit1 = toWei(10000);
+            const enterRes = await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
+            const minterPoolTokens = toBN(requiredEventArgs(enterRes, "Entered").receivedTokensWei);
+
+            const vaultCollateralBalanceAgentBefore = await context.usdc.balanceOf(agent.agentVault.address);
+            const vaultCollateralBalanceRedeemerBefore = await context.usdc.balanceOf(minter.address);
+
+            // Approve enough fassets that will be needed in self close exit.
+            await context.fAsset.approve(agent.collateralPool.address, 10000000000, { from: minter.address });
+
+            // Self close exit with vault collateral payout
+            const selfCloseAmount = minterPoolTokens;
+            const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
+            const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(selfCloseAmount);
+            const { 1: transferFee } = await context.fAsset.getSendAmount(minter.address, agent.collateralPool.address, fAssetReqForClose);
+            await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+            const response = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingUser1, ZERO_ADDRESS, { from: minter.address });
+            const receivedNat = await calculateReceivedNat(response, minter.address);
+            const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
+            assertWeb3Equal(fAssetBalanceBefore.sub(fAssetBalanceAfter), fAssetReqForClose.add(transferFee));
+
+            const info = await agent.getAgentInfo();
+            const natShare = toBN(info.totalPoolCollateralNATWei).mul(selfCloseAmount).div(await agent.collateralPoolToken.totalSupply());
+            const vaultCollateralBalanceAgentAfter = await context.usdc.balanceOf(agent.agentVault.address);
+            const vaultCollateralBalanceRedeemerAfter = await context.usdc.balanceOf(minter.address);
+            assertWeb3Equal(vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore), vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter));
+            assertWeb3Equal(receivedNat, natShare);
+            expectEvent(response, "Exited");
+
+            // send fAsset to agent so the agent can self close
+            await context.fAsset.transfer(agent.ownerWorkAddress, fAssetBalanceAfter, { from: minter.address });
+            await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
+            // skip 1 epoch and claim (multiple times)
+            await time.increase(epochDuration);
+            await agent.claimTransferFees(agent.ownerWorkAddress, 10);
+            await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
+            await time.increase(epochDuration);
+            await agent.claimTransferFees(agent.ownerWorkAddress, 10);
+            await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
+            await time.increase(epochDuration);
+            await agent.claimTransferFees(agent.ownerWorkAddress, 10);
+            const totalSupply = await context.fAsset.totalSupply();
+            const [dustChanges, selfClosedUBA] = await agent.selfClose(totalSupply);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: crt.valueUBA.add(crt.feeUBA), mintedUBA: BN_ZERO });
+            assertWeb3Equal(selfClosedUBA, totalSupply);
+            assert.equal(dustChanges.length, 0);    // initially dust is cleared and then re-created
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
         });
 
     });
