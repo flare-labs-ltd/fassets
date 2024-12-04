@@ -2110,11 +2110,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "value too small");
         });
 
-        it("validate settings averageBLockTimeMS cannot be address zero", async () => {
+        it("validate settings averageBLockTimeMS cannot be zero", async () => {
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.averageBlockTimeMS = constants.ZERO_ADDRESS;
+            Settings.averageBlockTimeMS = 0;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "cannot be zero");
         });
