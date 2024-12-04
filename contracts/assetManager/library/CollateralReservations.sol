@@ -21,6 +21,9 @@ library CollateralReservations {
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;
 
+    // double hash of empty string (same as _doubleHash("") which cannot be used for constant initialization)
+    bytes32 internal constant EMPTY_ADDRESS_DOUBLE_HASH = keccak256(abi.encodePacked(keccak256(bytes(""))));
+
     function reserveCollateral(
         address _minter,
         address _agentVault,
@@ -65,8 +68,10 @@ library CollateralReservations {
             bytes32[] memory hashes = new bytes32[](_minterUnderlyingAddresses.length);
             // double hash the addresses (to prevent second pre-image attack) and check if they are sorted
             hashes[0] = _doubleHash(_minterUnderlyingAddresses[0]);
+            require(hashes[0] != EMPTY_ADDRESS_DOUBLE_HASH, "minter underlying address invalid");
             for (uint256 i = 1; i < _minterUnderlyingAddresses.length; i++) {
                 hashes[i] = _doubleHash(_minterUnderlyingAddresses[i]);
+                require(hashes[i] != EMPTY_ADDRESS_DOUBLE_HASH, "minter underlying address invalid");
                 require(hashes[i] > hashes[i - 1], "minter underlying addresses not sorted");
             }
             cr.sourceAddressesRoot = MerkleTree.calculateMerkleRoot(hashes);

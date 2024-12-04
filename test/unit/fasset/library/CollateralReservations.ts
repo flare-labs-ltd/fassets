@@ -428,6 +428,21 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await expectRevert(promise1, "minter underlying addresses not sorted");
     });
 
+    it("should not reserve collateral - minter underlying address invalid", async () => {
+        // init
+        chain.mint(underlyingAgent1, 100);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        // assert
+        const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, ["", "Agent2"], { from: minterAddress1, value: crFee });
+        await expectRevert(promise1, "minter underlying address invalid");
+        const promise2 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, ["Agent1", ""], { from: minterAddress1, value: crFee });
+        await expectRevert(promise2, "minter underlying address invalid");
+    });
+
     it("should not default minting if minting non-payment mismatch", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
