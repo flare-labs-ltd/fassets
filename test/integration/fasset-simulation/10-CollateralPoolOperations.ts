@@ -532,12 +532,13 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await context.fAsset.approve(agent.collateralPool.address, toBNExp(1, 30), { from: minter.address });
         await expectRevert(agent.collateralPool.selfCloseExit(tokenBalance, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }), "f-asset terminated");
         // ordinary exit will work
-        const natBalanceBefore = await context.wNat.balanceOf(minter.address);
-        await agent.collateralPool.exit(tokenBalance, 0, { from: minter.address }); // exit type doesn't matter now
+        const natBalanceBefore = toBN(await web3.eth.getBalance(minter.address));
+        const resp = await agent.collateralPool.exit(tokenBalance, 0, { from: minter.address }); // exit type doesn't matter now
+        const paidGas = toBN(resp.receipt.gasUsed).mul(toBN(resp.receipt.effectiveGasPrice));
         const tokenBalanceAfter = await agent.collateralPoolToken.balanceOf(minter.address);
         assertWeb3Equal(tokenBalanceAfter, 0);
-        const natBalanceAfter = await context.wNat.balanceOf(minter.address);
-        assertApproximatelyEqual(natBalanceAfter.sub(natBalanceBefore), minterPoolDeposit1, 'absolute', 10);
+        const natBalanceAfter = toBN(await web3.eth.getBalance(minter.address));
+        assertApproximatelyEqual(natBalanceAfter.sub(natBalanceBefore).add(paidGas), minterPoolDeposit1, 'absolute', 10);
         // cannot exit again
         await expectRevert(agent.collateralPool.exit(tokenBalance, 0, { from: minter.address }), "token balance too low");
     });

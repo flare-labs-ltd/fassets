@@ -517,18 +517,22 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // set timelock to 1 hour
                 await assetManager.setTimelockDuration(time.duration.hours(1));
                 // agent enters the pool
-                await collateralPool.enter(0, true, { value: ETH(100) });
+                const payload1 = collateralPool.contract.methods.enter(0, true).encodeABI();
+                await agentVault.callFunctionAt(collateralPool.address, payload1, ETH(100), { value: ETH(100) });
                 // agent is forced to payout by the asset manager
-                const payload = collateralPool.contract.methods.payout(accounts[1], ETH(50), ETH(100)).encodeABI();
-                await assetManager.callFunctionAt(collateralPool.address, payload);
+                const payload2 = collateralPool.contract.methods.payout(accounts[1], ETH(80), ETH(40)).encodeABI();
+                const resp = await assetManager.callFunctionAt(collateralPool.address, payload2);
+                await expectEvent.inTransaction(resp.tx, collateralPool, "PaidOut", {
+                    recipient: accounts[1], paidNatWei: ETH(80), burnedTokensWei: ETH(40)
+                });
                 // check that agent has no tokens left and that wNat was transferred to acc1
                 const agentTokens = await collateralPoolToken.balanceOf(agent);
                 assertEqualBN(agentTokens, BN_ZERO);
                 const wNatBalanceAcc1 = await wNat.balanceOf(accounts[1]);
-                assertEqualBN(wNatBalanceAcc1, ETH(50));
+                assertEqualBN(wNatBalanceAcc1, ETH(80));
                 // agent responsibility - amount transferred to acc1 stayed in the pool
                 const poolWNatBalance = await collateralPool.totalCollateral();
-                assertEqualBN(poolWNatBalance, ETH(50));
+                assertEqualBN(poolWNatBalance, ETH(20));
             });
         });
 
@@ -578,16 +582,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(tokenSupply, ETH(10));
             const collateral = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateral, ETH(10));
-        });
-
-        it("should not enter if token supply to nat balance is too small", async () => {
-            await agentVault.enterPool(collateralPool.address, { value: ETH(1) });
-            //Mint collateral pool tokens to increase total supply
-            await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
-            await collateralPoolToken.mint(accounts[12], ETH(10000), { from: collateralPool.address });
-            await stopImpersonatingContract(collateralPool.address);
-            const res = collateralPool.enter(0, true, { value: ETH(10) });
-            await expectRevert(res, "pool nat balance too small");
         });
 
         it("should enter tokenless and f-assetless pool holding some collateral", async () => {
@@ -1589,7 +1583,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should claim airdropped distribution", async () => {
             const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
-            await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: agent });
+            const resp = await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: agent });
+            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: ETH(1), rewardType: '0' });
             const collateralPoolBalance = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateralPoolBalance, ETH(1));
         });
@@ -1608,7 +1603,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should claim rewards from reward manager", async () => {
             const rewardManagerMock = await MockContract.new();
-            await collateralPool.claimDelegationRewards(rewardManagerMock.address, 5, [], { from: agent });
+            const resp = await collateralPool.claimDelegationRewards(rewardManagerMock.address, 5, [], { from: agent });
+            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: '0', rewardType: '1' });
             const claimReward = web3.eth.abi.encodeFunctionCall({
                 type: "function", name: "claim",
                 inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
