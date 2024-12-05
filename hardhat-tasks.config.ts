@@ -26,11 +26,17 @@ task("link-contracts", "Link contracts with external libraries")
         await linkContracts(hre, contracts, mapfile);
     });
 
-task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
+task("deploy-price-reader-v2", "Deploy price reader v2.")
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await deployPriceReaderV2(hre, contracts);
+    });
+
+task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
+    .setAction(async ({}, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await deployAgentOwnerRegistry(hre, contracts);
         await deployUserWhitelist(hre, contracts);
         await deployAgentVaultFactory(hre, contracts);
@@ -81,7 +87,7 @@ task("verify-asset-manager-controller", "Verify deployed asset manager controlle
         await verifyAssetManagerController(hre, contracts);
     });
 
-task("verify-price-reader-v2", "Verify deployed asset manager controller.")
+task("verify-price-reader-v2", "Verify deployed price reader v2.")
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);

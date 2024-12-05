@@ -1,0 +1,42 @@
+[
+  {
+    "name": "GovernanceSettings",
+    "contractName": "GovernanceSettings.sol",
+    "address": "0x183fAfF6997C98A812A3B98748Fc80241D08f312"
+  },
+  {
+    "name": "AddressUpdater",
+    "contractName": "AddressUpdater.sol",
+    "address": "0x884E1818eA005171CDe0dB5b83E9734454e0Ed6D"
+  },
+  {
+    "name": "WNat",
+    "contractName": "WNat.sol",
+    "address": "0x02f0826ef6aD107Cfc861152B32B52fD11BaB9ED"
+  },
+  {
+    "name": "Relay",
+    "contractName": "Relay.sol",
+    "address": "0x67a916E175a2aF01369294739AA60dDdE1Fad189"
+  },
+  {
+    "name": "FdcHub",
+    "contractName": "FdcHub.sol",
+    "address": "0xCfD4669a505A70c2cE85db8A1c1d14BcDE5a1a06"
+  },
+  {
+    "name": "FdcVerification",
+    "contractName": "FdcVerification.sol",
+    "address": "0xd283afC5A67E2d4Bc700b5B640328Bda22450621"
+  },
+  {
+    "name": "PriceReader",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
+  },
+  {
+    "name": "FtsoV2PriceStore",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
+  }
+]
