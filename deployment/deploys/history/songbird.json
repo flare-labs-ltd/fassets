@@ -12,5 +12,61 @@
     "addresses": [
       "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
     ]
+  },
+  {
+    "name": "AgentOwnerRegistry",
+    "contractName": "AgentOwnerRegistry.sol",
+    "addresses": [
+      "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0"
+    ]
+  },
+  {
+    "name": "UserWhitelist",
+    "contractName": "Whitelist.sol",
+    "addresses": [
+      "0xd5d90c61cF30B86b1c4507515e91470334d77Ad6"
+    ]
+  },
+  {
+    "name": "AgentVaultProxyImplementation",
+    "contractName": "AgentVault.sol",
+    "addresses": [
+      "0x279615157757FecfA7B24Cc285A8970A12E68CCA"
+    ]
+  },
+  {
+    "name": "AgentVaultFactory",
+    "contractName": "AgentVaultFactory.sol",
+    "addresses": [
+      "0x0f3B379f36A4854ae0ce52E363d5A3dc9c1CFee7"
+    ]
+  },
+  {
+    "name": "CollateralPoolProxyImplementation",
+    "contractName": "CollateralPool.sol",
+    "addresses": [
+      "0xa9fF7ff60119D33e30814BbF91ba8613a3d4F8Ec"
+    ]
+  },
+  {
+    "name": "CollateralPoolFactory",
+    "contractName": "CollateralPoolFactory.sol",
+    "addresses": [
+      "0x052C7Cb58FBd5964940D7a10cA78C50A90bAD3A7"
+    ]
+  },
+  {
+    "name": "CollateralPoolTokenProxyImplementation",
+    "contractName": "CollateralPoolToken.sol",
+    "addresses": [
+      "0x8cde2269953B2f08102aE23ea86F2853e3446912"
+    ]
+  },
+  {
+    "name": "CollateralPoolTokenFactory",
+    "contractName": "CollateralPoolTokenFactory.sol",
+    "addresses": [
+      "0xeed6C3E791e8d3d939e6A50811D8dB3e1e5693BE"
+    ]
   }
 ]
