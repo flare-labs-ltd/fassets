@@ -16,9 +16,9 @@
         "directPricePair": false,
         "assetFtsoSymbol": "DOGE",
         "tokenFtsoSymbol": "SGB",
-        "minCollateralRatioBIPS": 10000,
-        "ccbMinCollateralRatioBIPS": 9000,
-        "safetyMinCollateralRatioBIPS": 11000
+        "minCollateralRatioBIPS": 15000,
+        "ccbMinCollateralRatioBIPS": 14000,
+        "safetyMinCollateralRatioBIPS": 16000
     },
     "vaultCollaterals": [
         {
@@ -27,9 +27,9 @@
             "directPricePair": false,
             "assetFtsoSymbol": "DOGE",
             "tokenFtsoSymbol": "USDX",
-            "minCollateralRatioBIPS": 14000,
-            "ccbMinCollateralRatioBIPS": 13000,
-            "safetyMinCollateralRatioBIPS": 15000
+            "minCollateralRatioBIPS": 12000,
+            "ccbMinCollateralRatioBIPS": 11000,
+            "safetyMinCollateralRatioBIPS": 13000
         }
     ],
     "minUnderlyingBackingBIPS": 9500,
