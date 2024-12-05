@@ -30,6 +30,11 @@
     "address": "0xd283afC5A67E2d4Bc700b5B640328Bda22450621"
   },
   {
+    "name": "USDX",
+    "contractName": "HexTrustUSD.sol",
+    "address": "0x4A771Cc1a39FDd8AA08B8EA51F7Fd412e73B3d2B"
+  },
+  {
     "name": "PriceReader",
     "contractName": "FtsoV2PriceStore.sol",
     "address": "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
