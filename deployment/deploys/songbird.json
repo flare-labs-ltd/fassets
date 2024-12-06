@@ -94,7 +94,7 @@
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerControllerProxy.sol",
-    "address": "0x2920E7953F0EA8871B90F04E213dF894bB1CD456",
+    "address": "0xFeA3Bf40B5a75fad7b4e2CBEcEE2Bd4eE899698e",
     "mustSwitchToProduction": true
   },
   {
@@ -105,35 +105,35 @@
   {
     "name": "AssetManager_FBTC",
     "contractName": "AssetManager.sol",
-    "address": "0x7120AcFeb6B3185cB2D07B3167B0AAF15097fa46",
+    "address": "0xA36b57bF846Ce819eE260dC25176e6f893Dc7798",
     "mustSwitchToProduction": true
   },
   {
     "name": "FBTC",
     "contractName": "FAssetProxy.sol",
-    "address": "0x0529F979E61391aC9eDDA6255E9292dAe934174C"
+    "address": "0xAF7EB55cC12651e6681d08b9df31aE1dD0C9e857"
   },
   {
     "name": "AssetManager_FDOGE",
     "contractName": "AssetManager.sol",
-    "address": "0xBAaAcc74098f8d773309F23576C0B47a31912741",
+    "address": "0x43c704B973f3D5B9E5055142DF32b9A6555c83F7",
     "mustSwitchToProduction": true
   },
   {
     "name": "FDOGE",
     "contractName": "FAssetProxy.sol",
-    "address": "0x38AA2e87578060828B1F3B8069266F105168790b"
+    "address": "0x99594c18fA6E345cc8ef31cCF1bb1094F2726b26"
   },
   {
     "name": "AssetManager_FXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x391f163eA960aacB47EcC59730a6bf271BC35877",
+    "address": "0x6864726B7F7DD227c724DA68c650eC6172443BDc",
     "mustSwitchToProduction": true
   },
   {
     "name": "FXRP",
     "contractName": "FAssetProxy.sol",
-    "address": "0xC7423606A15Eec239330A9eb53D897dD47062e2C"
+    "address": "0xbEf69D030bfd0514A26ffa00A40567263c878990"
   },
   {
     "name": "AssetManagerInit",

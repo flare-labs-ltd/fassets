@@ -47,7 +47,7 @@
     "averageBlockTimeMS": 4000,
     "attestationWindowSeconds": 86400,
     "redemptionPaymentExtensionSeconds": 45,
-    "confirmationByOthersAfterSeconds": 14400,
+    "confirmationByOthersAfterSeconds": 7200,
     "confirmationByOthersRewardUSD5": "50 00000",
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "250 00000",
