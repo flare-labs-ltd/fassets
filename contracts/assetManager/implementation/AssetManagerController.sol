@@ -721,12 +721,24 @@ contract AssetManagerController is
             abi.encodeCall(IIAssetManager.emergencyPause, (byGovernance, _duration)));
     }
 
+    function emergencyPauseTransfers(IIAssetManager[] memory _assetManagers, uint256 _duration)
+        external
+    {
+        bool byGovernance = msg.sender == governance();
+        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
+            "only governance or emergency pause senders");
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.emergencyPauseTransfers, (byGovernance, _duration)));
+    }
+
     function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
         external
         onlyImmediateGovernance
     {
         _callOnManagers(_assetManagers,
             abi.encodeCall(IIAssetManager.resetEmergencyPauseTotalDuration, ()));
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.resetEmergencyPauseTransfersTotalDuration, ()));
     }
 
     function addEmergencyPauseSender(address _address)

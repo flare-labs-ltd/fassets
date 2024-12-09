@@ -31,6 +31,7 @@ export const assetManagerFacets = [
     'SystemStateManagementFacet',
     'SystemInfoFacet',
     'EmergencyPauseFacet',
+    'EmergencyPauseTransfersFacet',
     'AgentPingFacet',
 ];
 

@@ -317,6 +317,9 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         require(terminatedAt == 0, "f-asset terminated");
         require(_from == address(0) || balanceOf(_from) >= _amount, "f-asset balance too low");
         require(_from != _to, "Cannot transfer to self");
+        // mint and redeem are allowed on transfer pause, but not transfer
+        require(_from == address(0) || _to == address(0) || !IAssetManager(assetManager).transfersEmergencyPaused(),
+            "emergency pause of transfers active");
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
     }
