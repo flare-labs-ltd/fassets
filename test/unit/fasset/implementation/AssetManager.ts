@@ -1023,6 +1023,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings6.mintingCapAMG = toBN(newSettings6.lotSizeAMG).muln(2);
             await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals);
 
+            let newSettings7 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings7.rejectOrCancelCollateralReservationReturnFactorBIPS = 10001;
+            let res7x = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7, collaterals);
+            await expectRevert(res7x, "bips value too high");
+
             let liquidationSettings5 = createTestSettings(contracts, testChainInfo.eth);
             liquidationSettings5.liquidationCollateralFactorBIPS = [];
             liquidationSettings5.liquidationFactorVaultCollateralBIPS = [];
@@ -2434,6 +2439,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(promise, "only asset manager controller");
         });
 
+        it("should not setRejectOrCancelCollateralReservationReturnFactorBIPS if not from asset manager controller", async () => {
+            const promise = assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
         it("should not setRejectRedemptionRequestWindowSeconds if not from asset manager controller", async () => {
             const promise = assetManager.setRejectRedemptionRequestWindowSeconds(0);
             await expectRevert(promise, "only asset manager controller");
@@ -2936,6 +2946,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(promise, "too close to previous update");
             await time.increase(1);
             await assetManager.setCancelCollateralReservationAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
+        it("should not setRejectOrCancelCollateralReservationReturnFactorBIPS if rate limited", async () => {
+            const oldValue = settings.rejectOrCancelCollateralReservationReturnFactorBIPS;
+            await assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setRejectRedemptionRequestWindowSeconds if rate limited", async () => {

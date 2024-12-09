@@ -143,7 +143,7 @@
             "type": "integer"
         },
         "cancelCollateralReservationAfterSeconds": {
-            "description": "The amount of time after which the collateral reservation can be cancelled if the\nhandshake is not completed.",
+            "description": "The amount of time after which the collateral reservation can be canceled if the\nhandshake is not completed.",
             "minimum": 1,
             "type": "integer"
         },
@@ -200,6 +200,11 @@
         },
         "fAssetSymbol": {
             "description": "The symbol for the f-asset.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
+        "fdcVerification": {
+            "description": "The proof verifier contract for Flare data connector proofs.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'FdcVerification' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -309,6 +314,12 @@
             "description": "When there are many redemption requests in short time, agent gets\nup to this amount of extra payment time per redemption.",
             "type": "integer"
         },
+        "rejectOrCancelCollateralReservationReturnFactorBIPS": {
+            "description": "The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.\nExpressed in BIPS, e.g. 9500 for factor of 0.95.",
+            "maximum": 10000,
+            "minimum": 0,
+            "type": "integer"
+        },
         "rejectRedemptionRequestWindowSeconds": {
             "description": "Time window inside which the agent can reject the redemption request.",
             "minimum": 1,
@@ -327,11 +338,6 @@
         "requireEOAAddressProof": {
             "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
             "type": "boolean"
-        },
-        "fdcVerification": {
-            "description": "The proof verifier contract for Flare data connector proofs.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'FdcVerification' in contracts.json.",
-            "pattern": "^\\w+$",
-            "type": "string"
         },
         "takeOverRedemptionRequestWindowSeconds": {
             "description": "Time window inside which the agent can take over the redemption request from another agent\nthat has rejected it.",
@@ -352,7 +358,7 @@
             "type": "integer"
         },
         "transferFeeClaimMaxUnexpiredEpochs": {
-            "description": "After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.\nThis setting is the epoch duration (in seconds).",
+            "description": "After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.\nThis setting is the number of epochs before expiration.",
             "type": "integer"
         },
         "transferFeeMillionths": {
@@ -440,6 +446,7 @@
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",
+        "rejectOrCancelCollateralReservationReturnFactorBIPS",
         "rejectRedemptionRequestWindowSeconds",
         "rejectedRedemptionDefaultFactorPoolBIPS",
         "rejectedRedemptionDefaultFactorVaultCollateralBIPS",

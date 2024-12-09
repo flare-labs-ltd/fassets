@@ -204,6 +204,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
         cancelCollateralReservationAfterSeconds: parameters.cancelCollateralReservationAfterSeconds,
+        rejectOrCancelCollateralReservationReturnFactorBIPS: parameters.rejectOrCancelCollateralReservationReturnFactorBIPS,
         rejectRedemptionRequestWindowSeconds: parameters.rejectRedemptionRequestWindowSeconds,
         takeOverRedemptionRequestWindowSeconds: parameters.takeOverRedemptionRequestWindowSeconds,
         rejectedRedemptionDefaultFactorVaultCollateralBIPS: parameters.rejectedRedemptionDefaultFactorVaultCollateralBIPS,

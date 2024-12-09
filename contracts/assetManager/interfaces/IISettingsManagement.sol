@@ -137,6 +137,9 @@ interface IISettingsManagement {
     function setCancelCollateralReservationAfterSeconds(uint256 _value)
         external;
 
+    function setRejectOrCancelCollateralReservationReturnFactorBIPS(uint256 _value)
+        external;
+
     function setRejectRedemptionRequestWindowSeconds(uint256 _value)
         external;
 

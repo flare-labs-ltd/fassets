@@ -491,6 +491,14 @@ export interface AssetManagerParameters {
     cancelCollateralReservationAfterSeconds: integer;
 
     /**
+     * The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.
+     * Expressed in BIPS, e.g. 9500 for factor of 0.95.
+     * @minimum 0
+     * @maximum 10000
+     */
+    rejectOrCancelCollateralReservationReturnFactorBIPS: integer;
+
+    /**
      * Time window inside which the agent can reject the redemption request.
      * @minimum 1
      */

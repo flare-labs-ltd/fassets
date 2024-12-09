@@ -485,6 +485,17 @@ contract AssetManagerController is
             IISettingsManagement.setCancelCollateralReservationAfterSeconds.selector, _value);
     }
 
+    function setRejectOrCancelCollateralReservationReturnFactorBIPS(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            IISettingsManagement.setRejectOrCancelCollateralReservationReturnFactorBIPS.selector, _value);
+    }
+
     function setRejectRedemptionRequestWindowSeconds(
         IIAssetManager[] memory _assetManagers,
         uint256 _value
