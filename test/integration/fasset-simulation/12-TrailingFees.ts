@@ -1,6 +1,6 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, BNish, DAYS, MAX_BIPS, toBN, toWei, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, MAX_BIPS, toBN, toBNExp, toWei, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { FAssetInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -561,7 +561,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("calculating received amount and fee", async () => {
             for (let i = 0; i < 1000; i++) {
-                const amount = toBN(Math.random() * 1e20);
+                const amount = toBNExp(Math.random(), 20);
                 // calculate fee
                 const fee = await calculateFee(amount, false);
                 // calculate amounts and fees
@@ -576,7 +576,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("calculating send amount to receive given amount", async () => {
             for (let i = 0; i < 1000; i++) {
-                const amount = toBN(Math.random() * 1e20);
+                const amount = toBNExp(Math.random(), 20);
                 // calculate fee
                 const fee = await calculateFee(amount, true);
                 // calculate required send amount to receive `amount`
