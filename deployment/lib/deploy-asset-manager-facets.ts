@@ -34,6 +34,11 @@ export const assetManagerFacets = [
     'AgentPingFacet',
 ];
 
+export const assetManagerFacetsDeployedByDiamondCut = [
+    'RedemptionTimeExtensionFacet',
+    'TransferFeeFacet'
+]
+
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {
     for (const facetName of assetManagerFacets) {
         await deployFacet(hre, facetName, contracts, deployer);
