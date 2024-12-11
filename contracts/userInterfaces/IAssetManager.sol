@@ -112,6 +112,23 @@ interface IAssetManager is
         returns (uint256);
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Emergency pause transfers
+
+    /**
+     * If true, the system is in emergency pause mode and most operations (mint, redeem, liquidate) are disabled.
+     */
+    function transfersEmergencyPaused()
+        external view
+        returns (bool);
+
+    /**
+     * The time when emergency pause mode will end automatically.
+     */
+    function transfersEmergencyPausedUntil()
+        external view
+        returns (uint256);
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Asset manager upgrading state
 
     /**

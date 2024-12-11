@@ -667,6 +667,21 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit IAssetManagerEvents.SettingChanged("cancelCollateralReservationAfterSeconds", _value);
     }
 
+    function setRejectOrCancelCollateralReservationReturnFactorBIPS(uint256 _value)
+        external
+        onlyAssetManagerController
+        rateLimited
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // validate
+        require(_value <= SafePct.MAX_BIPS, "bips value too high");
+        require(_value <= settings.rejectOrCancelCollateralReservationReturnFactorBIPS * 2 + 2500, "increase too big");
+        require(_value >= settings.rejectOrCancelCollateralReservationReturnFactorBIPS / 2, "decrease too big");
+        // update
+        settings.rejectOrCancelCollateralReservationReturnFactorBIPS = _value.toUint16();
+        emit SettingChanged("rejectOrCancelCollateralReservationReturnFactorBIPS", _value);
+    }
+
     function setRejectRedemptionRequestWindowSeconds(uint256 _value)
         external
         onlyAssetManagerController

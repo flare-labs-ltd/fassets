@@ -1056,6 +1056,44 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res, "cannot be zero");
         });
 
+        // reject or cancel collateral reservation return factor BIPS
+        it("should set reject or cancel collateral reservation return factor BIPS", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectOrCancelCollateralReservationReturnFactorBIPS_new = toBN(currentSettings.rejectOrCancelCollateralReservationReturnFactorBIPS).divn(2);
+            let res = await assetManagerController.setRejectOrCancelCollateralReservationReturnFactorBIPS([assetManager.address], rejectOrCancelCollateralReservationReturnFactorBIPS_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "rejectOrCancelCollateralReservationReturnFactorBIPS", value: toBN(rejectOrCancelCollateralReservationReturnFactorBIPS_new) });
+        });
+
+        it("should not set reject or cancel collateral reservation return factor BIPS if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectOrCancelCollateralReservationReturnFactorBIPS_new = toBN(currentSettings.rejectOrCancelCollateralReservationReturnFactorBIPS).divn(2);
+            let res = assetManagerController.setRejectOrCancelCollateralReservationReturnFactorBIPS([assetManager.address], rejectOrCancelCollateralReservationReturnFactorBIPS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("should not set reject or cancel collateral reservation return factor BIPS if increase is too big", async () => {
+            //First we need to lower the setting to 30% so we can multiply by 3 and still be below 100%
+            const res_prev1 = assetManagerController.setRejectOrCancelCollateralReservationReturnFactorBIPS([assetManager.address], toBIPS("50%"), { from: governance });
+            await waitForTimelock(res_prev1, assetManagerController, updateExecutor);
+            await time.increase(WEEKS);
+
+            const res_prev2 = assetManagerController.setRejectOrCancelCollateralReservationReturnFactorBIPS([assetManager.address], toBIPS("30%"), { from: governance });
+            await waitForTimelock(res_prev2, assetManagerController, updateExecutor);
+            await time.increase(WEEKS);
+
+            const currentSettings = await assetManager.getSettings();
+            let rejectOrCancelCollateralReservationReturnFactorBIPS_new = toBN(currentSettings.rejectOrCancelCollateralReservationReturnFactorBIPS).muln(3);
+            let res = assetManagerController.setRejectOrCancelCollateralReservationReturnFactorBIPS([assetManager.address], rejectOrCancelCollateralReservationReturnFactorBIPS_new, { from: governance });
+            await expectRevert(res, "increase too big");
+        });
+
+        it("should not set reject or cancel collateral reservation return factor BIPS if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let rejectOrCancelCollateralReservationReturnFactorBIPS_new = toBN(currentSettings.rejectOrCancelCollateralReservationReturnFactorBIPS).divn(5);
+            let res = assetManagerController.setRejectOrCancelCollateralReservationReturnFactorBIPS([assetManager.address], rejectOrCancelCollateralReservationReturnFactorBIPS_new, { from: governance });
+            await expectRevert(res, "decrease too big");
+        });
+
         // reject redemption request window
         it("should set reject redemption request window seconds", async () => {
             const currentSettings = await assetManager.getSettings();

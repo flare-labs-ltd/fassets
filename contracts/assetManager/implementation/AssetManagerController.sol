@@ -485,6 +485,17 @@ contract AssetManagerController is
             IISettingsManagement.setCancelCollateralReservationAfterSeconds.selector, _value);
     }
 
+    function setRejectOrCancelCollateralReservationReturnFactorBIPS(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            IISettingsManagement.setRejectOrCancelCollateralReservationReturnFactorBIPS.selector, _value);
+    }
+
     function setRejectRedemptionRequestWindowSeconds(
         IIAssetManager[] memory _assetManagers,
         uint256 _value
@@ -710,12 +721,24 @@ contract AssetManagerController is
             abi.encodeCall(IIAssetManager.emergencyPause, (byGovernance, _duration)));
     }
 
+    function emergencyPauseTransfers(IIAssetManager[] memory _assetManagers, uint256 _duration)
+        external
+    {
+        bool byGovernance = msg.sender == governance();
+        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
+            "only governance or emergency pause senders");
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.emergencyPauseTransfers, (byGovernance, _duration)));
+    }
+
     function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
         external
         onlyImmediateGovernance
     {
         _callOnManagers(_assetManagers,
             abi.encodeCall(IIAssetManager.resetEmergencyPauseTotalDuration, ()));
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.resetEmergencyPauseTransfersTotalDuration, ()));
     }
 
     function addEmergencyPauseSender(address _address)

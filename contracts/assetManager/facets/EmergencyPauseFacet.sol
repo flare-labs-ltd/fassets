@@ -73,7 +73,7 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
         returns (uint256 _pausedUntil, uint256 _totalPauseDuration, bool _pausedByGovernance)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return (state.emergencyPausedUntil, state. emergencyPausedTotalDuration, state.emergencyPausedByGovernance);
+        return (state.emergencyPausedUntil, state.emergencyPausedTotalDuration, state.emergencyPausedByGovernance);
     }
 
     function _paused() private view returns (bool) {

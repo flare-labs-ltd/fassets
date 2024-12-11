@@ -285,6 +285,11 @@ library AssetManagerSettings {
         // rate-limited
         uint64 cancelCollateralReservationAfterSeconds;
 
+        // The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.
+        // Expressed in BIPS, e.g. 9500 for factor of 0.95, max 10000 for factor of 1.0.
+        // rate-limited
+        uint16 rejectOrCancelCollateralReservationReturnFactorBIPS;
+
         // Time window inside which the agent can reject the redemption request.
         // rate-limited
         uint64 rejectRedemptionRequestWindowSeconds;

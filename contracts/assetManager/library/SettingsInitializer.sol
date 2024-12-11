@@ -85,6 +85,8 @@ library SettingsInitializer {
         require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         require(_settings.cancelCollateralReservationAfterSeconds > 0, "cannot be zero");
+        require(_settings.rejectOrCancelCollateralReservationReturnFactorBIPS <= SafePct.MAX_BIPS,
+            "bips value too high");
         require(_settings.rejectRedemptionRequestWindowSeconds > 0, "cannot be zero");
         require(_settings.takeOverRedemptionRequestWindowSeconds > 0, "cannot be zero");
         uint256 rejectedRedemptionFactorBIPS = _settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS +

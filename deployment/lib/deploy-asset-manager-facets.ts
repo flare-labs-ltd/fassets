@@ -31,8 +31,14 @@ export const assetManagerFacets = [
     'SystemStateManagementFacet',
     'SystemInfoFacet',
     'EmergencyPauseFacet',
+    'EmergencyPauseTransfersFacet',
     'AgentPingFacet',
 ];
+
+export const assetManagerFacetsDeployedByDiamondCut = [
+    'RedemptionTimeExtensionFacet',
+    'TransferFeeFacet'
+]
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {
     for (const facetName of assetManagerFacets) {
