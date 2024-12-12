@@ -2,9 +2,9 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
 import "./Conversion.sol";
@@ -12,7 +12,6 @@ import "./Agents.sol";
 
 
 library AgentCollateral {
-    using SafeMath for uint256;
     using SafePct for uint256;
     using Agent for Agent.State;
     using Agents for Agent.State;
@@ -130,8 +129,7 @@ library AgentCollateral {
         returns (uint256)
     {
         uint256 lockedCollateral = lockedCollateralWei(_data, _agent);
-        (, uint256 freeCollateral) = _data.fullCollateral.trySub(lockedCollateral);
-        return freeCollateral;
+        return MathUtils.subOrZero(_data.fullCollateral, lockedCollateral);
     }
 
     // Amount of collateral NOT available for new minting or withdrawal.
@@ -224,8 +222,8 @@ library AgentCollateral {
     {
         uint256 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
-        if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _data.amgToTokenWeiPrice);
+        if (backingTokenWei == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         return _data.fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
     }
 }

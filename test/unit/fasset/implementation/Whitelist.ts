@@ -29,14 +29,14 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
 
     describe("whitelist functions", () => {
 
-        it('should not add addresses if not governance', async function () {
+        it('should not add addresses if not governance or manager', async function () {
             let res = whitelist.addAddressesToWhitelist(whitelistedAddresses);
-            await expectRevert(res, "only governance");
+            await expectRevert(res, "only governance or manager");
         });
 
-        it('should not add address if not governance', async function () {
+        it('should not add address if not governance or manager', async function () {
             let res = whitelist.addAddressToWhitelist(accounts[5]);
-            await expectRevert(res, "only governance");
+            await expectRevert(res, "only governance or manager");
         });
 
         it('should not add address 0', async function () {
@@ -72,8 +72,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             assert.equal(isWhitelisted0, true);
             assert.equal(isWhitelisted1, true);
 
-            let rev = await whitelist.revokeAddress(whitelistedAddresses[0], {from: governance});
-            await waitForTimelock(rev, whitelist, governance);
+            await whitelist.revokeAddress(whitelistedAddresses[0], {from: governance});
             const isRevoked = await whitelist.isWhitelisted(whitelistedAddresses[0]);
             assert.equal(isRevoked, false);
         });
@@ -82,14 +81,11 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             let res = await whitelist.addAddressesToWhitelist(whitelistedAddresses, { from: governance });
             expectEvent(res, "Whitelisted");
             let res2w = await whitelist.revokeAddress(whitelistedAddresses[0], { from: governance });
-            let res2 = await waitForTimelock(res2w, whitelist, governance);
-            expectEvent(res2, "WhitelistingRevoked");
+            expectEvent(res2w, "WhitelistingRevoked");
             let res3w = await whitelist.revokeAddress(whitelistedAddresses[0], { from: governance });
-            let res3 = await waitForTimelock(res3w, whitelist, governance);
-            expectEvent.notEmitted(res3, "WhitelistingRevoked");
+            expectEvent.notEmitted(res3w, "WhitelistingRevoked");
             let res4w = await whitelist.revokeAddress(accounts[5], { from: governance });
-            let res4 = await waitForTimelock(res4w, whitelist, governance);
-            expectEvent.notEmitted(res4, "WhitelistingRevoked");
+            expectEvent.notEmitted(res4w, "WhitelistingRevoked");
         });
 
         it('should not revoke address from the whitelist if revoke is not supported', async function () {
@@ -99,9 +95,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             whitelist2 = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist2.switchToProductionMode({ from: governance });
             await whitelist2.addAddressToWhitelist(whitelistedAddresses[0], {from: governance});
-            let rev = await whitelist2.revokeAddress(whitelistedAddresses[0], {from: governance});
-            let res = waitForTimelock(rev, whitelist2, governance);
-            await expectRevert(res, "revoke not supported");
+            await expectRevert(whitelist2.revokeAddress(whitelistedAddresses[0], {from: governance}), "revoke not supported");
         });
 
         it("should set allowAll", async () => {
@@ -118,6 +112,31 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
 
         it("only governance can set allowAll", async () => {
             await expectRevert(whitelist.setAllowAll(true, { from: accounts[1] }), "only governance");
+        });
+
+        it("governance can assign manager", async () => {
+            const manager = accounts[15];
+            const res = await waitForTimelock(whitelist.setManager(manager, { from: governance }), whitelist, governance);
+            expectEvent(res, "ManagerChanged", { manager });
+        });
+
+        it("manager can perform whitelisting operations", async () => {
+            const manager = accounts[15];
+            // cannot whitelist before being set
+            await expectRevert(whitelist.addAddressToWhitelist(accounts[5], { from: manager }), "only governance or manager");
+            //
+            await waitForTimelock(whitelist.setManager(manager, { from: governance }), whitelist, governance);
+            // single
+            await whitelist.addAddressToWhitelist(accounts[5], { from: manager });
+            assert.isTrue(await whitelist.isWhitelisted(accounts[5]));
+            // multiple
+            await whitelist.addAddressesToWhitelist(whitelistedAddresses, { from: manager });
+            for (const address of whitelistedAddresses) {
+                assert.isTrue(await whitelist.isWhitelisted(address));
+            }
+            // revoke
+            await whitelist.revokeAddress(accounts[5], { from: manager });
+            assert.isFalse(await whitelist.isWhitelisted(accounts[5]));
         });
     });
 

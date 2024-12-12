@@ -12,4 +12,8 @@ contract MathUtilsMock {
     function roundUp(uint256 x, uint256 rounding) external pure returns (uint256) {
         return MathUtils.roundUp(x, rounding);
     }
+
+    function subOrZero(uint256 _a, uint256 _b) external pure returns (uint256) {
+        return MathUtils.subOrZero(_a, _b);
+    }
 }

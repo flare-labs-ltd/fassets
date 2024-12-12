@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../interfaces/ICollateralPoolFactory.sol";
 import "./CollateralPool.sol";
 
@@ -26,13 +26,22 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         returns (IICollateralPool)
     {
         address fAsset = address(_assetManager.fAsset());
-        address clone = Clones.clone(implementation);
-        CollateralPool pool = CollateralPool(payable(clone));
+        ERC1967Proxy proxy = new ERC1967Proxy(implementation, new bytes(0));
+        CollateralPool pool = CollateralPool(payable(address(proxy)));
         pool.initialize(_agentVault, address(_assetManager), fAsset,
             _settings.poolExitCollateralRatioBIPS.toUint32(),
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
             _settings.poolTopupTokenPriceFactorBIPS.toUint16());
         return pool;
+    }
+
+    /**
+     * Returns the encoded init call, to be used in ERC1967 upgradeToAndCall.
+     */
+    function upgradeInitCall(address /* _proxy */) external pure override returns (bytes memory) {
+        // This is the simplest upgrade implementation - no init method needed on upgrade.
+        // Future versions of the factory might return a non-trivial call.
+        return new bytes(0);
     }
 
     /**

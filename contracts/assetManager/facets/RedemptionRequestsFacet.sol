@@ -20,11 +20,13 @@ contract RedemptionRequestsFacet is AssetManagerBase {
      * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * The agent can also reject the redemption request. In that case any other agent can take over the redemption.
+     * If no agent takes over the redemption, the redeemer can request the default payment.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
-     * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
@@ -75,9 +77,40 @@ contract RedemptionRequestsFacet is AssetManagerBase {
     }
 
     /**
+     * In case the agent requires handshake, the redemption request can be rejected by the agent.
+     * Any other agent can take over the redemption request.
+     * If no agent takes over the redemption, the redeemer can request the default payment.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectRedemptionRequest(
+        uint256 _redemptionRequestId
+    )
+        external
+    {
+        RedemptionRequests.rejectRedemptionRequest(_redemptionRequestId.toUint64());
+    }
+
+    /**
+     * The agent can take over the rejected redemption request - it cannot be rejected again.
+     * NOTE: may only be called by the owner of the agent vault
+     * @param _agentVault agent vault address
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function takeOverRedemptionRequest(
+        address _agentVault,
+        uint256 _redemptionRequestId
+    )
+        external
+        notEmergencyPaused
+    {
+        RedemptionRequests.takeOverRedemptionRequest(_agentVault, _redemptionRequestId.toUint64());
+    }
+
+    /**
      * To avoid unlimited work, the maximum number of redemption tickets closed in redemption, self close
      * or liquidation is limited. This means that a single redemption/self close/liquidation is limited.
-     * This function calculates the maximum single rededemption amount.
+     * This function calculates the maximum single redemption amount.
      */
     function maxRedemptionFromAgent(
         address _agentVault
@@ -89,8 +122,8 @@ contract RedemptionRequestsFacet is AssetManagerBase {
     }
 
     /**
-     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
-     * from the state connector. With this, the agent's obligations are fulfiled and they can keep the underlying.
+     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity from the
+     * Flare data connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      * NOTE: also checks that redeemer's address is normalized, so the redeemer must normalize their address,
      *   otherwise it will be rejected!
@@ -98,7 +131,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function rejectInvalidRedemption(
-        AddressValidity.Proof calldata _proof,
+        IAddressValidity.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
         external
@@ -113,7 +146,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
-     * @return _closedAmountUBA the actual self-closed amount, may be less then requested if there are not enough
+     * @return _closedAmountUBA the actual self-closed amount, may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function selfClose(

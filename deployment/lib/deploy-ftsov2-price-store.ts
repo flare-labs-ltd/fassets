@@ -1,38 +1,42 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { FAssetContractStore } from "./contracts";
-import { loadDeployAccounts, networkConfigName } from './deploy-utils';
+import { loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
 
 export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying PriceReaderV2`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const FtsoV2PriceStore = artifacts.require("FtsoV2PriceStore");
-
     const { deployer } = loadDeployAccounts(hre);
     const network = networkConfigName(hre);
+
+    const FtsoV2PriceStore = network === 'hardhat' ? artifacts.require("FtsoV2PriceStoreMock") : artifacts.require("FtsoV2PriceStore");
 
     const firstVotingRoundStartTs = network === 'songbird' || network === 'coston' ? 1658429955 : 1658430000;
     const ftsoV2PriceStore = await FtsoV2PriceStore.new(contracts.GovernanceSettings.address, deployer, deployer, firstVotingRoundStartTs, 90, 100);
     await ftsoV2PriceStore.updateContractAddresses(encodeContractNames(["AddressUpdater", "Relay"]), [contracts.AddressUpdater.address, contracts.Relay.address], { from: deployer });
 
-    await ftsoV2PriceStore.setTrustedProviders(["0xaec76c9b8fa7e13699e7dffbf7abfae5e943f1c1"], 1, { from: deployer });
+    await ftsoV2PriceStore.setTrustedProviders([
+        "0xFA55A150c926F43de6165A2062Ced1c179260f55",
+        "0xF750178B0155c651B4FFf490cE01D0736F1b54C6",
+        "0x96b83D3F73E44c9A96388CF1D116595551dAeB5A"], 2, { from: deployer });
     await ftsoV2PriceStore.updateSettings(
         encodeFeedIds([
             {category : 1, name: "SGB/USD"},
-            {category : 1, name: "BTC/USD"},
+            {category : 1, name: "USDX/USD"},
             {category : 1, name: "XRP/USD"},
             {category : 1, name: "DOGE/USD"},
-            {category : 1, name: "ETH/USD"},
-            {category : 1, name: "USDC/USD"},
-            {category : 1, name: "USDT/USD"}
+            {category : 1, name: "BTC/USD"}
         ]),
-        ["CFLR", "testBTC", "testXRP", "testDOGE", "testETH", "testUSDC", "testUSDT"],
-        [7, 2, 5, 5, 3, 5, 5],
+        ["SGB", "USDX", "XRP", "DOGE", "BTC"],
+        [7, 5, 5, 5, 2],
+        100, // 1%
         { from: deployer });
 
     contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);
     contracts.add("FtsoV2PriceStore", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
+
+    console.log(`    deployed ${truffleContractMetadata(FtsoV2PriceStore).contractName}`);
 }
 
 export interface IFeedId {

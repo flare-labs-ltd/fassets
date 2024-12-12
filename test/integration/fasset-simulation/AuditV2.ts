@@ -98,8 +98,6 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, async 
         assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
         const mintedUBA = crt.valueUBA.add(poolFeeShare);
         await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
-        // check that fee was burned
-        assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
         // redeemer "buys" f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
         // perform redemption
@@ -118,9 +116,7 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, async 
         // Update wnat contract
         // removed access control from assetManager.updateSettings() for this test
         await impersonateContract(context.assetManagerController.address, toBNExp(1, 18), accounts[0]);
-        await context.assetManager.updateSettings(
-            web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
-            web3.eth.abi.encodeParameters(["address", "address"], [context.assetManagerController.address, newWNAT.address]),
+        await context.assetManager.updateSystemContracts(context.assetManagerController.address, newWNAT.address,
             { from: context.assetManagerController.address });
         await stopImpersonatingContract(context.assetManagerController.address);
         const res = await context.assetManager.upgradeWNatContract(agent.vaultAddress, { from: agentOwner1 });

@@ -1,8 +1,13 @@
 [
   {
-    "name": "StateConnector",
-    "contractName": "StateConnector.sol",
-    "address": "0x1000000000000000000000000000000000000001"
+    "name": "Relay",
+    "contractName": "Relay.sol",
+    "address": "0x4087D4B5E009Af9FF41db910205439F82C3dc63c"
+  },
+  {
+    "name": "FdcHub",
+    "contractName": "FdcHub.sol",
+    "address": "TODO"
   },
   {
     "name": "FlareDaemon",

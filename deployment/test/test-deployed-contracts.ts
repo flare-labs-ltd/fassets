@@ -7,9 +7,9 @@ import { FAssetContractStore } from "../lib/contracts";
 import { loadDeployAccounts, networkConfigName, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
-import { MockStateConnectorClient } from "../../test/utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../test/utils/fasset/MockFlareDataConnectorClient";
 import { MockChain } from "../../test/utils/fasset/MockChain";
-import { latestBlockTimestamp, toBN } from "../../lib/utils/helpers";
+import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -62,8 +62,8 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         }
     });
 
-    // TODO: creating agent vault now requires SC proof of address validity,
-    // which takes 5 minutes and requires SC API client, so skip it for now
+    // TODO: creating agent vault now requires FDC proof of address validity,
+    // which takes 5 minutes and requires FDC API client, so skip it for now
 
     const testUnderlyingAddresses = {
         [SourceId.XRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
@@ -75,24 +75,40 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
     };
 
+    const testPrices: Array<[string, string, number, number]> = [
+        ['CFLR', 'FtsoNat', 5, 0.20],
+        ['testUSDC', 'FtsoUSDC', 5, 1.01],
+        ['testUSDT', 'FtsoUSDT', 5, 0.99],
+        ['testETH', 'FtsoETH', 3, 3000],
+        ['testBTC', 'FtsoBtc', 2, 20_000],
+        ['testDOGE', 'FtsoDoge', 5, 0.05],
+        ['testXRP', 'FtsoXrp', 5, 0.50],
+    ];
+
     itSkipIf(networkConfig !== 'hardhat')("Can create an agent on all managers", async () => {
         const { deployer } = loadDeployAccounts(hre);
         const managers = await assetManagerController.getAssetManagers();
         const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
-        await agentOwnerRegistry.whitelistAndDescribeAgent(owner, "TestAgent", "Agent in deploy test", "", { from: deployer });
-        // create state connector client (only really needed for address validation)
-        const stateConnector = await artifacts.require('StateConnectorMock').at(contracts.StateConnector.address);
+        await agentOwnerRegistry.whitelistAndDescribeAgent(owner, "TestAgent", "Agent in deploy test", "", "", { from: deployer });
+        // create Flare data connector client (only really needed for address validation)
+        const relay = await artifacts.require('RelayMock').at(contracts.Relay.address);
+        const fdcHub = await artifacts.require('FdcHubMock').at(contracts.FdcHub.address);
+        const priceStore = await artifacts.require('FtsoV2PriceStoreMock').at(contracts.FtsoV2PriceStore!.address);
+        for (const [symbol, _, decimals, price] of testPrices) {
+            await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
+            await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
+        }
         const chainIds = Object.keys(testUnderlyingAddresses);
         const currentTime = toBN(await latestBlockTimestamp());
         const chains = Object.fromEntries(chainIds.map(id => [id, new MockChain(currentTime)]));
-        const stateConnectorClient = new MockStateConnectorClient(stateConnector, chains, 'auto');
+        const flareDataConnectorClient = new MockFlareDataConnectorClient(fdcHub, relay, chains, 'auto');
         for (const mgrAddress of managers) {
             console.log("Testing manager at", mgrAddress);
             const assetManager = await IIAssetManager.at(mgrAddress);
             const settings = await assetManager.getSettings();
             const collaterals = await assetManager.getCollateralTypes();
             // create fake attestation provider
-            const attestationProvider = new AttestationHelper(stateConnectorClient, chains[settings.chainId], settings.chainId);
+            const attestationProvider = new AttestationHelper(flareDataConnectorClient, chains[settings.chainId], settings.chainId);
             // create agent
             const underlyingAddress = testUnderlyingAddresses[settings.chainId];    // address doesn't matter - won't do anything on underlying chain
             const agentVault = await createTestAgent({ assetManager, settings, attestationProvider }, owner, underlyingAddress, collaterals[1].token, { poolTokenSuffix: `SUFF${currentTime}` });

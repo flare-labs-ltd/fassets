@@ -1,7 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { formatBN, HOURS, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -34,7 +34,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
-    let mockStateConnectorClient: MockStateConnectorClient;
+    let mockFlareDataConnectorClient: MockFlareDataConnectorClient;
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
@@ -46,14 +46,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     beforeEach(async () => {
         ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
-        mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
+        mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
     describe("simple scenarios - emergency pause", () => {
         it("pause mint and redeem", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
-            const redeemer = await Redeemer.create(context, userAddress1, underlyingUser1);
+            const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
@@ -69,6 +69,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
+            // but transfers work
+            await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
             // pause stops redeem too
             await expectRevert(redeemer.requestRedemption(lots), "emergency pause active");
             // manual unpause by setting duration to 0
@@ -113,6 +115,34 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [liq] = await liquidator.liquidate(agent, context.convertLotsToUBA(3));
             console.log(formatBN(liq), formatBN(context.convertLotsToUBA(3)));
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL });
+        });
+
+        it("pause transfers", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
+            await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            mockChain.mine(10);
+            await context.updateUnderlyingBlock();
+            // trigger pause
+            await context.assetManagerController.emergencyPauseTransfers([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
+            // minting works, but transfers don't
+            const lots = 3;
+            const lotSize = context.lotSize();
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            await expectRevert(minter.transferFAsset(redeemer.address, lotSize), "emergency pause of transfers active");
+            // after one hour, collateral reservations should work again
+            await time.increase(1 * HOURS);
+            await minter.transferFAsset(redeemer.address, lotSize);
+            // another pause
+            await context.assetManagerController.emergencyPauseTransfers([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
+            // redemption works
+            const [requests] = await redeemer.requestRedemption(1);
+            await Agent.performRedemptions([agent], requests);
+            await expectRevert(minter.transferFAsset(redeemer.address, lotSize), "emergency pause of transfers active");
+            // manual unpause by setting duration to 0
+            await context.assetManagerController.emergencyPauseTransfers([context.assetManager.address], 0, { from: emergencyAddress1 });
+            await minter.transferFAsset(redeemer.address, 1000);
         });
     });
 });

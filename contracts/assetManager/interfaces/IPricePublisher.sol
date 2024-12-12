@@ -15,7 +15,7 @@ interface IPricePublisher {
 
     /// The FTSO feed with proof struct.
     struct FeedWithProof {
-        bytes32[] merkleProof;
+        bytes32[] proof;
         Feed body;
     }
 
@@ -53,6 +53,12 @@ interface IPricePublisher {
      * @return _decimals The list of feed decimals.
      */
     function getFeedIdsWithDecimals() external view returns (bytes21[] memory _feedIds, int8[] memory _decimals);
+
+    /**
+     * Returns the list of supported symbols.
+     * @return _symbols The list of symbols.
+     */
+    function getSymbols() external view returns (string[] memory _symbols);
 
     /**
      * Returns the feed id for the given symbol.

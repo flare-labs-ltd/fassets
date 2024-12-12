@@ -18,7 +18,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         external
     {
@@ -34,7 +34,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
      * @return _agentVault the new agent vault address
      */
     function createAgentVault(
-        AddressValidity.Proof calldata _addressProof,
+        IAddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
         external
@@ -78,5 +78,21 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         external
     {
         AgentsCreateDestroy.destroyAgent(_agentVault, _recipient);
+    }
+
+    /**
+     * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults
+     * automatically get the new implementation from the factory. But the existing agent vaults must
+     * be upgraded by their owners using this method.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault address of the agent's vault; both vault, its corresponding pool, and
+     *  its pool token will be upgraded to the newest implementations
+     */
+    function upgradeAgentVaultAndPool(
+        address _agentVault
+    )
+        external
+    {
+        AgentsCreateDestroy.upgradeAgentVaultAndPool(_agentVault);
     }
 }

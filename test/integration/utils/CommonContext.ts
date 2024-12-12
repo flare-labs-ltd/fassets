@@ -1,19 +1,18 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents,
-    CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events,
-    FtsoV2PriceStoreEvents, PriceReaderEvents, SCProofVerifierEvents,
-    StateConnectorEvents, WNatEvents
+    CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events, FdcHubEvents,
+    FdcVerificationEvents, FtsoV2PriceStoreEvents, PriceReaderEvents, RelayEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { requireNotNull, toBNExp, WEEKS } from "../../../lib/utils/helpers";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance,
-    CollateralPoolFactoryInstance, CollateralPoolTokenFactoryInstance, ERC20MockInstance,
-    FtsoV2PriceStoreMockInstance, GovernanceSettingsInstance, IPriceReaderInstance,
-    SCProofVerifierInstance, StateConnectorMockInstance, WNatInstance
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, CollateralPoolFactoryInstance,
+    CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
+    FtsoV2PriceStoreMockInstance, GovernanceSettingsInstance, IPriceReaderInstance, RelayMockInstance, WNatInstance
 } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
+import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { TestChainInfo, testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 
@@ -23,13 +22,13 @@ const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
-const SCProofVerifier = artifacts.require('SCProofVerifier');
+const FdcVerification = artifacts.require('FdcVerificationMock');
 const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const ERC20Mock = artifacts.require("ERC20Mock");
-const StateConnector = artifacts.require('StateConnectorMock');
+const Relay = artifacts.require('RelayMock');
+const FdcHub = artifacts.require('FdcHubMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 
 // common context shared between several asset managers
@@ -42,11 +41,12 @@ export class CommonContext {
         public governanceSettings: GovernanceSettingsInstance,
         public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
-        public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorEvents>,
+        public relay: ContractWithEvents<RelayMockInstance, RelayEvents>,
+        public fdcHub: ContractWithEvents<FdcHubMockInstance, FdcHubEvents>,
         public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
         public collateralPoolFactory: ContractWithEvents<CollateralPoolFactoryInstance, CollateralPoolFactoryEvents>,
         public collateralPoolTokenFactory: ContractWithEvents<CollateralPoolTokenFactoryInstance, CollateralPoolTokenFactoryEvents>,
-        public scProofVerifier: ContractWithEvents<SCProofVerifierInstance, SCProofVerifierEvents>,
+        public fdcVerification: ContractWithEvents<FdcVerificationMockInstance, FdcVerificationEvents>,
         public priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>,
         public priceStore: ContractWithEvents<FtsoV2PriceStoreMockInstance, FtsoV2PriceStoreEvents>,
         public natInfo: TestNatInfo,
@@ -58,10 +58,12 @@ export class CommonContext {
         // create governance settings
         const governanceSettings = await GovernanceSettings.new();
         await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-        // create state connector
-        const stateConnector = await StateConnector.new();
+        // create FdcHub
+        const fdcHub = await FdcHub.new();
+        // create Relay
+        const relay = await Relay.new();
         // create attestation client
-        const scProofVerifier = await SCProofVerifier.new(stateConnector.address);
+        const fdcVerification = await FdcVerification.new(relay.address, 200);
         // create address updater
         const addressUpdater = await AddressUpdater.new(governance); // don't switch to production
         // create WNat token
@@ -76,8 +78,8 @@ export class CommonContext {
         const priceStore = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, testChainInfo);
         // add some addresses to address updater
         await addressUpdater.addOrUpdateContractNamesAndAddresses(
-            ["GovernanceSettings", "AddressUpdater", "StateConnector", "FtsoV2PriceStore", "WNat"],
-            [governanceSettings.address, addressUpdater.address, stateConnector.address, priceStore.address, wNat.address],
+            ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FtsoV2PriceStore", "WNat"],
+            [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, priceStore.address, wNat.address],
             { from: governance });
         // create agent vault factory
         const agentVaultImplementation = await AgentVault.new(constants.ZERO_ADDRESS);
@@ -89,12 +91,12 @@ export class CommonContext {
         const collateralPoolTokenImplementation = await CollateralPoolToken.new(constants.ZERO_ADDRESS, "", "");
         const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
         // create asset manager controller
-        const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+        const assetManagerController = await newAssetManagerController(governanceSettings.address, governance, addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // collect
-        return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, stateConnector,
+        return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, relay, fdcHub,
             agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory,
-            scProofVerifier, priceStore, priceStore, testNatInfo, wNat, stablecoins);
+            fdcVerification, priceStore, priceStore, testNatInfo, wNat, stablecoins);
     }
 }
 
@@ -115,13 +117,13 @@ export async function createMockFtsoV2PriceStore(governanceSettingsAddress: stri
         symbolArr.push(ci.symbol);
         decimalsArr.push(5);
     }
-    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, { from: initialGovernance });
+    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, 50, { from: initialGovernance });
     // init prices
     async function setInitPrice(symbol: string, price: number | string) {
         const decimals = requireNotNull(decimalsArr[symbolArr.indexOf(symbol)]);
         await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
         await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
-    }
+}
     await setInitPrice("NAT", 0.42);
     await setInitPrice("USDC", 1.01);
     await setInitPrice("USDT", 0.99);

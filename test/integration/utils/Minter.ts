@@ -1,7 +1,7 @@
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../../lib/utils/helpers";
+import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, sorted, toBN } from "../../../lib/utils/helpers";
 import { CollateralReserved } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -29,13 +29,22 @@ export class Minter extends AssetContextClient {
         return new Minter(ctx, address, underlyingAddress, wallet);
     }
 
-    async reserveCollateral(agent: string, lots: BNish, executorAdddress?: string, executorFeeNatWei?: BNish) {
+    async reserveCollateral(agent: string, lots: BNish, executorAddress?: string, executorFeeNatWei?: BNish) {
         const agentInfo = await this.assetManager.getAgentInfo(agent);
         const crFee = await this.getCollateralReservationFee(lots);
-        const totalNatFee = executorAdddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
-        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAdddress ?? ZERO_ADDRESS,
+        const totalNatFee = executorAddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
+        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAddress ?? ZERO_ADDRESS, [],
             { from: this.address, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
+    }
+
+    async reserveCollateralHSRequired(agent: string, lots: BNish, underlyingAddresses?: string[], executorAddress?: string, executorFeeNatWei?: BNish) {
+        const agentInfo = await this.assetManager.getAgentInfo(agent);
+        const crFee = await this.getCollateralReservationFee(lots);
+        const totalNatFee = executorAddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
+        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAddress ?? ZERO_ADDRESS, underlyingAddresses ?? [],
+            { from: this.address, value: totalNatFee });
+        return requiredEventArgs(res, 'HandshakeRequired');
     }
 
     async performMintingPayment(crt: EventArgs<CollateralReserved>) {
@@ -63,5 +72,9 @@ export class Minter extends AssetContextClient {
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
+    }
+
+    async transferFAsset(target: string, amount: BNish, addFee: boolean = false) {
+        return await this.context.transferFAsset(this.address, target, amount, addFee);
     }
 }

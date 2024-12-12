@@ -1,7 +1,7 @@
 import {
     AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
-    RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
@@ -36,6 +36,7 @@ export class TrackedAgentState {
         this.poolExitCollateralRatioBIPS = toBN(data.creationData.poolExitCollateralRatioBIPS);
         this.poolTopupCollateralRatioBIPS = toBN(data.creationData.poolTopupCollateralRatioBIPS);
         this.poolTopupTokenPriceFactorBIPS = toBN(data.creationData.poolTopupTokenPriceFactorBIPS);
+        this.handshakeType = toBN(data.creationData.handshakeType);
     }
 
     // identifying addresses
@@ -56,6 +57,7 @@ export class TrackedAgentState {
     poolExitCollateralRatioBIPS: BN;
     poolTopupCollateralRatioBIPS: BN;
     poolTopupTokenPriceFactorBIPS: BN;
+    handshakeType: BN;
 
     // status
     status: AgentStatus = AgentStatus.NORMAL;
@@ -118,8 +120,8 @@ export class TrackedAgentState {
     // handlers: agent settings
 
     handleSettingChanged(name: string, value: BNish) {
-        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
-            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS"].includes(name)) return;
+        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS", "buyFAssetByAgentFactorBIPS",
+            "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "handshakeType"].includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }
 
@@ -144,6 +146,16 @@ export class TrackedAgentState {
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
             this.reservedUBA = this.reservedUBA.sub(mintedAmountUBA).sub(poolFeeUBA);
         }
+    }
+
+    handleSelfMint(args: EvmEventArgs<SelfMint>) {
+        const mintedAmountUBA = toBN(args.mintedAmountUBA);
+        const depositedAmountUBA = toBN(args.depositedAmountUBA);
+        const poolFeeUBA = toBN(args.poolFeeUBA);
+        // update underlying free balance
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.add(depositedAmountUBA);
+        // create redemption ticket
+        this.mintedUBA = this.mintedUBA.add(mintedAmountUBA).add(poolFeeUBA);
     }
 
     handleMintingPaymentDefault(args: EvmEventArgs<MintingPaymentDefault>) {

@@ -80,14 +80,6 @@ contract SettingsReaderFacet is AssetManagerBase {
     }
 
     /**
-     * When `controllerAttached` is true, asset manager has been added to the asset manager controller.
-     */
-    function controllerAttached() external view  returns (bool) {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        return state.attached;
-    }
-
-    /**
      * Returns timelock duration during for which collateral pool tokens are locked after minting.
      */
     function getCollateralPoolTokenTimelockSeconds()
@@ -96,26 +88,5 @@ contract SettingsReaderFacet is AssetManagerBase {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.collateralPoolTokenTimelockSeconds;
-    }
-
-    /**
-     * True if asset manager is paused.
-     */
-    function mintingPaused()
-        external view
-        returns (bool)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        return state.mintingPausedAt != 0;
-    }
-
-    /**
-     * True if asset manager is terminated.
-     */
-    function terminated()
-        external view
-        returns (bool)
-    {
-        return Globals.getFAsset().terminated();
     }
 }

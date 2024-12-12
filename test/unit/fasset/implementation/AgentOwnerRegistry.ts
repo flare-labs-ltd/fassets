@@ -7,15 +7,15 @@ import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require('AgentVault');
 
 contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner registry tests`, async accounts => {
@@ -32,7 +32,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
@@ -66,13 +66,13 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create whitelist
         whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
-        assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
+        assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
@@ -85,11 +85,11 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
         const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], agentOwnerRegistry.address, { from: governance });
         await waitForTimelock(res, assetManagerController, updateExecutor);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
             await loadFixtureCopyVars(initialize));
     });
 
@@ -220,34 +220,83 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
-            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: governance });
+            const touUrl = "https://some.address/tos.html";
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
             expectEvent(res, "Whitelisted", { value: agentOwner1 });
-            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
             assert.equal(await agentOwnerRegistry.isWhitelisted(agentOwner1), true);
             assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), name);
             assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), description);
             assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrl);
+            assert.equal(await agentOwnerRegistry.getAgentTermsOfUseUrl(agentOwner1), touUrl);
         });
 
         it("should set owner data for already whitelisted agent", async () => {
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
+            const touUrl = "https://some.address/tos.html";
             await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
-            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: governance });
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
             expectEvent.notEmitted(res, "Whitelisted");
-            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
             assert.equal(await agentOwnerRegistry.isWhitelisted(agentOwner1), true);
             assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), name);
             assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), description);
             assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrl);
+            assert.equal(await agentOwnerRegistry.getAgentTermsOfUseUrl(agentOwner1), touUrl);
+        });
+
+        it("should update separate pieces of owner data", async () => {
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            const touUrl = "https://some.address/tos.html";
+            const nameU = "Agent 1 updated";
+            const descriptionU = "This is first agent updated";
+            const iconUrlU = "https://some.address/icon-updated.jpg";
+            const touUrlU = "https://some.address/tos-updated.html";
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
+
+            const res1 = await agentOwnerRegistry.setAgentName(agentOwner1, nameU, { from: governance });
+            expectEvent(res1, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description, iconUrl, termsOfUseUrl: touUrl });
+            assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), nameU);
+
+            const res2 = await agentOwnerRegistry.setAgentDescription(agentOwner1, descriptionU, { from: governance });
+            expectEvent(res2, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description: descriptionU, iconUrl, termsOfUseUrl: touUrl });
+            assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), descriptionU);
+
+            const res3 = await agentOwnerRegistry.setAgentIconUrl(agentOwner1, iconUrlU, { from: governance });
+            expectEvent(res3, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description: descriptionU, iconUrl: iconUrlU, termsOfUseUrl: touUrl });
+            assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrlU);
+
+            const res4 = await agentOwnerRegistry.setAgentTermsOfUseUrl(agentOwner1, touUrlU, { from: governance });
+            expectEvent(res4, "AgentDataChanged", { managementAddress: agentOwner1, name: nameU, description: descriptionU, iconUrl: iconUrlU, termsOfUseUrl: touUrlU });
+            assert.equal(await agentOwnerRegistry.getAgentTermsOfUseUrl(agentOwner1), touUrlU);
         });
 
         it("only governance can set agent data", async () => {
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: accounts[1] }), "only governance");
+            const touUrl = "https://some.address/tos.html";
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: accounts[1] }), "only governance or manager");
+        });
+
+        it("manager can also set agent data", async () => {
+            const manager = accounts[15];
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            const touUrl = "https://some.address/tos.html";
+            // cannot whitelist before being set
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager }), "only governance or manager");
+            //
+            await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
+            // now it should work
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager });
+            expectEvent(res, "AgentDataChanged");
         });
     });
 

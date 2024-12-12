@@ -30,4 +30,7 @@ type _AvailableAgentInfo = Awaited<ReturnType<IIAssetManagerInstance['getAvailab
 export interface AvailableAgentInfo extends _AvailableAgentInfo {}
 
 export type AgentSetting = "feeBIPS" | "poolFeeShareBIPS" | "mintingVaultCollateralRatioBIPS" | "mintingPoolCollateralRatioBIPS" |
-    "buyFAssetByAgentFactorBIPS" | "poolExitCollateralRatioBIPS" | "poolTopupCollateralRatioBIPS" | "poolTopupTokenPriceFactorBIPS";
+    "buyFAssetByAgentFactorBIPS" | "poolExitCollateralRatioBIPS" | "poolTopupCollateralRatioBIPS" | "poolTopupTokenPriceFactorBIPS" | "handshakeType";
+
+type _RedemptionTicketInfo = Awaited<ReturnType<IIAssetManagerInstance['redemptionQueue']>>[0][0];
+export interface RedemptionTicketInfo extends _RedemptionTicketInfo {}

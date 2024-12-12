@@ -3,9 +3,10 @@ import { runAsyncMain, sleep } from "../../../lib/utils/helpers";
 import { FAssetContractStore } from "../../lib/contracts";
 import { loadDeployAccounts, networkConfigName, waitFinalize } from "../../lib/deploy-utils";
 
-const IFtsoRegistry = artifacts.require('flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol:IFtsoRegistry' as 'IFtsoRegistry');
 const IPriceReader = artifacts.require('IPriceReader');
 const FakePriceReader = artifacts.require('FakePriceReader');
+
+const SUPPORTED_SYMBOLS = ["CFLR", "testBTC", "testXRP", "testDOGE", "testETH", "testUSDC", "testUSDT"];
 
 // only use when deploying on full flare deploy on hardhat local network (i.e. `deploy_local_hardhat_commands` was run in flare-smart-contracts project)
 runAsyncMain(async () => {
@@ -20,10 +21,8 @@ async function deployFakePriceReader(contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
     const priceReader = await waitFinalize(hre, deployer, () => FakePriceReader.new(deployer, { from: deployer}));
     // set initial prices
-    const ftsoRegistry = await IFtsoRegistry.at(contracts.FtsoRegistry.address);
     const ftsoPriceReader = await IPriceReader.at(contracts.PriceReader!.address);
-    const symbols = await ftsoRegistry.getSupportedSymbols();
-    for (const symbol of symbols) {
+    for (const symbol of SUPPORTED_SYMBOLS) {
         const { 0: price, 1: timestamp, 2: decimals } = await ftsoPriceReader.getPrice(symbol);
         console.log(`Setting price for ${symbol}, decimals=${decimals} price=${price}`);
         await waitFinalize(hre, deployer, () => priceReader.setDecimals(symbol, decimals, { from: deployer }));

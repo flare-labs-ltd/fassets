@@ -1,6 +1,6 @@
 {
   "name": "fasset",
-  "version": "1.0.0-beta.12",
+  "version": "1.0.0",
   "description": "Smart contracts implementing FAsset system.",
   "main": "",
   "repository": {
@@ -28,7 +28,6 @@
     "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile && yarn typechain-prepare && yarn typechain-truffle-v5 && yarn typechain-after",
     "c": "yarn compile && yarn lint",
-    "precompile": "env bash scripts/create-events-interface.sh",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
     "typechain-prepare": "env bash scripts/remove-flattened-duplicates.sh",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info|flattened)/**/+([a-zA-Z0-9_]).json\"",
@@ -45,11 +44,12 @@
     "generate-json-schema": "typescript-json-schema --noExtraProps --required --strictNullChecks",
     "generate-parameter-schema": "yarn generate-json-schema deployment/lib/asset-manager-parameters.ts AssetManagerParameters -o deployment/config/asset-manager-parameters.schema.json",
     "---------DEPLOY---SCRIPTS": "",
-    "full-deploy-hardhat": "yarn hardhat --network local deploy-asset-manager-dependencies && yarn hardhat --network local deploy-asset-managers --deploy-controller --all",
+    "full-deploy-hardhat": "yarn hardhat --network local deploy-price-reader-v2 && yarn hardhat --network local deploy-asset-manager-dependencies && yarn hardhat --network local deploy-asset-managers --deploy-controller --all",
     "full-deploy-hardhat-test": "yarn hardhat --network local test --no-compile deployment/test/test-deployed-contracts.ts",
     "mock-deploy-hardhat": "yarn hardhat --network local run deployment/test/scripts/mock-deploy-dependencies.ts && yarn hardhat --network local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test && yarn hardhat --network local switch-to-production",
     "flare-sc-deploy-hardhat": "yarn hardhat --network local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",
     "deploy-mock-stablecoins-coston": "yarn hardhat --network coston run deployment/test/scripts/mock-deploy-stablecoins.ts",
+    "deploy-price-reader-v2-coston": "yarn hardhat --network coston deploy-price-reader-v2",
     "deploy-dependencies-coston": "yarn hardhat --network coston deploy-asset-manager-dependencies",
     "deploy-with-controller-coston": "yarn hardhat --network coston deploy-asset-managers --deploy-controller --all",
     "full-deploy-coston-test": "yarn hardhat --network coston test --no-compile deployment/test/test-deployed-contracts.ts",
@@ -59,6 +59,9 @@
     "verify-asset-manager-facets-coston": "yarn hardhat --network coston verify-asset-manager-facets",
     "console": "yarn hardhat console --no-compile",
     "console-coston": "yarn hardhat console --no-compile --network coston",
+    "---------DEPLOY---SCRIPTS-SONGBIRD": "",
+    "verify-songbird": "yarn hardhat --network songbird verify-contract",
+    "console-songbird": "yarn hardhat console --no-compile --network songbird",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
@@ -68,7 +71,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.9.2",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
-    "@flarenetwork/state-connector-protocol": "1.0.0-beta.3"
+    "flare-smart-contracts-v2": "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git",
+    "@flarenetwork/state-connector-protocol": "1.0.0-beta.6"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",

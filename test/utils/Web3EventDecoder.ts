@@ -74,6 +74,17 @@ export class Web3EventDecoder extends EventFormatter {
         if (!this.contractNames.has(contract.address)) throw new Error(`Contract at ${contract.address} not registered`);
         return logs.find(e => e.address === contract.address && e.event === eventName) as any;
     }
+
+    filterEvents<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N>[] {
+        const logs = this.decodeEvents(response);
+        return logs.filter(e => e.event === name) as any;
+    }
+
+    filterEventsFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, eventName: N): TruffleExtractEvent<E, N>[] {
+        const logs = this.decodeEvents(response);
+        if (!this.contractNames.has(contract.address)) throw new Error(`Contract at ${contract.address} not registered`);
+        return logs.filter(e => e.address === contract.address && e.event === eventName) as any;
+    }
 }
 
 export function findRequiredEventFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, name: N): TruffleExtractEvent<E, N> {

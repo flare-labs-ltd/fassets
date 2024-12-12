@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "../../utils/lib/SafePct.sol";
 import "./Globals.sol";
 import "./SettingsValidators.sol";
+import "./data/TransferFeeTracking.sol";
 
 library SettingsInitializer {
     using SafePct for *;
@@ -46,7 +47,7 @@ library SettingsInitializer {
         require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
         require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
         require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
-        require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
+        require(_settings.fdcVerification != address(0), "zero fdcVerification address");
         require(_settings.priceReader != address(0), "zero priceReader address");
         require(_settings.agentOwnerRegistry != address(0), "zero agentOwnerRegistry address");
 
@@ -83,6 +84,14 @@ library SettingsInitializer {
         require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
         require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
+        require(_settings.cancelCollateralReservationAfterSeconds > 0, "cannot be zero");
+        require(_settings.rejectOrCancelCollateralReservationReturnFactorBIPS <= SafePct.MAX_BIPS,
+            "bips value too high");
+        require(_settings.rejectRedemptionRequestWindowSeconds > 0, "cannot be zero");
+        require(_settings.takeOverRedemptionRequestWindowSeconds > 0, "cannot be zero");
+        uint256 rejectedRedemptionFactorBIPS = _settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS +
+            _settings.rejectedRedemptionDefaultFactorPoolBIPS;
+        require(rejectedRedemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
     }

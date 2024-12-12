@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Globals.sol";
 import "./TransactionAttestation.sol";
 
@@ -13,7 +13,7 @@ library StateUpdater {
 
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
-    function updateCurrentBlock(ConfirmedBlockHeightExists.Proof calldata _proof)
+    function updateCurrentBlock(IConfirmedBlockHeightExists.Proof calldata _proof)
         internal
     {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
@@ -39,7 +39,7 @@ library StateUpdater {
         }
         if (changed) {
             state.currentUnderlyingBlockUpdatedAt = block.timestamp.toUint64();
-            emit AMEvents.CurrentUnderlyingBlockUpdated(
+            emit IAssetManagerEvents.CurrentUnderlyingBlockUpdated(
                 state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp, block.timestamp);
         }
     }

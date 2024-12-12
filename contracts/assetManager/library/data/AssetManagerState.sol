@@ -79,11 +79,25 @@ library AssetManagerState {
         // When emergency pause is not done by governance, the total allowed pause is limited.
         // So the caller must state the duration after which the pause will automatically end.
         // When total pauses exceed the max allowed length, pausing is only allowed by the governance.
-        // A emergencyPause call by the governance optionally resets the total duration counter to 0.
+        // An emergencyPause call by the governance optionally resets the total duration counter to 0.
         uint64 emergencyPausedTotalDuration;
 
         // When emergency pause was triggered by governance, only governance can unpause.
         bool emergencyPausedByGovernance;
+
+        // If non-zero, asset manager is paused and will be paused until the time indicated.
+        // When asset manager is paused, all dangerous operations ar blocked (mintings, redemptions, etc.).
+        // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
+        uint64 transfersEmergencyPausedUntil;
+
+        // When emergency pause is not done by governance, the total allowed pause is limited.
+        // So the caller must state the duration after which the pause will automatically end.
+        // When total pauses exceed the max allowed length, pausing is only allowed by the governance.
+        // An emergencyPause call by the governance optionally resets the total duration counter to 0.
+        uint64 transfersEmergencyPausedTotalDuration;
+
+        // When emergency pause was triggered by governance, only governance can unpause.
+        bool transfersEmergencyPausedByGovernance;
 
         // When true, asset manager has been added to the asset manager controller.
         // Even though the asset manager controller address is set at the construction time, the manager may not

@@ -15,16 +15,19 @@ library Redemptions {
     function closeTickets(
         Agent.State storage _agent,
         uint64 _amountAMG,
-        bool _immediatelyReleaseMinted
+        bool _immediatelyReleaseMinted,
+        bool _skipDust
     )
         internal
         returns (uint64 _closedAMG, uint256 _closedUBA)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        // dust first
-        _closedAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
-        if (_closedAMG > 0) {
-            Agents.decreaseDust(_agent, _closedAMG);
+        if (!_skipDust) {
+            // dust first
+            _closedAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
+            if (_closedAMG > 0) {
+                Agents.decreaseDust(_agent, _closedAMG);
+            }
         }
         // redemption tickets
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
@@ -57,17 +60,17 @@ library Redemptions {
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(_redemptionTicketId);
         uint64 remainingAMG = ticket.valueAMG - _redeemedAMG;
         if (remainingAMG == 0) {
-            emit AMEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
+            emit IAssetManagerEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else if (remainingAMG < Globals.getSettings().lotSizeAMG) {   // dust created
             Agent.State storage agent = Agent.get(ticket.agentVault);
             Agents.increaseDust(agent, remainingAMG);
-            emit AMEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
+            emit IAssetManagerEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else {
             ticket.valueAMG = remainingAMG;
             uint256 remainingUBA = Conversion.convertAmgToUBA(remainingAMG);
-            emit AMEvents.RedemptionTicketUpdated(ticket.agentVault, _redemptionTicketId, remainingUBA);
+            emit IAssetManagerEvents.RedemptionTicketUpdated(ticket.agentVault, _redemptionTicketId, remainingUBA);
         }
     }
 

@@ -74,3 +74,7 @@ export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: s
     }
     return res;
 }
+
+export function truffleContractMetadata(contract: Truffle.Contract<any>): { contractName: string, abi: AbiItem[] } {
+    return (contract as any)._json;
+}

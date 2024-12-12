@@ -4,7 +4,7 @@ import { CollateralClass } from "../../lib/fasset/AssetManagerTypes";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import { Contract, ContractStore, FAssetContractStore } from "./contracts";
 import { assetManagerParameters, convertCollateralType, createAssetManagerSettings } from "./deploy-asset-manager";
-import { assetManagerFacets, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
+import { assetManagerFacets, assetManagerFacetsDeployedByDiamondCut, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
 
 export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[]) {
@@ -72,7 +72,7 @@ export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironmen
 }
 
 export async function verifyAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
-    for (const facetName of assetManagerFacets) {
+    for (const facetName of [...assetManagerFacets, ...assetManagerFacetsDeployedByDiamondCut]) {
         try {
             console.log(`Verifying facet ${facetName}...`);
             const contract = contracts.getRequired(facetName);
@@ -89,7 +89,7 @@ export async function verifyAllAssetManagerFacets(hre: HardhatRuntimeEnvironment
 
 async function qualifiedName(contract: Contract) {
     const artifact = await findArtifact(contract.contractName);
-    return `${artifact}:${contract.name}`;
+    return `${artifact}:${contract.contractName.replace(/\.sol$/, "")}`;
 }
 
 async function findArtifact(fname: string) {

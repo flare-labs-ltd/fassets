@@ -34,7 +34,7 @@ NOTE: only the owner of the agent vault may call this method.
 **undelegateGovernance** - Undelegate governance vote power for possible NAT collateral token held in this vault.
 NOTE: only the owner of the agent vault may call this method.
 
-**claimFtsoRewards** - Claim the FTSO rewards earned by delegating. Alternatively, you can set a claim executor and then claim directly from FtsoRewardManager.
+**claimDelegationRewards** - Claim the rewards earned by delegating (for FTSO). Alternatively, you can set a claim executor and then claim directly from FtsoRewardManager.
 NOTE: only the owner of the agent vault may call this method.
 
 **setAutoClaiming** - Set executors and recipients that can then automatically claim rewards and airdrop.

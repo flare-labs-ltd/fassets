@@ -1,4 +1,4 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -14,7 +14,7 @@ import { precomputeContractAddress } from "../../../utils/contract-test-helpers"
 import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -32,15 +32,17 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     // addresses
     const agentOwner1 = accounts[20];
+    const agentOwner2 = accounts[21];
     const minterAddress1 = accounts[30];
-    const executorAddress1 = accounts[31];
+    const executorAddress1 = accounts[41];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
+    const underlyingAgent2 = "Agent2";
     const underlyingMinter1 = "Minter1";
     const underlyingRandomAddress = "Random";
 
@@ -61,11 +63,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
-    async function reserveCollateral(agentVault: string, lots: BNish) {
+    async function reserveCollateral(agentVault: string, lots: BNish, underlyingAddresses?: string[]) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const crFee = await assetManager.collateralReservationFee(lots);
         const totalNatFee = crFee.add(toWei(0.1));
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1,
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1, underlyingAddresses ?? [],
             { from: minterAddress1, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
@@ -92,7 +94,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
         chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);
         chain.mineTo(Number(lastUnderlyingBlock) + 1);
-        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.skipTime(flareDataConnectorClient.queryWindowSeconds + 1);
         chain.mine(chain.finalizationBlocks);
     }
 
@@ -107,17 +109,17 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     };
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should execute minting (minter)", async () => {
@@ -306,6 +308,52 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await expectRevert(promise, "minting payment too small");
     });
 
+    it("should not execute minting if collateral reservation is not approved", async () => {
+        // init
+        const feeBIPS = toBIPS("50%");
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
+        const args = requiredEventArgs(tx, "HandshakeRequired");
+        const crt = await reserveCollateral(agentVault1.address, 1);
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
+        chain.mint(underlyingMinter1, paymentAmount);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        // it doesn't matter what kind of proof we provide, the transaction should fail
+        const promise = assetManager.executeMinting(proof, args.collateralReservationId, { from: minterAddress1 });
+        // assert
+        await expectRevert(promise, "collateral reservation not approved");
+    });
+
+    it("should not execute minting if invalid minter underlying addresses root", async () => {
+        // init
+        const feeBIPS = toBIPS("50%");
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2, { feeBIPS: feeBIPS, handshakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault2, agentOwner2);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
+        const args = requiredEventArgs(tx, "HandshakeRequired");
+        const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
+        const crt = requiredEventArgs(tx1, "CollateralReserved");
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
+        chain.mint("wrongUnderlyingMinter", paymentAmount);
+        const txHash = await wallet.addTransaction("wrongUnderlyingMinter", crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, "wrongUnderlyingMinter", crt.paymentAddress);
+        const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // assert
+        await expectRevert(promise, "invalid minter underlying addresses root");
+    });
+
     it("should unstick minting", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
@@ -325,6 +373,31 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats });
     });
 
+    it("should merge redemption tickets when two consecutive mintings go to the same agent", async () => {
+        // init
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act/1
+        const crt = await reserveCollateral(agentVault.address, 1);
+        const txHash = await performMintingPayment(crt);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // act/2
+        const crt2 = await reserveCollateral(agentVault.address, 1);
+        const txHash2 = await performMintingPayment(crt2);
+        const proof2 = await attestationProvider.provePayment(txHash2, underlyingMinter1, crt2.paymentAddress);
+        const res2 = await assetManager.executeMinting(proof2, crt2.collateralReservationId, { from: minterAddress1 });
+        // assert
+        const ticketValue1 = toBN(crt.valueUBA);    // no fee - only whole lots are assigned to ticket
+        const ticketValue2 = toBN(crt2.valueUBA);
+        expectEvent(res, "MintingExecuted");
+        expectEvent(res, "RedemptionTicketCreated", { ticketValueUBA: ticketValue1 });
+        expectEvent(res2, "MintingExecuted");
+        expectEvent.notEmitted(res2, "RedemptionTicketCreated");
+        expectEvent(res2, "RedemptionTicketUpdated", { ticketValueUBA: ticketValue1.add(ticketValue2) });
+    });
+
     it("should self-mint", async () => {
         // init
         const feeBIPS = toBIPS("10%");
@@ -339,11 +412,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const res = await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        const event = requiredEventArgs(res, 'MintingExecuted');
+        const event = requiredEventArgs(res, 'SelfMint');
         assertWeb3Equal(event.agentVault, agentVault.address);
-        assertWeb3Equal(event.collateralReservationId, 0);
+        assertWeb3Equal(event.mintFromFreeUnderlying, false);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount);
-        assertWeb3Equal(event.agentFeeUBA, 0);
+        assertWeb3Equal(event.depositedAmountUBA, paymentAmount.add(poolFee));
         assertWeb3Equal(event.poolFeeUBA, poolFee);
         const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
         assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
@@ -364,12 +437,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const res = await assetManager.selfMint(proof, agentVault.address, 1, { from: agentOwner1 });
         // assert
-        const event = requiredEventArgs(res, 'MintingExecuted');
+        const event = requiredEventArgs(res, 'SelfMint');
         const poolFee = toBN(event.mintedAmountUBA).mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         assertWeb3Equal(event.agentVault, agentVault.address);
-        assertWeb3Equal(event.collateralReservationId, 0);
+        assertWeb3Equal(event.mintFromFreeUnderlying, false);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount.divn(2));
-        assertWeb3Equal(event.agentFeeUBA, paymentAmount.divn(2).sub(poolFee));
+        assertWeb3Equal(event.depositedAmountUBA, paymentAmount);
         assertWeb3Equal(event.poolFeeUBA, poolFee);
         const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
         assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
@@ -514,7 +587,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const res = await assetManager.selfMint(proof, agentVault.address, 0, { from: agentOwner1 });
         const after = await assetManager.getAgentInfo(agentVault.address);
         // assert
-        expectEvent(res, 'MintingExecuted', { agentVault: agentVault.address, collateralReservationId: toBN(0), mintedAmountUBA: toBN(0), agentFeeUBA: paymentAmount });
+        expectEvent(res, 'SelfMint', { agentVault: agentVault.address, mintFromFreeUnderlying: false, mintedAmountUBA: toBN(0), depositedAmountUBA: paymentAmount, poolFeeUBA: toBN(0) });
         assertWeb3Equal(toBN(after.freeUnderlyingBalanceUBA).sub(toBN(before.freeUnderlyingBalanceUBA)), paymentAmount, "invalid self-mint topup value");
     });
 
@@ -554,4 +627,72 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // assert
         await expectRevert(promise, "self-mint payment too old");
     });
+
+    it("should not self-mint if it is emergency paused", async () => {
+        // init
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 2;
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
+        const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
+        // assert
+        await expectRevert(promise, "emergency pause active");
+    });
+
+    it("should not mint from free underlying if agent's status is not 'NORMAL'", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        //await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1});
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "self-mint invalid agent status");
+    });
+
+    it("should not mint from free underlying if minting is paused", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // pause minting
+        await assetManager.pauseMinting({ from: assetManagerController });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "minting paused");
+    });
+
+    it("should not mint from free underlying if emergency paused", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // emergency pause minting
+        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "emergency pause active");
+    });
+
+    it("should not mint from free underlying if not attached", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // emergency pause minting
+        await assetManager.attachController(false, { from: assetManagerController });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
+        // assert
+        await expectRevert(promise, "not attached");
+    });
+
+
 });

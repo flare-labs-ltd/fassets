@@ -16,7 +16,7 @@ contract ChallengesFacet is AssetManagerBase {
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        BalanceDecreasingTransaction.Proof calldata _transaction,
+        IBalanceDecreasingTransaction.Proof calldata _transaction,
         address _agentVault
     )
         external
@@ -35,8 +35,8 @@ contract ChallengesFacet is AssetManagerBase {
      * @param _agentVault agent vault address
      */
     function doublePaymentChallenge(
-        BalanceDecreasingTransaction.Proof calldata _payment1,
-        BalanceDecreasingTransaction.Proof calldata _payment2,
+        IBalanceDecreasingTransaction.Proof calldata _payment1,
+        IBalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     )
         external
@@ -55,7 +55,7 @@ contract ChallengesFacet is AssetManagerBase {
      * @param _agentVault agent vault address
      */
     function freeBalanceNegativeChallenge(
-        BalanceDecreasingTransaction.Proof[] calldata _payments,
+        IBalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     )
         external

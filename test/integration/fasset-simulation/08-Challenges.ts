@@ -5,7 +5,7 @@ import { EventArgs } from "../../../lib/utils/events/common";
 import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
@@ -40,7 +40,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
-    let mockStateConnectorClient: MockStateConnectorClient;
+    let mockFlareDataConnectorClient: MockFlareDataConnectorClient;
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
@@ -51,7 +51,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     beforeEach(async () => {
         ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
-        mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
+        mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
     describe("simple scenarios - illegal payment challenges and full liquidation", () => {
@@ -92,6 +92,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that agent cannot withdraw or even announce withdrawal when being fully liquidated
             await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal ann: invalid status");
             await expectRevert(agent.withdrawVaultCollateral(fullAgentCollateral), "withdrawal: invalid status");
+            // full liquidation status should show in available agent info
+            const { 0: availableAgentInfos } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(Number(availableAgentInfos[0].status), AgentStatus.FULL_LIQUIDATION);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still backing f-assets");
         });
@@ -288,6 +291,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
+            const poolCRFee = await agent.poolCRFee(lots);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             const mintedAmount = toBN(minted.mintedAmountUBA).add(minted.poolFeeUBA);
             // perform illegal payment
@@ -302,6 +306,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test full liquidation started
             const info = await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: mintedAmount,
                 status: AgentStatus.FULL_LIQUIDATION });
@@ -334,7 +339,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceLiquidator1Pool.sub(startBalanceLiquidator1Pool), liquidationReward1Pool);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral),
-                totalPoolCollateralNATWei: fullAgentCollateral.sub(liquidationReward1Pool),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA),
                 mintedUBA: mintedAmount.sub(liquidateUBA),
                 ccbStartTimestamp: 0,
@@ -365,7 +370,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceLiquidator2Pool.sub(startBalanceLiquidator2Pool), liquidationReward2Pool);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral).sub(liquidationReward2VaultCollateral),
-                totalPoolCollateralNATWei: fullAgentCollateral.sub(liquidationReward1Pool).sub(liquidationReward2Pool),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool).sub(liquidationReward2Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA.muln(2)),
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(2)),
                 ccbStartTimestamp: 0,
@@ -396,7 +401,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceLiquidator3Pool.sub(startBalanceLiquidator3Pool), liquidationReward3Pool);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral).sub(liquidationReward2VaultCollateral).sub(liquidationReward3VaultCollateral),
-                totalPoolCollateralNATWei: fullAgentCollateral.sub(liquidationReward1Pool).sub(liquidationReward2Pool).sub(liquidationReward3Pool),
+                totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool).sub(liquidationReward2Pool).sub(liquidationReward3Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA.muln(3)),
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(3)),
                 ccbStartTimestamp: 0,

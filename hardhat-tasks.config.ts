@@ -10,7 +10,7 @@ import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
-import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deploySCProofVerifier, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
+import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
@@ -26,12 +26,17 @@ task("link-contracts", "Link contracts with external libraries")
         await linkContracts(hre, contracts, mapfile);
     });
 
+task("deploy-price-reader-v2", "Deploy price reader v2.")
+    .setAction(async ({}, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await deployPriceReaderV2(hre, contracts);
+    });
+
 task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await deploySCProofVerifier(hre, contracts);
-        await deployPriceReaderV2(hre, contracts);
         await deployAgentOwnerRegistry(hre, contracts);
         await deployUserWhitelist(hre, contracts);
         await deployAgentVaultFactory(hre, contracts);
@@ -40,7 +45,7 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
     });
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
+    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and FdcVerification")
     .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
     .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
     .setAction(async ({ managers, deployController, all }, hre) => {
@@ -82,7 +87,7 @@ task("verify-asset-manager-controller", "Verify deployed asset manager controlle
         await verifyAssetManagerController(hre, contracts);
     });
 
-task("verify-price-reader-v2", "Verify deployed asset manager controller.")
+task("verify-price-reader-v2", "Verify deployed price reader v2.")
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);

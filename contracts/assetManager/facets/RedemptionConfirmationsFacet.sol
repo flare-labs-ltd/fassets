@@ -25,7 +25,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function confirmRedemptionPayment(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint256 _redemptionRequestId
     )
         external

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./Liquidation.sol";
@@ -88,9 +88,9 @@ library AgentsExternal {
         }
         withdrawal.amountWei = _amountWei.toUint128();
         if (_kind == Collateral.Kind.VAULT) {
-            emit AMEvents.VaultCollateralWithdrawalAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
+            emit IAssetManagerEvents.VaultCollateralWithdrawalAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         } else {
-            emit AMEvents.PoolTokenRedemptionAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
+            emit IAssetManagerEvents.PoolTokenRedemptionAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         }
         return withdrawal.allowedAt;
     }
@@ -149,7 +149,8 @@ library AgentsExternal {
         if (agent.poolCollateralIndex != state.poolCollateralIndex) {
             agent.poolCollateralIndex = state.poolCollateralIndex;
             agent.collateralPool.upgradeWNatContract(wNat);
-            emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.POOL), address(wNat));
+            emit IAssetManagerEvents.AgentCollateralTypeChanged(_agentVault,
+                uint8(CollateralType.Class.POOL), address(wNat));
         }
     }
 
@@ -168,7 +169,8 @@ library AgentsExternal {
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
         // set new collateral
         agent.setVaultCollateral(_token);
-        emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.VAULT), address(_token));
+        emit IAssetManagerEvents.AgentCollateralTypeChanged(_agentVault,
+            uint8(CollateralType.Class.VAULT), address(_token));
     }
 
     function buybackAgentCollateral(
@@ -194,7 +196,7 @@ library AgentsExternal {
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(Globals.getSettings().buybackCollateralFactorBIPS);
         agent.burnVaultCollateral(buybackCollateral);
-        agent.mintedAMG = 0;
+        agent.releaseMintedAssets(agent.mintedAMG); // release all
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
     }
@@ -268,5 +270,13 @@ library AgentsExternal {
         Agent.State storage agent = Agent.get(_agentVault);
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         return Liquidation.getLiquidationFactorsAndMaxAmount(agent, cr);
+    }
+
+    function getMinCollateralRatioBIPS(address _agentVault, Collateral.Kind _kind)
+        internal view
+        returns (uint256)
+    {
+        (, uint256 sysMinCR) = AgentCollateral.mintingMinCollateralRatio(Agent.get(_agentVault), _kind);
+        return sysMinCR;
     }
 }

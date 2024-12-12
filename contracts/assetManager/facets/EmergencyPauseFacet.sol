@@ -3,13 +3,13 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../library/data/AssetManagerState.sol";
-import "../library/AMEvents.sol";
 import "../library/Globals.sol";
 import "./AssetManagerBase.sol";
 
 
-contract EmergencyPauseFacet is AssetManagerBase {
+contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
 
     function emergencyPause(bool _byGovernance, uint256 _duration)
@@ -39,9 +39,9 @@ contract EmergencyPauseFacet is AssetManagerBase {
             state.emergencyPausedByGovernance = false;
         }
         if (_paused()) {
-            emit AMEvents.EmergencyPauseTriggered(state.emergencyPausedUntil);
+            emit EmergencyPauseTriggered(state.emergencyPausedUntil);
         } else if (pausedAtStart) {
-            emit AMEvents.EmergencyPauseCanceled();
+            emit EmergencyPauseCanceled();
         }
     }
 
@@ -73,7 +73,7 @@ contract EmergencyPauseFacet is AssetManagerBase {
         returns (uint256 _pausedUntil, uint256 _totalPauseDuration, bool _pausedByGovernance)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return (state.emergencyPausedUntil, state. emergencyPausedTotalDuration, state.emergencyPausedByGovernance);
+        return (state.emergencyPausedUntil, state.emergencyPausedTotalDuration, state.emergencyPausedByGovernance);
     }
 
     function _paused() private view returns (bool) {

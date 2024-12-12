@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 
 interface IFAsset is IERC20, IERC20Metadata {
+    ////////////////////////////////////////////////////////////////////////////////////
+    // System information
+
     /**
      * The name of the underlying asset.
      */
@@ -33,4 +36,38 @@ interface IFAsset is IERC20, IERC20Metadata {
      * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
      */
     function terminated() external view returns (bool);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Transfer fee payment
+
+    /**
+     * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
+     * NOTE: more than `_amount` will be transferred from `msg.sender`.
+     */
+    function transferExactDest(address _to, uint256 _amount)
+        external
+        returns (bool);
+
+    /**
+     * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
+     * NOTE: more than `_amount` will be transferred from the `_from` account.
+     * Preceding call to `approve()` must account for this, otherwise the transfer will fail.
+     */
+    function transferExactDestFrom(address _from, address _to, uint256 _amount)
+        external
+        returns (bool);
+
+    /**
+     * Return the exact amount the `_to` will receive, if `_from` transfers `_sentAmount`.
+     */
+    function getReceivedAmount(address _from, address _to, uint256 _sentAmount)
+        external view
+        returns (uint256 _receivedAmount, uint256 _feeAmount);
+
+    /**
+     * Return the exact amount the `_from` must transfer for  `_to` to receive `_receivedAmount`.
+     */
+    function getSendAmount(address _from, address _to, uint256 _receivedAmount)
+        external view
+        returns (uint256 _sendAmount, uint256 _feeAmount);
 }

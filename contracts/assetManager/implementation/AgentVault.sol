@@ -3,18 +3,18 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../../utils/lib/Transfers.sol";
-import "../interfaces/IICollateralPool.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IIAssetManager.sol";
 
 
-contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
+contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     using SafeERC20 for IERC20;
 
-    IIAssetManager public assetManager; // practicaly immutable
+    IIAssetManager public assetManager; // practically immutable
 
     bool private initialized;
 
@@ -73,8 +73,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         external
         onlyOwner
     {
-        collateralPool().withdrawFees(_amount);
-        assetManager.fAsset().safeTransfer(_recipient, _amount);
+        collateralPool().withdrawFeesTo(_amount, _recipient);
     }
 
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient)
@@ -82,14 +81,9 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         onlyOwner
         nonReentrant
     {
-        IICollateralPool pool = IICollateralPool(address(collateralPool()));
+        ICollateralPool pool = collateralPool();
         assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
-        internalWithdrawal = true;
-        (uint256 natShare, uint256 fassetShare) =
-            pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
-        internalWithdrawal = false;
-        Transfers.transferNAT(_recipient, natShare);
-        assetManager.fAsset().safeTransfer(_recipient, fassetShare);
+        pool.exitTo(_amount, _recipient, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
     }
 
     // must call `token.approve(vault, amount)` before for each token in _tokens
@@ -156,17 +150,18 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         _token.governanceVotePower().undelegate();
     }
 
-    // Claim ftso rewards. Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256 _lastRewardEpoch,
-        address payable _recipient
+    // Claim delegation rewards. Alternatively, you can set claim executor and then claim directly from RewardManager.
+    function claimDelegationRewards(
+        IRewardManager _rewardManager,
+        uint24 _lastRewardEpoch,
+        address payable _recipient,
+        IRewardManager.RewardClaimWithProof[] calldata _proofs
     )
         external override
         onlyOwner
         returns (uint256)
     {
-        return _ftsoRewardManager.claim(address(this), _recipient, _lastRewardEpoch, false);
+        return _rewardManager.claim(address(this), _recipient, _lastRewardEpoch, false, _proofs);
     }
 
     function claimAirdropDistribution(
@@ -203,7 +198,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
             if ((useFlags & TOKEN_DELEGATE_GOVERNANCE) != 0) {
                 IWNat(address(token)).governanceVotePower().undelegate();
             }
-            // undelegate all FTSO delegation
+            // undelegate all WNat delegation
             if ((useFlags & TOKEN_DELEGATE) != 0) {
                 IVPToken(address(token)).undelegateAll();
             }
@@ -277,5 +272,22 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
             usedTokens.push(_token);
         }
         tokenUseFlags[_token] |= _flags;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // UUPS proxy upgrade
+
+    function implementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    /**
+     * Upgrade calls can only arrive through asset manager.
+     * See UUPSUpgradeable._authorizeUpgrade.
+     */
+    function _authorizeUpgrade(address /* _newImplementation */)
+        internal virtual override
+        onlyAssetManager
+    {
     }
 }

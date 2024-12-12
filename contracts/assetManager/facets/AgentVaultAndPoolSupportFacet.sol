@@ -22,7 +22,7 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
 
     /**
      * Check if `_token` is either vault collateral token for `_agentVault` or the pool token.
-     * These types of tokens cannot be simply transfered from the agent vault, but can only be
+     * These types of tokens cannot be simply transferred from the agent vault, but can only be
      * withdrawn after announcement if they are not backing any f-assets.
      */
     function isLockedVaultToken(address _agentVault, IERC20 _token)

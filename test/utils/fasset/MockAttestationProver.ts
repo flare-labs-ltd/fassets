@@ -1,9 +1,10 @@
 import Web3 from "web3";
 import { constants } from "@openzeppelin/test-helpers";
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { TX_FAILED, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { BN_ZERO } from "../../../lib/utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
+import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 
 export class MockAttestationProverError extends Error {
     constructor(message: string) {
@@ -31,7 +32,7 @@ export class MockAttestationProver {
     constructor(
         public chain: MockChain,
         public queryWindowSeconds: number,
-    ) { }
+    ) {}
 
     payment(transactionHash: string, inUtxo: number, utxo: number): Payment.ResponseBody {
         const { transaction, block } = this.findTransaction('payment', transactionHash);
@@ -43,6 +44,7 @@ export class MockAttestationProver {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
+            sourceAddressesRoot: AttestationHelper.merkleRootOfAddresses(transaction.inputs.map(input => input[0])),
             receivingAddressHash: receivingAddressHash,
             intendedReceivingAddressHash: receivingAddressHash,
             standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
@@ -88,9 +90,9 @@ export class MockAttestationProver {
         return { transaction, block };
     }
 
-    referencedPaymentNonexistence(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): ReferencedPaymentNonexistence.ResponseBody {
+    referencedPaymentNonexistence(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, checkSourceAddresses: boolean, sourceAddressesRoot?: string): ReferencedPaymentNonexistence.ResponseBody {
         // if payment is found, return null
-        const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findReferencedPayment(destinationAddressHash, paymentReference, amount, startBlock, endBlock, endTimestamp);
+        const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findReferencedPayment(destinationAddressHash, paymentReference, amount, startBlock, endBlock, endTimestamp, checkSourceAddresses, sourceAddressesRoot);
         if (found) {
             throw new MockAttestationProverError(`AttestationProver.referencedPaymentNonexistence: transaction found with reference ${paymentReference}`);
         }
@@ -108,7 +110,7 @@ export class MockAttestationProver {
         };
     }
 
-    private findReferencedPayment(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): [boolean, number, number] {
+    private findReferencedPayment(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, checkSourceAddresses: boolean, sourceAddressesRoot?: string): [boolean, number, number] {
         for (let bn = startBlock; bn < this.chain.blocks.length; bn++) {
             const block = this.chain.blocks[bn];
             if (bn > endBlock && block.timestamp > endTimestamp) {
@@ -117,7 +119,8 @@ export class MockAttestationProver {
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
                     && totalReceivedValue(transaction, destinationAddressHash).gte(amount)
-                    && transaction.status !== TX_FAILED;
+                    && transaction.status !== TX_FAILED
+                    && (!checkSourceAddresses || sourceAddressesRoot === AttestationHelper.merkleRootOfAddresses(transaction.inputs.map(input => input[0])));
                 if (found) {
                     return [true, startBlock, bn];
                 }

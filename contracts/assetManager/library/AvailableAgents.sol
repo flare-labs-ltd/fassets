@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/data/AvailableAgentInfo.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Agents.sol";
 import "./AgentCollateral.sol";
+import "./FullAgentInfo.sol";
 
 library AvailableAgents {
     using SafeCast for uint256;
@@ -37,7 +38,7 @@ library AvailableAgents {
         // add to queue
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
-        emit AMEvents.AgentAvailable(_agentVault, agent.feeBIPS,
+        emit IAssetManagerEvents.AgentAvailable(_agentVault, agent.feeBIPS,
             agent.mintingVaultCollateralRatioBIPS, agent.mintingPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
@@ -55,7 +56,7 @@ library AvailableAgents {
         if (exitAfterTs == 0) {
             exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
             agent.exitAvailableAfterTs = exitAfterTs.toUint64();
-            emit AMEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
+            emit IAssetManagerEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
         }
         return exitAfterTs;
     }
@@ -83,7 +84,7 @@ library AvailableAgents {
         agent.availableAgentsPos = 0;
         state.availableAgents.pop();
         agent.exitAvailableAfterTs = 0;
-        emit AMEvents.AvailableAgentExited(_agentVault);
+        emit IAssetManagerEvents.AvailableAgentExited(_agentVault);
     }
 
     function getList(
@@ -123,10 +124,12 @@ library AvailableAgents {
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.POOL);
             _agents[i - _start] = AvailableAgentInfo.Data({
                 agentVault: agentVault,
+                ownerManagementAddress: agent.ownerManagementAddress,
                 feeBIPS: agent.feeBIPS,
                 mintingVaultCollateralRatioBIPS: agentCR,
                 mintingPoolCollateralRatioBIPS: poolCR,
-                freeCollateralLots: collateralData.freeCollateralLots(agent)
+                freeCollateralLots: collateralData.freeCollateralLots(agent),
+                status: FullAgentInfo.getAgentStatus(agent)
             });
         }
     }

@@ -4,23 +4,24 @@ pragma solidity 0.8.23;
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IICollateralPool.sol";
-import "./ERC20Mock.sol";
+import "../../fassetToken/interfaces/IIFAsset.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
-    ERC20Mock public fasset;
+    IIFAsset public fasset;
     address private commonOwner;
     bool private checkForValidAgentVaultAddress = true;
     address private collateralPool;
 
-    event AgentRedemptionInCollateral(uint256 _amountUBA);
-    event AgentRedemption(uint256 _amountUBA, address payable _executor);
+    event AgentRedemptionInCollateral(address _recipient, uint256 _amountUBA);
+    event AgentRedemption(address _recipient, string _underlying, uint256 _amountUBA, address payable _executor);
 
     uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 internal timelockDuration = 0 days;
     uint256 public assetPriceMul = 1;
     uint256 public assetPriceDiv = 2;
     uint256 public lotSize = 1;
+    uint256 public minPoolCollateralRatioBIPS = 0;
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -54,7 +55,7 @@ contract AssetManagerMock {
         return _address == commonOwner;
     }
 
-    function updateCollateral(address /* _agentVault */, IERC20 /*_token*/) external {
+    function updateCollateral(address /* _agentVault */, IIFAsset /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
         require(!checkForValidAgentVaultAddress, "invalid agent vault address");
     }
@@ -75,21 +76,21 @@ contract AssetManagerMock {
     // Methods specific to collateral pool contract
 
     function redeemFromAgent(
-        address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA,
-        string memory /* _receiverUnderlyingAddress */, address payable _executor
+        address /* _agentVault */, address _redeemer, uint256 _amountUBA,
+        string memory _receiverUnderlyingAddress, address payable _executor
     ) external {
-        fasset.burnAmount(msg.sender, _amountUBA);
-        emit AgentRedemption(_amountUBA, _executor);
+        fasset.burn(msg.sender, _amountUBA);
+        emit AgentRedemption(_redeemer, _receiverUnderlyingAddress, _amountUBA, _executor);
     }
 
     function redeemFromAgentInCollateral(
-        address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA
+        address /* _agentVault */, address _redeemer, uint256 _amountUBA
     ) external {
-        fasset.burnAmount(msg.sender, _amountUBA);
-        emit AgentRedemptionInCollateral(_amountUBA);
+        fasset.burn(msg.sender, _amountUBA);
+        emit AgentRedemptionInCollateral(_redeemer, _amountUBA);
     }
 
-    function registerFAssetForCollateralPool(ERC20Mock _fasset) external {
+    function registerFAssetForCollateralPool(IIFAsset _fasset) external {
         fasset = _fasset;
     }
 
@@ -111,9 +112,31 @@ contract AssetManagerMock {
 
     function fAsset()
         external view
-        returns (IERC20)
+        returns (IIFAsset)
     {
         return fasset;
+    }
+
+    function transfersEmergencyPaused()
+        external pure
+        returns (bool)
+    {
+        return false;
+    }
+
+    function getAgentMinPoolCollateralRatioBIPS(address /* _agentVault */) external view returns (uint256) {
+        return minPoolCollateralRatioBIPS;
+    }
+
+    function transferFeeMillionths() public pure returns (uint256) {
+        return 200;
+    }
+
+    function fassetTransferFeePaid(uint256 _fee)
+        external
+    {
+        // TransferFeeTracking.Data storage data = _getTransferFeeData();
+        // data.addFees(_fee);
     }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -134,5 +157,9 @@ contract AssetManagerMock {
 
     function setTimelockDuration(uint256 _timelockDuration) external {
         timelockDuration = _timelockDuration;
+    }
+
+    function setMinPoolCollateralRatioBIPS(uint256 _minPoolCollateralRatioBIPS) external {
+        minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS;
     }
 }

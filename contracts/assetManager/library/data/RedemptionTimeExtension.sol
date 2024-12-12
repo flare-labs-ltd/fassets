@@ -53,11 +53,13 @@ library RedemptionTimeExtension {
         return state.redemptionPaymentExtensionSeconds;
     }
 
+    bytes32 internal constant STATE_POSITION = keccak256("fasset.RedemptionTimeExtension.State");
+
     function getState()
         internal pure
         returns (State storage _state)
     {
-        bytes32 position = keccak256("fasset.RedemptionTimeExtension.State");
+        bytes32 position = STATE_POSITION;
         // solhint-disable-next-line no-inline-assembly
         assembly {
             _state.slot := position
