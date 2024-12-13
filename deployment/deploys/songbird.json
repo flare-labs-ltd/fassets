@@ -47,14 +47,12 @@
   {
     "name": "AgentOwnerRegistry",
     "contractName": "AgentOwnerRegistry.sol",
-    "address": "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0",
-    "mustSwitchToProduction": true
+    "address": "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0"
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0xd5d90c61cF30B86b1c4507515e91470334d77Ad6",
-    "mustSwitchToProduction": true
+    "address": "0xd5d90c61cF30B86b1c4507515e91470334d77Ad6"
   },
   {
     "name": "AgentVaultProxyImplementation",
@@ -94,8 +92,7 @@
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerControllerProxy.sol",
-    "address": "0x04025BBf6Be30d6cB6ad412c2958c712c6B2BCbA",
-    "mustSwitchToProduction": true
+    "address": "0x04025BBf6Be30d6cB6ad412c2958c712c6B2BCbA"
   },
   {
     "name": "FAssetImplementation",
@@ -105,8 +102,7 @@
   {
     "name": "AssetManager_FBTC",
     "contractName": "AssetManager.sol",
-    "address": "0x56728e46908fB6FcC5BCD2cc0c0F9BB91C3e4D34",
-    "mustSwitchToProduction": true
+    "address": "0x56728e46908fB6FcC5BCD2cc0c0F9BB91C3e4D34"
   },
   {
     "name": "FBTC",
@@ -116,8 +112,7 @@
   {
     "name": "AssetManager_FDOGE",
     "contractName": "AssetManager.sol",
-    "address": "0x866077dC52445167dC971643c1b2910608eD0C5A",
-    "mustSwitchToProduction": true
+    "address": "0x866077dC52445167dC971643c1b2910608eD0C5A"
   },
   {
     "name": "FDOGE",
@@ -127,8 +122,7 @@
   {
     "name": "AssetManager_FXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x299d678f67e7ADD4efdf295Ebe0E92FCb4f75C4c",
-    "mustSwitchToProduction": true
+    "address": "0x299d678f67e7ADD4efdf295Ebe0E92FCb4f75C4c"
   },
   {
     "name": "FXRP",
