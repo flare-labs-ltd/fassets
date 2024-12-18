@@ -64,12 +64,13 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
     });
 
 task("verify-contract", "Verify a contract in contracts.json.")
+    .addFlag("force", "re-verify partially verified contract")
     .addPositionalParam("contract", "name or address of the contract to verify.")
     .addVariadicPositionalParam("constructorArgs", "constructor arguments", [])
-    .setAction(async ({ contract, constructorArgs }, hre) => {
+    .setAction(async ({ force, contract, constructorArgs }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await verifyContract(hre, contract, contracts, constructorArgs);
+        await verifyContract(hre, contract, contracts, constructorArgs, force);
     });
 
 task("verify-asset-manager", "Verify deployed asset manager.")
