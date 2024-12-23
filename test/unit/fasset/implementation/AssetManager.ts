@@ -1023,6 +1023,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings6.mintingCapAMG = toBN(newSettings6.lotSizeAMG).muln(2);
             await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals);
 
+            let newSettings7 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings7.rejectOrCancelCollateralReservationReturnFactorBIPS = 10001;
+            let res7x = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7, collaterals);
+            await expectRevert(res7x, "bips value too high");
+
             let liquidationSettings5 = createTestSettings(contracts, testChainInfo.eth);
             liquidationSettings5.liquidationCollateralFactorBIPS = [];
             liquidationSettings5.liquidationFactorVaultCollateralBIPS = [];
@@ -1483,17 +1488,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isAtLeast(blocks1[9] - blocks1[0], 5);
         });
 
-        it("should not extend redemption payment time when setting is 0", async () => {
+        it("should not extend redemption payment time much when setting is 1", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];
             const underlyingRedeemer = "redeemer"
             // create available agentVault and mint f-assets
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
-            // set redemptionPaymentExtensionSeconds setting to 0 (needs two steps and timeskip due to validation)
+            // set redemptionPaymentExtensionSeconds setting to 1 (needs two steps and timeskip due to validation)
             await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: assetManagerController });
             await time.increase(86400);
-            await assetManager.setRedemptionPaymentExtensionSeconds(0, { from: assetManagerController });
+            await assetManager.setRedemptionPaymentExtensionSeconds(1, { from: assetManagerController });
             // default a redemption
             const times1: number[] = [];
             const blocks1: number[] = [];
@@ -1529,7 +1534,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const promise = assetManager.setRedemptionPaymentExtensionSeconds(newExtensionSecs, { from: assetManagerController });
             await expectRevert(promise, "increase too big");
         });
-});
+
+        it("should revert setting redemption payment extension time to 0", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
+            // set redemptionPaymentExtensionSeconds setting to 1 (needs two steps and timeskip due to validation)
+            await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: assetManagerController });
+            await time.increase(86400);
+            await expectRevert(assetManager.setRedemptionPaymentExtensionSeconds(0, { from: assetManagerController }), "value must be nonzero");
+        });
+    });
 
     describe("agent underlying", () => {
 
@@ -1595,7 +1612,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // check that change was logged in agentInfo
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, 1000)
-        })
+        });
 
     });
 
@@ -2098,11 +2115,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "value too small");
         });
 
-        it("validate settings averageBLockTimeMS cannot be address zero", async () => {
+        it("validate settings averageBLockTimeMS cannot be zero", async () => {
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.averageBlockTimeMS = constants.ZERO_ADDRESS;
+            Settings.averageBlockTimeMS = 0;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "cannot be zero");
         });
@@ -2419,6 +2436,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not setCancelCollateralReservationAfterSeconds if not from asset manager controller", async () => {
             const promise = assetManager.setCancelCollateralReservationAfterSeconds(0);
+            await expectRevert(promise, "only asset manager controller");
+        });
+
+        it("should not setRejectOrCancelCollateralReservationReturnFactorBIPS if not from asset manager controller", async () => {
+            const promise = assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(0);
             await expectRevert(promise, "only asset manager controller");
         });
 
@@ -2926,6 +2948,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.setCancelCollateralReservationAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
+        it("should not setRejectOrCancelCollateralReservationReturnFactorBIPS if rate limited", async () => {
+            const oldValue = settings.rejectOrCancelCollateralReservationReturnFactorBIPS;
+            await assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(toBN(oldValue).subn(1), { from: assetManagerController });
+            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
+            // skip time
+            await time.increase(toBN(minUpdateTime).subn(2));
+            const promise = assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+            await expectRevert(promise, "too close to previous update");
+            await time.increase(1);
+            await assetManager.setRejectOrCancelCollateralReservationReturnFactorBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
+        });
+
         it("should not setRejectRedemptionRequestWindowSeconds if rate limited", async () => {
             const oldValue = settings.rejectRedemptionRequestWindowSeconds;
             await assetManager.setRejectRedemptionRequestWindowSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
@@ -2972,10 +3006,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not set transfer fee millionths - millionths value too high", async () => {
-            const transferFeeMillionths = await assetManager.transferFeeMillionths();
-            let transferFeeMillionths_new = transferFeeMillionths.muln(2);
             const ts = await latestBlockTimestamp();
-            let promise = assetManager.setTransferFeeMillionths(1e7, ts + 3600, { from: assetManagerController });
+            let promise = assetManager.setTransferFeeMillionths(1e6, ts + 3600, { from: assetManagerController });
             await expectRevert(promise, "millionths value too high");
         });
 
@@ -3201,7 +3233,147 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 assert.isFalse(await assetManager.emergencyPaused());
                 assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
             });
-
         });
-    })
+
+        describe("emergency pause transfers", () => {
+            async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
+                const response = await assetManager.emergencyPauseTransfers(byGovernance, duration, { from: assetManagerController });
+                const pauseTime = await time.latest();
+                const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
+                expectEvent(response, "EmergencyPauseTransfersTriggered", { pausedUntil: expectedPauseEnd });
+                // check simple
+                assert.isTrue(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedPauseEnd);
+                return [pauseTime, expectedPauseEnd];
+            }
+
+            it("only asset manager controller can pause", async () => {
+                await expectRevert(assetManager.emergencyPauseTransfers(false, 100), "only asset manager controller");
+            });
+
+            it("pause details should work", async () => {
+                // pause by 12 hours first
+                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+                // check details
+                const { 0: transfersEmergencyPausedUntil1, 1: transfersEmergencyPausedTotalDuration1, 2: transfersEmergencyPausedByGovernance1 } = await assetManager.emergencyPauseTransfersDetails();
+                assertWeb3Equal(transfersEmergencyPausedUntil1, expectedEnd1);
+                assert.equal(Number(transfersEmergencyPausedTotalDuration1), 12 * HOURS);
+                assert.isFalse(transfersEmergencyPausedByGovernance1);
+                // pause by 8 hours by governance
+                const [time2, expectedEnd2] = await triggerPauseAndCheck(true, 20 * HOURS);
+                // check details
+                const { 0: transfersEmergencyPausedUntil2, 1: transfersEmergencyPausedTotalDuration2, 2: transfersEmergencyPausedByGovernance2 } = await assetManager.emergencyPauseTransfersDetails();
+                assertWeb3Equal(transfersEmergencyPausedUntil2, expectedEnd2);
+                assert.equal(Number(transfersEmergencyPausedTotalDuration2), 12 * HOURS);    // total used duration not affected by governance calls
+                assert.isTrue(transfersEmergencyPausedByGovernance2);
+            });
+
+            it("pausing with 0 time unpauses", async () => {
+                // pause by 12 hours first
+                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+                // after 1 hour pause should still be on
+                await time.increase(1 * HOURS);
+                assert.isTrue(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedEnd1);
+                // unpause
+                await assetManager.emergencyPauseTransfers(false, 0, { from: assetManagerController });
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+                // now there should be approx. 1 hours spent
+                const { 1: transfersEmergencyPausedTotalDuration2 } = await assetManager.emergencyPauseTransfersDetails();
+                assert.approximately(Number(transfersEmergencyPausedTotalDuration2), 1 * HOURS, 10);
+            });
+
+            it("total emergency pauses by 3rd party are limited", async () => {
+                // pause by 12 hours first
+                const [time1] = await triggerPauseAndCheck(false, 12 * HOURS);
+                // after 1 hour, extend by 15 hours
+                await time.increaseTo(time1.addn(1 * HOURS - 1));
+                await triggerPauseAndCheck(false, 15 * HOURS, { expectedEnd: time1.addn(16 * HOURS) });
+                // after 10 more hours pause should still be on
+                await time.increase(10 * HOURS);
+                assert.isTrue(await assetManager.transfersEmergencyPaused());
+                // after 5 more hours, the pause should have ended
+                await time.increase(5 * HOURS);
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                // creating new pause for 12 hours, should only give us 8 hours now (total is 24)
+                await triggerPauseAndCheck(false, 12 * HOURS, { expectedDuration: 8 * HOURS });
+                // after 12 more hours, the pause should have ended
+                await time.increase(12 * HOURS);
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                // all the time is used up, calling pause again has no effect
+                const res4 = await assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController });
+                expectEvent.notEmitted(res4, "EmergencyPauseTransfersTriggered");
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+                // after 1 week, the pause time accounting is reset
+                await time.increase(1 * WEEKS);
+                // now the full pause time can be triggered again
+                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+            });
+
+            it("governance can pause anytime and for unlimited time", async () => {
+                // use up all pause time
+                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+                // after 24 hours, the pause should have ended
+                await time.increase(24 * HOURS);
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                // all the time is used up, calling pause again has no effect
+                const res2 = await assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController });
+                expectEvent.notEmitted(res2, "EmergencyPauseTransfersTriggered");
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+                // but governance can still pause and for more than 24 hours
+                await triggerPauseAndCheck(true, 48 * HOURS, { expectedDuration: 48 * HOURS });
+                // after 40 more hours pause should still be on
+                await time.increase(40 * HOURS);
+                assert.isTrue(await assetManager.transfersEmergencyPaused());
+                // after 8 more hours, the pause should have ended
+                await time.increase(8 * HOURS);
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+            });
+
+            it("governance can reset pause time", async () => {
+                // use up all pause time
+                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+                // after 24 hours, the pause should have ended
+                await time.increase(24 * HOURS);
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                // reset
+                await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+                // now we can use all time again
+                await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            });
+
+            it("should not reset pause time if not from asset manager controller", async () => {
+                // use up all pause time
+                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+                // after 24 hours, the pause should have ended
+                await time.increase(24 * HOURS);
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                // reset
+                const promise = assetManager.resetEmergencyPauseTotalDuration();
+                await expectRevert(promise, "only asset manager controller");
+            });
+
+            it("others cannot pause/unpause when governance pause is active", async () => {
+                // governance pause
+                const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
+                // wait a bit, pause still active
+                await time.increase(2 * HOURS);
+                assert.isTrue(await assetManager.transfersEmergencyPaused());
+                // try to unpause
+                await expectRevert(assetManager.emergencyPauseTransfers(false, 0, { from: assetManagerController }), "paused by governance");
+                // try to increase pause
+                await expectRevert(assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController }), "paused by governance");
+                // still the same pause
+                assert.isTrue(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedEnd1);
+                // governance can unpause
+                await assetManager.emergencyPauseTransfers(true, 0, { from: assetManagerController });
+                assert.isFalse(await assetManager.transfersEmergencyPaused());
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+            });
+        });
+    });
 });

@@ -62,6 +62,11 @@ contract(`FakePriceReader.sol; ${getTestFile(__filename)}; FakePriceReader basic
             assertWeb3Equal(price2, 100000);
             assertWeb3Equal(timestamp2, ts2);
             assertWeb3Equal(decimals2, 5);
+            const { 0: price3, 1: timestamp3, 2: decimals3, 3: numberOfSubmits3 } = await priceReader.getPriceFromTrustedProvidersWithQuality("USDC");
+            assertWeb3Equal(price3, 100000);
+            assertWeb3Equal(timestamp3, ts2);
+            assertWeb3Equal(decimals3, 5);
+            assertWeb3Equal(numberOfSubmits3, 0);
         });
 
         it("only provider can set price or decimals", async () => {

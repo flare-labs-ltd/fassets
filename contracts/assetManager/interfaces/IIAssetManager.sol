@@ -53,6 +53,29 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         returns (uint256 _pausedUntil, uint256 _totalPauseDuration, bool _pausedByGovernance);
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Emergency transfer pause
+
+    /**
+     * Trigger pause of most operations.
+     */
+    function emergencyPauseTransfers(bool _byGovernance, uint256 _duration)
+        external;
+
+    /**
+     * Reset total duration of 3rd party pauses, so that they can trigger pause again.
+     * Otherwise, the total duration is automatically reset emergencyPauseDurationResetAfterSeconds after last pause.
+     */
+    function resetEmergencyPauseTransfersTotalDuration()
+        external;
+
+    /**
+     * Emergency pause details, useful for monitors.
+     */
+    function emergencyPauseTransfersDetails()
+        external view
+        returns (uint256 _pausedUntil, uint256 _totalPauseDuration, bool _pausedByGovernance);
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Upgrade
 
     /**

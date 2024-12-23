@@ -117,6 +117,13 @@ contract AssetManagerMock {
         return fasset;
     }
 
+    function transfersEmergencyPaused()
+        external pure
+        returns (bool)
+    {
+        return false;
+    }
+
     function getAgentMinPoolCollateralRatioBIPS(address /* _agentVault */) external view returns (uint256) {
         return minPoolCollateralRatioBIPS;
     }

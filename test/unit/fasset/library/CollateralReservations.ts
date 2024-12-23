@@ -216,16 +216,21 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const settings = await assetManager.getSettings();
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
+        const returnFee = crFee.mul(toBN(settings.rejectOrCancelCollateralReservationReturnFactorBIPS)).div(toBN(10000));
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // reject reservation
         const minterBalanceBefore = await web3.eth.getBalance(minterAddress1);
+        const burnAddressBalanceBefore = await web3.eth.getBalance(settings.burnAddress);
         await assetManager.rejectCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
         const minterBalanceAfter = await web3.eth.getBalance(minterAddress1);
-        assertWeb3Equal(toBN(minterBalanceBefore).add(crFee), minterBalanceAfter);
+        const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
+        assertWeb3Equal(toBN(minterBalanceBefore).add(returnFee), minterBalanceAfter);
+        assertWeb3Equal(toBN(burnAddressBalanceAfter).sub(toBN(burnAddressBalanceBefore)), crFee.sub(returnFee));
     });
 
     it("should reject collateral reservation and burn fee", async () => {
@@ -269,18 +274,23 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const settings = await assetManager.getSettings();
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
+        const returnFee = crFee.mul(toBN(settings.rejectOrCancelCollateralReservationReturnFactorBIPS)).div(toBN(10000));
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // move time for cancelCollateralReservationAfterSeconds
         await time.increase(Number(settings.cancelCollateralReservationAfterSeconds));
         // cancel reservation
         const minterBalanceBefore = await web3.eth.getBalance(minterAddress1);
+        const burnAddressBalanceBefore = await web3.eth.getBalance(settings.burnAddress);
         const tx1 = await assetManager.cancelCollateralReservation(args.collateralReservationId, { from: minterAddress1 });
         const minterBalanceAfter = await web3.eth.getBalance(minterAddress1);
-        assertWeb3Equal(toBN(minterBalanceBefore).add(crFee).sub(toBN(tx1.receipt.gasUsed).mul(toBN(tx1.receipt.effectiveGasPrice))), minterBalanceAfter);
+        const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
+        assertWeb3Equal(toBN(minterBalanceBefore).add(returnFee).sub(toBN(tx1.receipt.gasUsed).mul(toBN(tx1.receipt.effectiveGasPrice))), minterBalanceAfter);
+        assertWeb3Equal(toBN(burnAddressBalanceAfter).sub(toBN(burnAddressBalanceBefore)), crFee.sub(returnFee));
     });
 
     it("should not cancel collateral reservation if not called by minter", async () => {
@@ -426,6 +436,21 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // assert
         const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, ["Agent1", "Agent2"], { from: minterAddress1, value: crFee });
         await expectRevert(promise1, "minter underlying addresses not sorted");
+    });
+
+    it("should not reserve collateral - minter underlying address invalid", async () => {
+        // init
+        chain.mint(underlyingAgent1, 100);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, handshakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        // assert
+        const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, ["", "Agent2"], { from: minterAddress1, value: crFee });
+        await expectRevert(promise1, "minter underlying address invalid");
+        const promise2 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, ["Agent1", ""], { from: minterAddress1, value: crFee });
+        await expectRevert(promise2, "minter underlying address invalid");
     });
 
     it("should not default minting if minting non-payment mismatch", async () => {

@@ -81,6 +81,14 @@ contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {
         return (data.trustedPrice, data.trustedTimestamp, data.decimals);
     }
 
+    function getPriceFromTrustedProvidersWithQuality(string memory _symbol)
+        external view
+        returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals, uint8 _numberOfSubmits)
+    {
+        PricingData storage data = _getPricingData(_symbol);
+        return (data.trustedPrice, data.trustedTimestamp, data.decimals, 0);
+    }
+
     /**
      * Implementation of ERC-165 interface.
      */

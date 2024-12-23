@@ -15,6 +15,10 @@ contract TransferFeeTrackingMock {
         data.initialize(_firstEpochStartTs, _epochDuration, _maxUnexpiredEpochs);
     }
 
+    function reinitialize(uint64 _firstEpochStartTs, uint64 _epochDuration, uint64 _maxUnexpiredEpochs) external {
+        data.initialize(_firstEpochStartTs, _epochDuration, _maxUnexpiredEpochs);
+    }
+
     function initMintingHistory(address _agentVault, uint64 _amountAMG) external {
         data.initMintingHistory(_agentVault, _amountAMG);
     }

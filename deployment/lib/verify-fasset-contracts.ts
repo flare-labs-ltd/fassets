@@ -7,7 +7,7 @@ import { assetManagerParameters, convertCollateralType, createAssetManagerSettin
 import { assetManagerFacets, assetManagerFacetsDeployedByDiamondCut, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
 
-export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[]) {
+export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[], force: boolean) {
     const contract = contracts.get(contractNameOrAddress) ?? contracts.list().find(c => c.address === contractNameOrAddress);
     if (contract == null) {
         throw new Error(`Unknow contract ${contractNameOrAddress}`);
@@ -19,7 +19,8 @@ export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNam
     await hre.run("verify:verify", {
         address: contract.address,
         constructorArguments: constructorArgs,
-        contract: await qualifiedName(contract)
+        contract: await qualifiedName(contract),
+        force: force
     });
 }
 
@@ -60,13 +61,22 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
         constructorArguments: [diamondCuts, assetManagerInitAddress, initParameters],
         contract: await qualifiedName(assetManagerContract)
     });
+
+    const fAssetContract = contracts.getRequired(parameters.fAssetSymbol);
+
+    await hre.run("verify:verify", {
+        address: fAsset.address,
+        constructorArguments: [fAssetContract.address, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals],
+        contract: await qualifiedName(fAssetContract),
+        force: true
+    });
 }
 
 export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
     await hre.run("verify:verify", {
         address: contracts.AssetManagerController!.address,
-        constructorArguments: [contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address],
+        constructorArguments: [contracts.getAddress('AssetManagerControllerImplementation'), contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address],
         contract: await qualifiedName(contracts.AssetManagerController!)
     });
 }

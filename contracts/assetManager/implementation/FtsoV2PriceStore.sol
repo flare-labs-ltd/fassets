@@ -13,6 +13,8 @@ import "../interfaces/IPricePublisher.sol";
 contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, AddressUpdatable {
     using MerkleProof for bytes32[];
 
+    uint256 internal constant MAX_BIPS = 1e4;
+
     struct PriceStore {
         uint32 votingRoundId;
         uint32 value;
@@ -21,6 +23,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         uint32 trustedVotingRoundId;
         uint32 trustedValue;
         int8 trustedDecimals;
+        uint8 numberOfSubmits;
     }
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
@@ -36,6 +39,8 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     bytes21[] internal feedIds;
     /// Mapping from symbol to feed id - used for price lookups (backwards compatibility).
     mapping(string symbol => bytes21 feedId) internal symbolToFeedId;
+    /// Mapping from feed id to symbol - used for list of supported symbols.
+    mapping(bytes21 feedId => string symbol) internal feedIdToSymbol;
     /// Mapping from feed id to price store which holds the latest published FTSO scaling price and trusted price.
     mapping(bytes21 feedId => PriceStore) internal latestPrices;
     /// Mapping from feed id to submitted trusted prices for the given voting round.
@@ -48,6 +53,8 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     mapping(address trustedProvider => bool isTrustedProvider) internal trustedProvidersMap;
     /// Trusted providers threshold for calculating the median price.
     uint8 public trustedProvidersThreshold;
+    /// The maximum spread between the median price and the nearby trusted prices in BIPS in order to update the price.
+    uint16 public maxSpreadBIPS;
 
     /// The Relay contract.
     IRelay public relay;
@@ -113,10 +120,13 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
             bytes memory trustedPrices = submittedTrustedPrices[feedId][votingRoundId];
             if (trustedPrices.length > 0 && trustedPrices.length >= 4 * trustedProvidersThreshold) {
                 // calculate median price
-                uint256 medianPrice = _calculateMedian(trustedPrices);
-                // store the median price
-                priceStore.trustedVotingRoundId = votingRoundId;
-                priceStore.trustedValue = uint32(medianPrice);
+                (uint256 medianPrice, bool priceOk) = _calculateMedian(trustedPrices);
+                if (priceOk) {
+                    // store the median price
+                    priceStore.trustedVotingRoundId = votingRoundId;
+                    priceStore.trustedValue = uint32(medianPrice);
+                    priceStore.numberOfSubmits = uint8(trustedPrices.length / 4);
+                }
                 // delete submitted trusted prices
                 delete submittedTrustedPrices[feedId][votingRoundId];
             }
@@ -155,20 +165,25 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
      * @param _feedIds The list of feed ids.
      * @param _symbols The list of symbols.
      * @param _trustedDecimals The list of trusted decimals.
+     * @param _maxSpreadBIPS The maximum spread between the median price and the nearby trusted prices in BIPS.
      * @dev Can only be called by the governance.
      */
     function updateSettings(
         bytes21[] calldata _feedIds,
         string[] calldata _symbols,
-        int8[] calldata _trustedDecimals
+        int8[] calldata _trustedDecimals,
+        uint16 _maxSpreadBIPS
     )
         external onlyGovernance
     {
         require(_feedIds.length == _symbols.length && _feedIds.length == _trustedDecimals.length, "length mismatch");
+        require(_maxSpreadBIPS <= MAX_BIPS, "max spread too big");
+        maxSpreadBIPS = _maxSpreadBIPS;
         feedIds = _feedIds;
         for (uint256 i = 0; i < _feedIds.length; i++) {
             bytes21 feedId = _feedIds[i];
             symbolToFeedId[_symbols[i]] = feedId;
+            feedIdToSymbol[feedId] = _symbols[i];
             PriceStore storage latestPrice = latestPrices[feedId];
             if (latestPrice.trustedDecimals != _trustedDecimals[i]) {
                 latestPrice.trustedDecimals = _trustedDecimals[i];
@@ -194,6 +209,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     )
         external onlyGovernance
     {
+        require(_trustedProviders.length < 2**8, "too many trusted providers");
         require(_trustedProviders.length >= _trustedProvidersThreshold, "threshold too high");
         trustedProvidersThreshold = _trustedProvidersThreshold;
         // reset all trusted providers
@@ -238,15 +254,21 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         bytes21 feedId = symbolToFeedId[_symbol];
         require(feedId != bytes21(0), "symbol not supported");
         PriceStore storage feed = latestPrices[feedId];
-        _price = feed.trustedValue;
-        _timestamp = _getEndTimestamp(feed.trustedVotingRoundId);
-        int256 decimals = feed.trustedDecimals; // int8
-        if (decimals < 0) {
-            _priceDecimals = 0;
-            _price *= 10 ** uint256(-decimals);
-        } else {
-            _priceDecimals = uint256(decimals);
-        }
+        (_price, _timestamp, _priceDecimals) = _getPriceFromTrustedProviders(feed);
+    }
+
+    /**
+     * @inheritdoc IPriceReader
+     */
+    function getPriceFromTrustedProvidersWithQuality(string memory _symbol)
+        external view
+        returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals, uint8 _numberOfSubmits)
+    {
+        bytes21 feedId = symbolToFeedId[_symbol];
+        require(feedId != bytes21(0), "symbol not supported");
+        PriceStore storage feed = latestPrices[feedId];
+        (_price, _timestamp, _priceDecimals) = _getPriceFromTrustedProviders(feed);
+        _numberOfSubmits = feed.numberOfSubmits;
     }
 
     /**
@@ -264,6 +286,16 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         _decimals = new int8[](_feedIds.length);
         for (uint256 i = 0; i < _feedIds.length; i++) {
             _decimals[i] = latestPrices[_feedIds[i]].trustedDecimals;
+        }
+    }
+
+    /**
+     * @inheritdoc IPricePublisher
+     */
+    function getSymbols() external view returns (string[] memory _symbols) {
+        _symbols = new string[](feedIds.length);
+        for (uint256 i = 0; i < feedIds.length; i++) {
+            _symbols[i] = feedIdToSymbol[feedIds[i]];
         }
     }
 
@@ -308,11 +340,30 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     }
 
     /**
+     * Returns price data from trusted providers.
+     */
+    function _getPriceFromTrustedProviders(PriceStore storage _feed)
+        internal view
+        returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals)
+    {
+        _price = _feed.trustedValue;
+        _timestamp = _getEndTimestamp(_feed.trustedVotingRoundId);
+        int256 decimals = _feed.trustedDecimals; // int8
+        if (decimals < 0) {
+            _priceDecimals = 0;
+            _price *= 10 ** uint256(-decimals);
+        } else {
+            _priceDecimals = uint256(decimals);
+        }
+    }
+
+    /**
      * @notice Calculates the simple median price (using insertion sort) - sorts original array
      * @param _prices positional array of prices to be sorted
-     * @return median price
+     * @return _medianPrice median price
+     * @return _priceOk true if the median price is within the spread
      */
-    function _calculateMedian(bytes memory _prices) internal pure returns (uint256) {
+    function _calculateMedian(bytes memory _prices) internal view returns (uint256 _medianPrice, bool _priceOk) {
         uint256 length = _prices.length;
         assert(length > 0 && length % 4 == 0);
         length /= 4;
@@ -339,13 +390,20 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
             prices[j] = currentPrice;
         }
 
+        uint256 spread = 0;
         uint256 middleIndex = length / 2;
         if (length % 2 == 1) {
-            return prices[middleIndex];
+            _medianPrice = prices[middleIndex];
+            if (length >= 3) {
+                spread = prices[middleIndex + 1] - prices[middleIndex - 1];
+            }
         } else {
             // if median is "in the middle", take the average price of the two consecutive prices
-            return (prices[middleIndex - 1] + prices[middleIndex]) / 2;
+            _medianPrice = (prices[middleIndex - 1] + prices[middleIndex]) / 2;
+            spread = prices[middleIndex] - prices[middleIndex - 1];
         }
+        // check if spread is within the limit
+        _priceOk = spread <= maxSpreadBIPS * _medianPrice / MAX_BIPS; // no overflow
     }
 
     /**

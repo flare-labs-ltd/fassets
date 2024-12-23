@@ -221,7 +221,7 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
             case ReferencedPaymentNonexistence.TYPE: {
                 const request = parsedRequest.requestBody as ReferencedPaymentNonexistence.RequestBody;
                 return prover.referencedPaymentNonexistence(request.destinationAddressHash, request.standardPaymentReference, toBN(request.amount),
-                    toNumber(request.minimalBlockNumber), toNumber(request.deadlineBlockNumber), toNumber(request.deadlineTimestamp));
+                    toNumber(request.minimalBlockNumber), toNumber(request.deadlineBlockNumber), toNumber(request.deadlineTimestamp), request.checkSourceAddresses, request.sourceAddressesRoot);
             }
             case ConfirmedBlockHeightExists.TYPE: {
                 const request = parsedRequest.requestBody as ConfirmedBlockHeightExists.RequestBody;

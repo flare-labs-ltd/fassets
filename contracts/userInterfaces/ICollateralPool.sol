@@ -30,6 +30,21 @@ interface ICollateralPool {
         uint256 closedFAssetsUBA,
         uint256 newFAssetFeeDebt);
 
+    // Emitted in case of NAT collateral donation to the pool
+    event Donated(
+        address indexed donator,
+        uint256 amountNatWei);
+
+    // Emitted when asset manager forces payout from the pool
+    event PaidOut(
+        address indexed recipient,
+        uint256 paidNatWei,
+        uint256 burnedTokensWei);
+
+    event ClaimedReward(
+        uint256 amountNatWei,
+        uint8 rewardType);
+
     /**
      * In the case of self-close exit, it can happen that not all tokens could be spent, as agent could
      * not redeem all required f-asset in one transaction. In this case, the event is emitted.

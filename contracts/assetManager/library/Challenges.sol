@@ -26,7 +26,6 @@ library Challenges {
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
@@ -47,15 +46,12 @@ library Challenges {
                 Redemption.Request storage redemption = state.redemptionRequests[redemptionId];
                 // Redemption must be for the correct agent and
                 // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof.
-                // Also, payment can be a bit late, but must not be later than twice the time for successful
-                // redemption payment (therefore we use lastBlock + maxBlocks and likewise for timestamp).
+                // We do not check for timestamp of the payment, because on UTXO chains legal payments can be
+                // delayed by arbitrary time due to high fees and cannot be canceled, which could lead to
+                // unnecessary full liquidations.
                 bool redemptionActive = redemption.agentVault == _agentVault
                     && (redemption.status == Redemption.Status.ACTIVE ||
-                        redemption.status == Redemption.Status.DEFAULTED)
-                    && (_payment.data.responseBody.blockNumber <=
-                            redemption.lastUnderlyingBlock + settings.underlyingBlocksForPayment ||
-                        _payment.data.responseBody.blockTimestamp <=
-                            redemption.lastUnderlyingTimestamp + settings.underlyingSecondsForPayment);
+                        redemption.status == Redemption.Status.DEFAULTED);
                 require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {

@@ -45,10 +45,12 @@ library TransferFeeTracking {
     )
         internal
     {
+        require(_data.epochDuration == 0, "already initialized");
+        require(_epochDuration > 0, "epoch duration must be nonzero");
         _data.firstEpochStartTs = _firstEpochStartTs;
         _data.epochDuration = _epochDuration;
         _data.maxUnexpiredEpochs = _maxUnexpiredEpochs;
-        // allow inital settings to set first epoch start to any past date,
+        // allow initial settings to set first epoch start to any past date,
         // without forcing users to skip hundreds of empty epochs during claiming
         _data.firstClaimableEpoch = currentEpoch(_data).toUint64();
     }
