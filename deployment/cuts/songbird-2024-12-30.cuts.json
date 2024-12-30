@@ -1,0 +1,10 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FBTC", "AssetManager_FDOGE", "AssetManager_FXRP"],
+    "facets": [
+        {
+            "contract": "ChallengesFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}
