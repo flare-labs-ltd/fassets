@@ -1,6 +1,21 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { readFileSync } from 'node:fs';
 import { FAssetContractStore } from "./contracts";
 import { loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
+
+interface FtsoV2PriceStoreParameters {
+    contractName: string;
+    firstVotingRoundStartTs: number;
+    votingEpochDurationSeconds: number;
+    trustedProviders: string[];
+    trustedProvidersThreshold: number;
+    maxSpreadBIPS: number;
+    feeds: Array<{
+        feedId: string;
+        symbol: string;
+        feedDecimals: number;
+    }>;
+}
 
 export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying PriceReaderV2`);
@@ -8,29 +23,19 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const { deployer } = loadDeployAccounts(hre);
-    const network = networkConfigName(hre);
+    const parameters = readFtsoV2Parameters(hre);
 
-    const FtsoV2PriceStore = network === 'hardhat' ? artifacts.require("FtsoV2PriceStoreMock") : artifacts.require("FtsoV2PriceStore");
+    const FtsoV2PriceStore = artifacts.require(parameters.contractName as "FtsoV2PriceStore");
 
-    const firstVotingRoundStartTs = network === 'songbird' || network === 'coston' ? 1658429955 : 1658430000;
-    const ftsoV2PriceStore = await FtsoV2PriceStore.new(contracts.GovernanceSettings.address, deployer, deployer, firstVotingRoundStartTs, 90, 100);
+    const ftsoV2PriceStore = await FtsoV2PriceStore.new(contracts.GovernanceSettings.address, deployer, deployer, parameters.firstVotingRoundStartTs, parameters.votingEpochDurationSeconds, 100);
     await ftsoV2PriceStore.updateContractAddresses(encodeContractNames(["AddressUpdater", "Relay"]), [contracts.AddressUpdater.address, contracts.Relay.address], { from: deployer });
 
-    await ftsoV2PriceStore.setTrustedProviders([
-        "0xFA55A150c926F43de6165A2062Ced1c179260f55",
-        "0xF750178B0155c651B4FFf490cE01D0736F1b54C6",
-        "0x96b83D3F73E44c9A96388CF1D116595551dAeB5A"], 2, { from: deployer });
+    await ftsoV2PriceStore.setTrustedProviders(parameters.trustedProviders, parameters.trustedProvidersThreshold, { from: deployer });
     await ftsoV2PriceStore.updateSettings(
-        encodeFeedIds([
-            {category : 1, name: "SGB/USD"},
-            {category : 1, name: "USDX/USD"},
-            {category : 1, name: "XRP/USD"},
-            {category : 1, name: "DOGE/USD"},
-            {category : 1, name: "BTC/USD"}
-        ]),
-        ["SGB", "USDX", "XRP", "DOGE", "BTC"],
-        [7, 5, 5, 5, 2],
-        100, // 1%
+        encodeFeedIds(parameters.feeds.map(feed => ({ category: 1, name: feed.feedId }))),
+        parameters.feeds.map(feed => feed.symbol),
+        parameters.feeds.map(feed => feed.feedDecimals),
+        parameters.maxSpreadBIPS,
         { from: deployer });
 
     contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);
@@ -42,12 +47,12 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
 export interface IFeedId {
     category: number;
     name: string;
-  }
+}
 
 export function encodeFeedIds(feedIds: IFeedId[]): string[] {
     const result = [];
     for (const feedId of feedIds) {
-        if (feedId.category < 0 || feedId.category >= 2**8) {
+        if (feedId.category < 0 || feedId.category >= 2 ** 8) {
             throw Error(`Invalid feed category: ${feedId.category}`);
         }
         if (feedId.name.length > 20) {
@@ -66,11 +71,17 @@ export function encodeString(text: string): string {
     return web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [text]));
 }
 
+function readFtsoV2Parameters(hre: HardhatRuntimeEnvironment): FtsoV2PriceStoreParameters {
+    const networkConfig = networkConfigName(hre);
+    const paramFileName = `deployment/config/${networkConfig}/ftsov2.json`;
+    return JSON.parse(readFileSync(paramFileName, { encoding: "ascii" }));
+}
+
 export async function verifyFtsoV2PriceStore(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
-    const network = networkConfigName(hre);
+    const parameters = readFtsoV2Parameters(hre);
     const { deployer } = loadDeployAccounts(hre);
     await hre.run("verify:verify", {
         address: contracts.PriceReader!.address,
-        constructorArguments: [contracts.GovernanceSettings.address, deployer, deployer, network === 'songbird' || network === 'coston' ? 1658429955 : 1658430000, 90, 100]
+        constructorArguments: [contracts.GovernanceSettings.address, deployer, deployer, parameters.firstVotingRoundStartTs, parameters.votingEpochDurationSeconds, 100]
     });
 }

@@ -1,0 +1,17 @@
+{
+    "contractName": "FtsoV2PriceStore",
+    "firstVotingRoundStartTs": 1658429955,
+    "votingEpochDurationSeconds": 90,
+    "trustedProviders": ["0xaec76c9b8fa7e13699e7dffbf7abfae5e943f1c1"],
+    "trustedProvidersThreshold": 1,
+    "maxSpreadBIPS": 50,
+    "feeds": [
+        { "feedId": "SGB/USD", "symbol": "CFLR", "feedDecimals": 7 },
+        { "feedId": "BTC/USD", "symbol": "testBTC", "feedDecimals": 2 },
+        { "feedId": "XRP/USD", "symbol": "testXRP", "feedDecimals": 5 },
+        { "feedId": "DOGE/USD", "symbol": "testDOGE", "feedDecimals": 5 },
+        { "feedId": "ETH/USD", "symbol": "testETH", "feedDecimals": 3 },
+        { "feedId": "USDC/USD", "symbol": "testUSDC", "feedDecimals": 5 },
+        { "feedId": "USDT/USD", "symbol": "testUSDT", "feedDecimals": 5 }
+    ]
+}
