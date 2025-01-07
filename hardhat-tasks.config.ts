@@ -18,6 +18,7 @@ import { linkContracts } from "./deployment/lib/link-contracts";
 import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract } from "./deployment/lib/verify-fasset-contracts";
 import "./type-extensions";
 
+const FASSETS_LIST = "fassets.json";
 
 task("link-contracts", "Link contracts with external libraries")
     .addVariadicPositionalParam("contracts", "The contract names to link")
@@ -46,13 +47,12 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and FdcVerification")
-    .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
-    .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
+    .addFlag("all", `Deploy all asset managers listed in the file ${FASSETS_LIST}`)
+    .addVariadicPositionalParam("managers", `Asset manager file names (default extension is .json). Must be in the directory deployment/config/\${networkConfig}. Alternatively, add -all flag to use all parameter files listed in ${FASSETS_LIST}.`, [])
     .setAction(async ({ managers, deployController, all }, hre) => {
         const networkConfig = networkConfigName(hre);
-        const configDir = `deployment/config/${networkConfig}`;
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        const managerParameterFiles = await getManagerFiles(all, configDir, managers);
+        const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
         // optionally run the deploy together with controller
         if (deployController) {
             await deployAssetManagerController(hre, contracts, managerParameterFiles);
@@ -73,12 +73,16 @@ task("verify-contract", "Verify a contract in contracts.json.")
         await verifyContract(hre, contract, contracts, constructorArgs, force);
     });
 
-task("verify-asset-manager", "Verify deployed asset manager.")
-    .addParam("parametersFile", "The asset manager config file.")
-    .setAction(async ({ parametersFile }, hre) => {
+task("verify-asset-managers", "Verify deployed asset managers.")
+    .addFlag("all", `Verify all asset managers listed in the file ${FASSETS_LIST}`)
+    .addVariadicPositionalParam("managers", `Asset manager file names (default extension is .json). Must be in the directory deployment/config/\${networkConfig}. Alternatively, add -all flag to use all parameter files listed in ${FASSETS_LIST}.`, [])
+    .setAction(async ({ managers, all }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await verifyAssetManager(hre, parametersFile, contracts);
+        const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
+        for (const paramFile of managerParameterFiles) {
+            await verifyAssetManager(hre, paramFile, contracts);
+        }
     });
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
@@ -121,19 +125,15 @@ task("diamond-cut", "Create diamond cut defined by JSON file.")
 
 async function getManagerFiles(all: boolean, configDir: string, managers: string[]) {
     if (all) {
-        // get all files from the config dir
-        const managerFiles = await fs.readdir(configDir, { withFileTypes: true });
-        return managerFiles
-            .filter(f => f.isFile() && f.name.endsWith('.json'))
-            .map(f => path.join(configDir, f.name));
-    } else if (managers.length > 0) {
-        // use files provided on command line, optionally adding suffix '.json'
-        return managers.map((name: string) => {
-            const parts = path.parse(name);
-            return path.join(configDir, `${parts.name}${parts.ext || '.json'}`);
-        });
-    } else {
-        console.error('Provide a nonempty list of managers to deploy or --all to use all parameter files in the directory.');
+        // read the list for deploy from FASSETS_LIST file
+        managers = JSON.parse(await fs.readFile(path.join(configDir, FASSETS_LIST), "ascii"));
+    } else if (managers.length === 0) {
+        console.error(`Provide a nonempty list of managers to deploy or --all to use all parameter files listed in ${FASSETS_LIST}.`);
         process.exit(1);
     }
+    // use files provided on command line or from FASSETS_LIST file, optionally adding suffix '.json'
+    return managers.map((name: string) => {
+        const parts = path.parse(name);
+        return path.join(configDir, `${parts.name}${parts.ext || '.json'}`);
+    });
 }
