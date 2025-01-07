@@ -31,6 +31,7 @@ task("deploy-price-reader-v2", "Deploy price reader v2.")
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
         await deployPriceReaderV2(hre, contracts);
     });
 
@@ -38,6 +39,7 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
     .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
         await deployAgentOwnerRegistry(hre, contracts);
         await deployUserWhitelist(hre, contracts);
         await deployAgentVaultFactory(hre, contracts);
@@ -53,6 +55,7 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
+        await hre.run("compile");
         // optionally run the deploy together with controller
         if (deployController) {
             await deployAssetManagerController(hre, contracts, managerParameterFiles);
@@ -119,6 +122,7 @@ task("diamond-cut", "Create diamond cut defined by JSON file.")
     .setAction(async ({ json, execute }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
         await deployCuts(hre, contracts, json, { execute: execute, verbose: true });
     });
 
