@@ -33,7 +33,7 @@
         }
     ],
     "minUnderlyingBackingBIPS": 9500,
-    "mintingCap": "500 000 00000000",
+    "mintingCap": "5 000 000 00000000",
     "lotSize": "200 00000000",
     "requireEOAAddressProof": false,
     "collateralReservationFeeBIPS": 50,

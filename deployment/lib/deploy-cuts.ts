@@ -5,6 +5,7 @@ import { JsonParameterSchema } from "./JsonParameterSchema";
 import { ContractStore } from "./contracts";
 import { deployFacet } from "./deploy-asset-manager-facets";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from "./deploy-utils";
+import { contractMetadata } from "../../lib/utils/helpers";
 
 const diamondCutJsonSchema = new JsonParameterSchema<DiamondCutJson>(require('../cuts/diamond-cuts.schema.json'));
 
@@ -50,7 +51,30 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
         console.log(`---- Diamond cut not executed. Data for manual execution on ${cuts.diamond}: ----`);
         console.log("ADDRESS:", diamondAddress);
         console.log("CALLDATA:", abiEncodeCall(diamondCutInstance, (inst) => inst.diamondCut(diamondCuts, initAddress, initCalldata)));
+        console.log(`---- Decoded call as tuples: ----`);
+        const params = contractMetadata(IDiamondCut).abi.find(it => it.name === "diamondCut")!.inputs!;
+        console.log(params[0].name, JSON.stringify(resultToTuple(web3.eth.abi.decodeParameter(params[0], web3.eth.abi.encodeParameter(params[0], diamondCuts)))));
+        console.log(params[1].name, initAddress);
+        console.log(params[2].name, initCalldata);
     }
+}
+
+function resultToTuple(value: any): any {
+    if (typeof value === "object") {
+        if (web3.utils.isBN(value)) {
+            return value.ltn(1e9) ? Number(value) : String(value);
+        }
+        if (Array.isArray(value)) {
+            return value.map(resultToTuple);
+        }
+        // convert object with numeric props to array
+        const tuple = [];
+        for (let i = 0; i in value; i++) {
+            tuple.push(resultToTuple(value[i]));
+        }
+        return tuple;
+    }
+    return value;
 }
 
 async function createNewSelectors(hre: HardhatRuntimeEnvironment, contracts: ContractStore, facets: DiamondCutJsonFacet[], deployer: string) {
