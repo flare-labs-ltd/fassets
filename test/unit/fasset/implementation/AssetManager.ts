@@ -15,6 +15,7 @@ import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDat
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { assertApproximatelyEqual } from "../../../utils/approximation";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -3099,7 +3100,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const response = await assetManager.emergencyPause(byGovernance, duration, { from: assetManagerController });
                 const pauseTime = await time.latest();
                 const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
-                expectEvent(response, "EmergencyPauseTriggered", { pausedUntil: expectedPauseEnd });
+                const allowedError = opts.expectedEnd ? 5 : 0; // allow 5s error if clock jumps between two commands
+                const event = findRequiredEvent(response, "EmergencyPauseTriggered");
+                assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
                 // check simple
                 assert.isTrue(await assetManager.emergencyPaused());
                 assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedPauseEnd);
@@ -3240,7 +3243,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const response = await assetManager.emergencyPauseTransfers(byGovernance, duration, { from: assetManagerController });
                 const pauseTime = await time.latest();
                 const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
-                expectEvent(response, "EmergencyPauseTransfersTriggered", { pausedUntil: expectedPauseEnd });
+                const allowedError = opts.expectedEnd ? 5 : 0; // allow 5s error if clock jumps between two commands
+                const event = findRequiredEvent(response, "EmergencyPauseTransfersTriggered");
+                assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
                 // check simple
                 assert.isTrue(await assetManager.transfersEmergencyPaused());
                 assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedPauseEnd);
