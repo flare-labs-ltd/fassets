@@ -1,8 +1,8 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AgentStatus, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -35,7 +35,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
     const redeemerAddress1 = accounts[40];
-    const noExecutorAddress = constants.ZERO_ADDRESS;
+    const noExecutorAddress = ZERO_ADDRESS;
     const liquidatorAddress1 = accounts[60];
 
     // addresses on mock underlying chain can be any string, as long as it is unique

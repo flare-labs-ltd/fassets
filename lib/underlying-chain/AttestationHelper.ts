@@ -1,9 +1,8 @@
-import { constants } from "@openzeppelin/test-helpers";
 import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationNotProved, AttestationProof, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "./interfaces/IFlareDataConnectorClient";
-import { requireNotNull } from "../utils/helpers";
+import { requireNotNull, ZERO_BYTES32 } from "../utils/helpers";
 
 export class AttestationHelperError extends Error {
     constructor(message: string) {
@@ -53,7 +52,7 @@ export class AttestationHelper {
         const request: Payment.Request = {
             attestationType: Payment.TYPE,
             sourceId: this.chainId,
-            messageIntegrityCode: constants.ZERO_BYTES32,
+            messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
                 transactionId: transactionHash,
                 inUtxo: String(findAddressIndex(transaction.inputs, sourceAddress, 0)),
@@ -76,7 +75,7 @@ export class AttestationHelper {
         const request: BalanceDecreasingTransaction.Request = {
             attestationType: BalanceDecreasingTransaction.TYPE,
             sourceId: this.chainId,
-            messageIntegrityCode: constants.ZERO_BYTES32,
+            messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
                 transactionId: transactionHash,
                 sourceAddressIndicator: web3.utils.keccak256(sourceAddress),
@@ -100,7 +99,7 @@ export class AttestationHelper {
         const request: ReferencedPaymentNonexistence.Request = {
             attestationType: ReferencedPaymentNonexistence.TYPE,
             sourceId: this.chainId,
-            messageIntegrityCode: constants.ZERO_BYTES32,
+            messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
                 minimalBlockNumber: String(startBlock),
                 deadlineBlockNumber: String(endBlock),
@@ -109,7 +108,7 @@ export class AttestationHelper {
                 amount: String(amount),
                 standardPaymentReference: paymentReference,
                 checkSourceAddresses: sourceAddressesRoot ? true : false,
-                sourceAddressesRoot: sourceAddressesRoot ?? constants.ZERO_BYTES32,
+                sourceAddressesRoot: sourceAddressesRoot ?? ZERO_BYTES32,
             },
         };
         return await this.client.submitRequest(request);
@@ -131,7 +130,7 @@ export class AttestationHelper {
         const request: ConfirmedBlockHeightExists.Request = {
             attestationType: ConfirmedBlockHeightExists.TYPE,
             sourceId: this.chainId,
-            messageIntegrityCode: constants.ZERO_BYTES32,
+            messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
                 blockNumber: String(blockHeight - this.chain.finalizationBlocks),
                 queryWindow: String(queryWindow),
@@ -144,7 +143,7 @@ export class AttestationHelper {
         const request: AddressValidity.Request = {
             attestationType: AddressValidity.TYPE,
             sourceId: this.chainId,
-            messageIntegrityCode: constants.ZERO_BYTES32,
+            messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
                 addressStr: underlyingAddress,
             },

@@ -1,4 +1,4 @@
-import { constants, expectRevert } from '@openzeppelin/test-helpers';
+import { expectRevert } from '@openzeppelin/test-helpers';
 import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
 import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
 import { TestSettingsContracts, createTestContracts } from '../../utils/test-settings';
@@ -77,7 +77,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         return test1FacetCode;
     }
 
@@ -105,7 +105,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Replace,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         let result = await diamondLoupeFacet.facetFunctionSelectors(testFacetAddress);
         assert.sameMembers(result, DiamondSelectors.fromABI(test1Facet).selectors);
     });
@@ -119,7 +119,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         return test2FacetCode;
     }
 
@@ -138,11 +138,11 @@ contract('DiamondTest', async function (accounts) {
         const selectors = DiamondSelectors.fromABI(test2Facet).remove(functionsToKeep);
         await diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         let result = await diamondLoupeFacet.facetFunctionSelectors(test2FacetCode.address);
         assert.sameMembers(result, DiamondSelectors.fromABI(test2Facet).restrict(functionsToKeep).selectors);
     });
@@ -155,11 +155,11 @@ contract('DiamondTest', async function (accounts) {
         const selectors = DiamondSelectors.fromABI(test1Facet).remove(functionsToKeep);
         await diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         let result = await diamondLoupeFacet.facetFunctionSelectors(test1FacetCode.address);
         assert.sameMembers(result, DiamondSelectors.fromABI(test1Facet).restrict(functionsToKeep).selectors);
     });
@@ -169,11 +169,11 @@ contract('DiamondTest', async function (accounts) {
         selectors = selectors.remove(['facets()', 'diamondCut((address,uint8,bytes4[])[],address,bytes)']);
         await diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
     }
 
     it('remove all functions and facets except \'diamondCut\' and \'facets\'', async () => {
@@ -226,7 +226,7 @@ contract('DiamondTest', async function (accounts) {
                 functionSelectors: DiamondSelectors.fromABI(test2FacetInt).selectors
             }
         ];
-        await diamondCutFacet.diamondCut(cut, constants.ZERO_ADDRESS, '0x', { gas: 8000000 });
+        await diamondCutFacet.diamondCut(cut, ZERO_ADDRESS, '0x', { gas: 8000000 });
         const facets = await diamondLoupeFacet.facets();
         const facetAddresses = await diamondLoupeFacet.facetAddresses();
         assert.equal(facetAddresses.length, 4);
@@ -268,17 +268,17 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors
             }
-        ], constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        ], ZERO_ADDRESS, '0x', { gas: 800000 });
         // Remove function selectors
         // Function selector for the owner function in slot 0
         selectors = [selFacets, sel5, sel10];
         await diamondCutFacet.diamondCut([
             {
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors
             }
-        ], constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        ], ZERO_ADDRESS, '0x', { gas: 800000 });
 
         // check
 
@@ -303,11 +303,11 @@ contract('DiamondTest', async function (accounts) {
     it('should revert if no function selectors are passed to diamondCut', async () => {
         let res = diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: []
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(res, "NoSelectorsProvidedForFacetForCut");
     });
 
@@ -320,7 +320,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(res, "CannotAddSelectorsToZeroAddress");
     });
 
@@ -333,7 +333,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotAddFunctionToDiamondThatAlreadyExists");
     });
 
@@ -342,11 +342,11 @@ contract('DiamondTest', async function (accounts) {
         const selectors = DiamondSelectors.fromABI(test1FacetCode).restrict(['supportsInterface(bytes4)']);
         let result = diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Replace,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotReplaceFunctionsFromFacetWithZeroAddress");
     });
 
@@ -359,7 +359,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Replace,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet");
     });
 
@@ -373,7 +373,7 @@ contract('DiamondTest', async function (accounts) {
                 // Random selector that does not exist
                 functionSelectors: ['0x28f3b533']
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotReplaceFunctionThatDoesNotExists");
     });
 
@@ -387,7 +387,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "RemoveFacetAddressMustBeZeroAddress");
     });
 
@@ -397,11 +397,11 @@ contract('DiamondTest', async function (accounts) {
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(functionsToKeep);
         let result = diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: [selectors.selectors[0],'0x28f3e533']
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotRemoveFunctionThatDoesNotExist");
     });
 
@@ -413,7 +413,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Replace,
                 functionSelectors: ['0x28f3b533']
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "NoBytecodeAtAddress");
     });
 
@@ -425,11 +425,11 @@ contract('DiamondTest', async function (accounts) {
         console.log("nene");
         let result = diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors.selectors
             }],
-            testFacetAddress, constants.ZERO_ADDRESS, { gas: 800000 });
+            testFacetAddress, ZERO_ADDRESS, { gas: 800000 });
         await expectRevert(result, "InitializationFunctionReverted");
     });
 
@@ -444,15 +444,15 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         // Try to remove functions defined directly in the diamond
         let result = diamondCutFacet.diamondCut(
             [{
-                facetAddress: constants.ZERO_ADDRESS,
+                facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotRemoveImmutableFunction");
     });
 
@@ -467,7 +467,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Add,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         // Try to replace functions defined directly in the diamond
         let result = diamondCutFacet.diamondCut(
             [{
@@ -475,7 +475,7 @@ contract('DiamondTest', async function (accounts) {
                 action: FacetCutAction.Replace,
                 functionSelectors: selectors.selectors
             }],
-            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+            ZERO_ADDRESS, '0x', { gas: 800000 });
         await expectRevert(result, "CannotReplaceImmutableFunction");
     });
 

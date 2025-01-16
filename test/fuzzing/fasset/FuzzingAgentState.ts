@@ -1,4 +1,3 @@
-import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { closeSync } from "fs";
 import { AgentInfo, AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
@@ -12,7 +11,7 @@ import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { openNewFile } from "../../../lib/utils/file-utils";
-import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, sumBN, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, sumBN, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
@@ -347,10 +346,10 @@ export class FuzzingAgentState extends TrackedAgentState {
     // handlers: pool token transfer
 
     handlePoolTokenTransfer(from: string, to: string, amount: BN) {
-        if (from !== constants.ZERO_ADDRESS) {
+        if (from !== ZERO_ADDRESS) {
             this.poolTokenBalances.addTo(from, amount.neg());
         }
-        if (to !== constants.ZERO_ADDRESS) {
+        if (to !== ZERO_ADDRESS) {
             this.poolTokenBalances.addTo(to, amount);
         }
     }

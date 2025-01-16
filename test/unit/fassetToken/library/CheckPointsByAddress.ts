@@ -1,6 +1,7 @@
-import { constants, expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { CheckPointsByAddressMockContract, CheckPointsByAddressMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/test-helpers";
+import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
 const CheckPointsByAddressMock = artifacts.require("CheckPointsByAddressMock") as CheckPointsByAddressMockContract;
 
@@ -141,11 +142,11 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Assemble
         await checkPointsByAddressMock.writeValue(accounts[1], 20);
         // Act
-        await checkPointsByAddressMock.transmit(constants.ZERO_ADDRESS, accounts[1], 10);
+        await checkPointsByAddressMock.transmit(ZERO_ADDRESS, accounts[1], 10);
         // Assert
         let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
         assert.equal(address1Value.toNumber(), 30);
-        let address0Value = await checkPointsByAddressMock.valueOfAtNow(constants.ZERO_ADDRESS);
+        let address0Value = await checkPointsByAddressMock.valueOfAtNow(ZERO_ADDRESS);
         assert.equal(address0Value.toNumber(), 0);
     });
 
@@ -153,11 +154,11 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Assemble
         await checkPointsByAddressMock.writeValue(accounts[1], 20);
         // Act
-        await checkPointsByAddressMock.transmit(accounts[1], constants.ZERO_ADDRESS, 5);
+        await checkPointsByAddressMock.transmit(accounts[1], ZERO_ADDRESS, 5);
         // Assert
         let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
         assert.equal(address1Value.toNumber(), 15);
-        let address0Value = await checkPointsByAddressMock.valueOfAtNow(constants.ZERO_ADDRESS);
+        let address0Value = await checkPointsByAddressMock.valueOfAtNow(ZERO_ADDRESS);
         assert.equal(address0Value.toNumber(), 0);
     });
 
@@ -187,7 +188,7 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Assemble
         const cleanupBlock = await web3.eth.getBlockNumber();
         // Act
-        const res = await checkPointsByAddressMock.cleanupOldCheckpoints(constants.ZERO_ADDRESS, 2, cleanupBlock);
+        const res = await checkPointsByAddressMock.cleanupOldCheckpoints(ZERO_ADDRESS, 2, cleanupBlock);
         // Assert
         assert.notEqual(res, null);
     });

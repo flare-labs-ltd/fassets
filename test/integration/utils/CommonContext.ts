@@ -1,11 +1,11 @@
-import { constants, time } from "@openzeppelin/test-helpers";
+import { time } from "@openzeppelin/test-helpers";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents,
     CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events, FdcHubEvents,
     FdcVerificationEvents, FtsoV2PriceStoreEvents, PriceReaderEvents, RelayEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { requireNotNull, toBNExp, WEEKS } from "../../../lib/utils/helpers";
+import { requireNotNull, toBNExp, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
@@ -82,13 +82,13 @@ export class CommonContext {
             [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, priceStore.address, wNat.address],
             { from: governance });
         // create agent vault factory
-        const agentVaultImplementation = await AgentVault.new(constants.ZERO_ADDRESS);
+        const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
         const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
         // create collateral pool factory
-        const collateralPoolImplementation = await CollateralPool.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, 0);
+        const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
         const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
         // create collateral pool token factory
-        const collateralPoolTokenImplementation = await CollateralPoolToken.new(constants.ZERO_ADDRESS, "", "");
+        const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
         const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
         // create asset manager controller
         const assetManagerController = await newAssetManagerController(governanceSettings.address, governance, addressUpdater.address);

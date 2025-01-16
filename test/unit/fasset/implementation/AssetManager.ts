@@ -1,4 +1,4 @@
-import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -233,7 +233,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should correctly set asset manager settings", async () => {
             const resFAsset = await assetManager.fAsset();
-            assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
+            assert.notEqual(resFAsset, ZERO_ADDRESS);
             assert.equal(resFAsset, fAsset.address);
             const resSettings = web3ResultStruct(await assetManager.getSettings());
             const resInitSettings = resSettings as AssetManagerInitSettings;
@@ -1309,7 +1309,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)
@@ -1357,7 +1357,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // redemption request
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             const ticketDeleted = findRequiredEvent(redemptionRequestTx, "RedemptionTicketDeleted").args;
             assert.equal(ticketDeleted.agentVault, agentVault.address);
@@ -1380,7 +1380,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // redemption request
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // agent doesn't pay for specified time / blocks
             chain.mineTo(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
@@ -1448,7 +1448,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             const { agentFeeShareUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // default a redemption
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // don't mint f-assets for a long time (> 24 hours) to escape the provable attestation window
             skipToProofUnavailability(redemptionRequest.lastUnderlyingBlock, redemptionRequest.lastUnderlyingTimestamp);
@@ -1475,7 +1475,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const times1: number[] = [];
             const blocks1: number[] = [];
             for (let i = 0; i < 10; i++) {
-                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
                 const timestamp = chain.lastBlockTimestamp();
                 const block = chain.blockHeight();
                 const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
@@ -1504,7 +1504,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const times1: number[] = [];
             const blocks1: number[] = [];
             for (let i = 0; i < 10; i++) {
-                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
                 const timestamp = chain.lastBlockTimestamp();
                 const block = chain.blockHeight();
                 const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
@@ -1827,7 +1827,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not attached");
         });
@@ -1846,11 +1846,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             // Try to reserve collateral from non whitelisted address
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not whitelisted");
             //Whitelisted account should be able to reserve collateral
-            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
+            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [],
                 { from: whitelistedAccount, value: reservationFee });
             expectEvent(res,"CollateralReserved");
         });
@@ -1888,7 +1888,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const underlyingRedeemer = "redeemer"
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // default a redemption
-            const r = assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+            const r = assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
             await expectRevert(r, "not whitelisted");
         });
 
@@ -2030,7 +2030,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.agentVaultFactory = constants.ZERO_ADDRESS;
+            Settings.agentVaultFactory = ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "zero agentVaultFactory address");
         });
@@ -2039,7 +2039,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.collateralPoolFactory = constants.ZERO_ADDRESS;
+            Settings.collateralPoolFactory = ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "zero collateralPoolFactory address");
         });
@@ -2048,7 +2048,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.collateralPoolTokenFactory = constants.ZERO_ADDRESS;
+            Settings.collateralPoolTokenFactory = ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "zero collateralPoolTokenFactory address");
         });
@@ -2057,7 +2057,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.fdcVerification = constants.ZERO_ADDRESS;
+            Settings.fdcVerification = ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "zero fdcVerification address");
         });
@@ -2066,7 +2066,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.priceReader = constants.ZERO_ADDRESS;
+            Settings.priceReader = ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "zero priceReader address");
         });
@@ -2075,7 +2075,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.agentOwnerRegistry = constants.ZERO_ADDRESS;
+            Settings.agentOwnerRegistry = ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "zero agentOwnerRegistry address");
         });
@@ -2156,7 +2156,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)
@@ -3040,7 +3040,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         describe("reading settings", () => {
             it("should read price reader", async () => {
                 const priceReader = await assetManager.priceReader();
-                expect(priceReader).to.not.be.equal(constants.ZERO_ADDRESS);
+                expect(priceReader).to.not.be.equal(ZERO_ADDRESS);
                 expect(priceReader).to.equal(settings.priceReader);
             })
             it("should read AMG UBA", async () => {

@@ -1,10 +1,10 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { randomAddress, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { randomAddress, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -60,7 +60,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         // perform minting
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [underlyingMinterAddress], { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, ZERO_ADDRESS, [underlyingMinterAddress], { from: minterAddress, value: crFee });
         return requiredEventArgs(resAg, 'CollateralReserved');
     }
 

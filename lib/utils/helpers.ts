@@ -20,6 +20,7 @@ export const DAYS = 24 * HOURS;
 export const WEEKS = 7 * DAYS;
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
  * Asynchronously wait `ms` milliseconds.
@@ -490,10 +491,13 @@ export function trace(items: Record<string, any>) {
  * @param inspectDepth the depth objects in console.log will be expanded
  */
 export function improveConsoleLog(inspectDepth: number = 10) {
-    const BN = toBN(0).constructor;
-    BN.prototype[util.inspect.custom] = function () {
-        return `BN(${this.toString(10)})`;
-    };
+    function fixBNOutput(BN: any) {
+        BN.prototype[util.inspect.custom] = function () {
+            return `BN(${this.toString(10)})`;
+        };
+    }
+    fixBNOutput(BN);
+    fixBNOutput(toBN(0).constructor);   // if web3 uses a different version
     util.inspect.defaultOptions.depth = inspectDepth;
 }
 

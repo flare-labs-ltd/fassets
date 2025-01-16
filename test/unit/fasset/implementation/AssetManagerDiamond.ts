@@ -1,4 +1,4 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
@@ -11,6 +11,7 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond tests`, async accounts => {
     const governance = accounts[10];
@@ -70,7 +71,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
                 facetAddress: test1Facet.address,
                 functionSelectors: selectors.selectors
             };
-            await executeTimelockedGovernanceCall(assetManager, (gov) => assetManager.diamondCut([test1Cut], constants.ZERO_ADDRESS, "0x0", { from: gov }));
+            await executeTimelockedGovernanceCall(assetManager, (gov) => assetManager.diamondCut([test1Cut], ZERO_ADDRESS, "0x0", { from: gov }));
             // assert
             const loupeRes = await assetManager.facetFunctionSelectors(test1Facet.address);
             assert.isAbove(loupeRes.length, 10);
@@ -84,7 +85,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
                 facetAddress: test1Facet.address,
                 functionSelectors: selectors.selectors
             };
-            const res = await assetManager.diamondCut([test1Cut], constants.ZERO_ADDRESS, "0x0", { from: governance });
+            const res = await assetManager.diamondCut([test1Cut], ZERO_ADDRESS, "0x0", { from: governance });
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
             await time.increase(300);
@@ -109,7 +110,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
                 facetAddress: test1Facet.address,
                 functionSelectors: selectors.selectors
             };
-            const res = await assetManager2.diamondCut([test1Cut], constants.ZERO_ADDRESS, "0x0", { from: governance });
+            const res = await assetManager2.diamondCut([test1Cut], ZERO_ADDRESS, "0x0", { from: governance });
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
             await time.increase(30);

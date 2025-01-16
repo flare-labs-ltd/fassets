@@ -1,8 +1,8 @@
-import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
@@ -572,7 +572,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should change agent vault factory on asset manager controller", async () => {
             //Agent factory can't be address zero
-            const prms1 = assetManagerController.setAgentVaultFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const prms1 = assetManagerController.setAgentVaultFactory([assetManager.address], ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
             const prms = assetManagerController.setAgentVaultFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
@@ -582,7 +582,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should change collateral pool factory on asset manager controller", async () => {
             //Pool factory can't be address zero
-            const prms1 = assetManagerController.setCollateralPoolFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const prms1 = assetManagerController.setCollateralPoolFactory([assetManager.address], ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
             const prms = assetManagerController.setCollateralPoolFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
@@ -592,7 +592,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should change collateral pool token factory on asset manager controller", async () => {
             //Pool factory can't be address zero
-            const prms1 = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const prms1 = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
             const prms = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
@@ -608,7 +608,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
             assertWeb3Equal(await assetManager.getWNat(), accounts[80]);
-            assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
+            assertWeb3Equal(await assetManagerController.replacedBy(), ZERO_ADDRESS);
         });
 
         it("should change contracts, including asset manager controller", async () => {
@@ -639,7 +639,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(await assetManagerController.getAddressUpdater(), contracts.addressUpdater.address);
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
-            assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
+            assertWeb3Equal(await assetManagerController.replacedBy(), ZERO_ADDRESS);
             assertWeb3Equal(await assetManager.getWNat(), contracts.wNat.address);
         });
 
@@ -882,7 +882,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting agent whitelist after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setAgentOwnerRegistry([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setAgentOwnerRegistry([assetManager.address], ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
@@ -895,7 +895,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting proof verifier after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setFdcVerification([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setFdcVerification([assetManager.address], ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
@@ -923,7 +923,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert upgrading fasset after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.upgradeFAssetImplementation([assetManager.address], constants.ZERO_ADDRESS, "0x", { from: governance });
+            const res = assetManagerController.upgradeFAssetImplementation([assetManager.address], ZERO_ADDRESS, "0x", { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
@@ -953,7 +953,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const tx = assetManagerController.setPriceReader([assetManager.address], addr, { from: accounts[12] });
             await expectRevert(tx, "only governance");
             //Price reader address shouldn't be 0
-            const res = assetManagerController.setPriceReader([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setPriceReader([assetManager.address], ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
             //Correctly set price reader
@@ -1348,7 +1348,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert adding Collateral token when address 0", async () => {
             const newToken = {
                 ...collaterals[0],
-                token: constants.ZERO_ADDRESS,
+                token: ZERO_ADDRESS,
                 ftsoSymbol: "TOK",
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
@@ -1362,7 +1362,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert adding Collateral token when class is wrong", async () => {
             const newToken = {
                 ...collaterals[0],
-                token: constants.ZERO_ADDRESS,
+                token: ZERO_ADDRESS,
                 ftsoSymbol: "TOK",
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",

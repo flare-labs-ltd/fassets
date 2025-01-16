@@ -1,9 +1,9 @@
-import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -78,7 +78,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         // perform minting
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [underlyingMinterAddress], { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, ZERO_ADDRESS, [underlyingMinterAddress], { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -94,7 +94,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress, minted.mintedAmountUBA, { from: minterAddress });
         // redemption request
-        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, constants.ZERO_ADDRESS, { from: redeemerAddress });
+        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, ZERO_ADDRESS, { from: redeemerAddress });
         const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
         const request = redemptionRequests[0];
         return request;

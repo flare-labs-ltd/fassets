@@ -1,5 +1,5 @@
-import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { erc165InterfaceId, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { IERC165Contract, WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
@@ -40,7 +40,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
         });
 
         it('should not add address 0', async function () {
-            let res = whitelist.addAddressToWhitelist(constants.ZERO_ADDRESS, {from: governance});
+            let res = whitelist.addAddressToWhitelist(ZERO_ADDRESS, {from: governance});
             await expectRevert(res, "address zero");
         });
 

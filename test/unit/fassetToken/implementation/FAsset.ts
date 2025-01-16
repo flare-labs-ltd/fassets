@@ -1,6 +1,6 @@
 import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { abiEncodeCall, erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { abiEncodeCall, erc165InterfaceId, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { FAssetInstance } from "../../../../typechain-truffle";
 import { impersonateContract } from "../../../utils/contract-test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
@@ -50,7 +50,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
         });
 
         it('should not set asset manager to zero address', async function () {
-            const promise = fAsset.setAssetManager(constants.ZERO_ADDRESS, { from: governance });
+            const promise = fAsset.setAssetManager(ZERO_ADDRESS, { from: governance });
             await expectRevert(promise, "zero asset manager")
         });
 
