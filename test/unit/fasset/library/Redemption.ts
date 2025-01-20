@@ -10,7 +10,7 @@ import { impersonateContract, stopImpersonatingContract } from "../../../utils/c
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createFtsoMock, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
@@ -497,7 +497,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
         // const timeIncrease = toBN(settings.timelockSeconds).addn(1);
-        // await time.increase(timeIncrease);
+        // await deterministicTimeIncrease(timeIncrease);
         // chain.skipTime(timeIncrease.toNumber());
         // await time.advanceBlock();
 
@@ -824,7 +824,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
         // move time to close the rejection request window
-        await time.increase(Number(settings.rejectRedemptionRequestWindowSeconds));
+        await deterministicTimeIncrease(Number(settings.rejectRedemptionRequestWindowSeconds));
         const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         await expectRevert(promise, "reject redemption request window closed");
     });
@@ -923,7 +923,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         const args = requiredEventArgs(res, 'RedemptionRequestRejected');
         // move for take over request window
-        await time.increase(Number(settings.takeOverRedemptionRequestWindowSeconds));
+        await deterministicTimeIncrease(Number(settings.takeOverRedemptionRequestWindowSeconds));
         // try to perform rejected redemption default payment
         const promise = assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: accounts[987] });
         await expectRevert(promise, "only redeemer, executor or agent");
@@ -937,7 +937,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         requiredEventArgs(res, 'RedemptionRequestRejected');
         // move for take over request window
-        await time.increase(Number(settings.takeOverRedemptionRequestWindowSeconds));
+        await deterministicTimeIncrease(Number(settings.takeOverRedemptionRequestWindowSeconds));
         // try to perform rejected redemption default payment
         const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
         const tx = await assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: agentOwner1 });
@@ -958,7 +958,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         requiredEventArgs(res, 'RedemptionRequestRejected');
         // move for take over request window
-        await time.increase(Number(settings.takeOverRedemptionRequestWindowSeconds));
+        await deterministicTimeIncrease(Number(settings.takeOverRedemptionRequestWindowSeconds));
         // try to perform rejected redemption default payment
         const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
         const executorBalanceBefore = await web3.eth.getBalance(executorAddress1);
@@ -1032,7 +1032,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         requiredEventArgs(res, 'RedemptionRequestRejected');
 
         // move time to close the rejection request window
-        await time.increase(Number(settings.rejectRedemptionRequestWindowSeconds));
+        await deterministicTimeIncrease(Number(settings.rejectRedemptionRequestWindowSeconds));
 
         // try to take over redemption request
         const promise = assetManager.takeOverRedemptionRequest(agentVault2.address, request.requestId, { from: agentOwner2 });

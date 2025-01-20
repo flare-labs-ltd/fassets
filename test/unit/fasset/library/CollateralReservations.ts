@@ -11,7 +11,7 @@ import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestCha
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
@@ -282,7 +282,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // move time for cancelCollateralReservationAfterSeconds
-        await time.increase(Number(settings.cancelCollateralReservationAfterSeconds));
+        await deterministicTimeIncrease(Number(settings.cancelCollateralReservationAfterSeconds));
         // cancel reservation
         const minterBalanceBefore = await web3.eth.getBalance(minterAddress1);
         const burnAddressBalanceBefore = await web3.eth.getBalance(settings.burnAddress);

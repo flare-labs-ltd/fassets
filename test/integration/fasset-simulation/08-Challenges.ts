@@ -1,4 +1,4 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -6,7 +6,7 @@ import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -208,7 +208,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txhash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
             // wait 24h
             mockChain.mine(100);
-            await time.increase(1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             mockChain.skipTime(1 * DAYS);
             mockChain.mine(100);
             // expire payment
@@ -247,7 +247,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             });
             // wait 24h
             mockChain.mine(100);
-            await time.increase(1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             mockChain.skipTime(1 * DAYS);
             mockChain.mine(100);
             // perform payment, but do not prove it
@@ -385,7 +385,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 liquidationStartTimestamp: liquidationStarted.timestamp,
                 status: AgentStatus.FULL_LIQUIDATION });
             // wait some time to get next premium
-            await time.increase(90);
+            await deterministicTimeIncrease(90);
             // liquidate agent (second part)
             const startBalanceLiquidator2VaultCollateral = await context.usdc.balanceOf(liquidator.address);
             const startBalanceLiquidator2Pool = await context.wNat.balanceOf(liquidator.address);
@@ -416,7 +416,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 liquidationStartTimestamp: liquidationStarted.timestamp,
                 status: AgentStatus.FULL_LIQUIDATION });
             // wait some time to get next premium
-            await time.increase(90);
+            await deterministicTimeIncrease(90);
             // liquidate agent (last part)
             const startBalanceLiquidator3VaultCollateral = await context.usdc.balanceOf(liquidator.address);
             const startBalanceLiquidator3Pool = await context.wNat.balanceOf(liquidator.address);

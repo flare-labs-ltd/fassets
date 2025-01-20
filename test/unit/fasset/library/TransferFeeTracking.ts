@@ -1,7 +1,7 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { BN_ZERO, maxBN, minBN, toBN, WEEKS } from "../../../../lib/utils/helpers";
+import { BN_ZERO, maxBN, toBN, WEEKS } from "../../../../lib/utils/helpers";
 import { TransferFeeTrackingMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile } from "../../../utils/test-helpers";
 import { coinFlip, randomBN, randomChoice } from "../../../utils/fuzzing-utils";
 import { SparseArray } from "../../../utils/SparseMatrix";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -117,9 +117,9 @@ contract(`TransferFeeTracking.sol; ${getTestFile(__filename)};  Transfer fee uni
             const firstEpoch = await tracking.currentEpoch();
             for (let i = 0; i < M; i++) {
                 await tracking.addFees(FEE);
-                await time.increase(toBN(settings.epochDuration));
+                await deterministicTimeIncrease(toBN(settings.epochDuration));
             }
-            await time.increase(toBN(settings.epochDuration).muln(M));
+            await deterministicTimeIncrease(toBN(settings.epochDuration).muln(M));
             // check previous epochs
             for (let i = 0; i < 2 * M; i++) {
                 const data = await tracking.transferFeeEpochData(firstEpoch.addn(i));
@@ -143,9 +143,9 @@ contract(`TransferFeeTracking.sol; ${getTestFile(__filename)};  Transfer fee uni
             const firstEpoch = await tracking.currentEpoch();
             for (let i = 0; i < M; i++) {
                 await tracking.addFees(FEE);
-                await time.increase(toBN(settings.epochDuration));
+                await deterministicTimeIncrease(toBN(settings.epochDuration));
             }
-            await time.increase(toBN(settings.epochDuration).muln(M));
+            await deterministicTimeIncrease(toBN(settings.epochDuration).muln(M));
             // add fee M times to current epoch
             const currentEpoch = await tracking.currentEpoch();
             assertWeb3Equal(currentEpoch, firstEpoch.addn(2 * M));

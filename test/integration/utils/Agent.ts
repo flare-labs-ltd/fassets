@@ -16,6 +16,7 @@ import { createTestAgentSettings } from "../../utils/test-settings";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
+import { deterministicTimeIncrease } from "../../utils/test-helpers";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -204,7 +205,7 @@ export class Agent extends AssetContextClient {
             throw new Error("agent still backing f-assets");
         }
         // redeem pool tokens to empty the pool (this only works in tests where there are no other pool token holders)
-        await time.increase(await this.context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock to expire
+        await deterministicTimeIncrease(await this.context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock to expire
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);

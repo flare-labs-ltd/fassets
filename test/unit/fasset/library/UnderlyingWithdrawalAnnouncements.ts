@@ -9,7 +9,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
@@ -110,7 +110,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
-        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
+        await deterministicTimeIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
@@ -127,7 +127,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
-        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
+        await deterministicTimeIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         //Announce underlying withdrawal again and confirm. Because agent is in full liquidation
         //it will stay in full liquidation
@@ -136,7 +136,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash2 = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId2));
         const blockId2 = (await chain.getTransactionBlock(txHash2))!.number;
         const proof2 = await attestationProvider.provePayment(txHash2, underlyingAgent1, null);
-        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
+        await deterministicTimeIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res2 = await assetManager.confirmUnderlyingWithdrawal(proof2, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
@@ -163,7 +163,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const manSettings = await assetManager.getSettings();
-        await time.increase(manSettings.confirmationByOthersAfterSeconds);
+        await deterministicTimeIncrease(manSettings.confirmationByOthersAfterSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
@@ -181,7 +181,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const settings = await assetManager.getSettings();
-        await time.increase(settings.confirmationByOthersAfterSeconds);
+        await deterministicTimeIncrease(settings.confirmationByOthersAfterSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
@@ -250,7 +250,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announceArgs = requiredEventArgs(announceRes, "UnderlyingWithdrawalAnnounced");
         // act
-        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
+        await deterministicTimeIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalCancelled", {agentVault: agentVault.address, announcementId: announceArgs.announcementId})

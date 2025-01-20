@@ -8,7 +8,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
@@ -303,7 +303,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
         //Skip time
-        await time.increase(200);
+        await deterministicTimeIncrease(200);
         //Getting agent info should show status in Liquidation
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info2.status, 2);

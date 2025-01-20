@@ -9,7 +9,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
 const CollateralPool = artifacts.require('CollateralPool');
@@ -104,7 +104,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         const pool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         const poolToken = await CollateralPoolToken.at(await pool.poolToken());
         await pool.enter(0, false, { value: tokens, from: owner }); // owner will get at least `tokens` of tokens
-        await time.increase(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
+        await deterministicTimeIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
         await poolToken.transfer(agentVault.address, tokens, { from: owner });
     }
 
@@ -182,7 +182,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
 
-            await time.increase(14 * 86400);
+            await deterministicTimeIncrease(14 * 86400);
             let res = assetManager.illegalPaymentChallenge(
                 proof, agentVault.address, { from: whitelistedAccount });
             await expectRevert(res, "verified transaction too old")

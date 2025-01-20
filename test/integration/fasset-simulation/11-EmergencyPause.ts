@@ -2,13 +2,12 @@ import { expectRevert } from "@openzeppelin/test-helpers";
 import { formatBN, HOURS, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { testChainInfo } from "../utils/TestChainInfo";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { Redeemer } from "../utils/Redeemer";
 import { Liquidator } from "../utils/Liquidator";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
@@ -63,7 +62,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert(minter.reserveCollateral(agent.vaultAddress, lots), "emergency pause active");
             // after one hour, collateral reservations should work again
-            await time.increase(1 * HOURS);
+            await deterministicTimeIncrease(1 * HOURS);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             // minting can be finished after pause
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
@@ -111,7 +110,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert(liquidator.liquidate(agent, context.convertLotsToUBA(1)), "emergency pause active");
             // can liquidate when pause expires
-            await time.increase(1 * HOURS);
+            await deterministicTimeIncrease(1 * HOURS);
             const [liq] = await liquidator.liquidate(agent, context.convertLotsToUBA(3));
             console.log(formatBN(liq), formatBN(context.convertLotsToUBA(3)));
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL });
@@ -132,7 +131,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
             await expectRevert(minter.transferFAsset(redeemer.address, lotSize), "emergency pause of transfers active");
             // after one hour, collateral reservations should work again
-            await time.increase(1 * HOURS);
+            await deterministicTimeIncrease(1 * HOURS);
             await minter.transferFAsset(redeemer.address, lotSize);
             // another pause
             await context.assetManagerController.emergencyPauseTransfers([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
