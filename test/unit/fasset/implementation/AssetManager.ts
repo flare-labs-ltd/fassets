@@ -874,112 +874,154 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("should validate settings at creation", () => {
-        it("should validate settings - cannot be zero", async () => {
+        it("should validate settings - cannot be zero (collateralReservationFeeBIPS)", async () => {
             let newSettings0 = createTestSettings(contracts, testChainInfo.eth);
             newSettings0.collateralReservationFeeBIPS = 0;
             let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0, collaterals);
             await expectRevert(res0, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (assetUnitUBA)", async () => {
             let newSettings1 = createTestSettings(contracts, testChainInfo.eth);
             newSettings1.assetUnitUBA = 0;
             let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1, collaterals);
             await expectRevert(res1, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (assetMintingGranularityUBA)", async () => {
             let newSettings2 = createTestSettings(contracts, testChainInfo.eth);
             newSettings2.assetMintingGranularityUBA = 0;
             let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2, collaterals);
             await expectRevert(res2, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (minCollateralRatioBIPS)", async () => {
             let collaterals3 = createTestCollaterals(contracts, testChainInfo.eth);
             collaterals3[0].minCollateralRatioBIPS = 0;
             let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals3);
             await expectRevert(res3, "invalid collateral ratios");
+        });
 
+        it("should validate settings - cannot be zero (underlyingBlocksForPayment)", async () => {
             let newSettings6 = createTestSettings(contracts, testChainInfo.eth);
             newSettings6.underlyingBlocksForPayment = 0;
             let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals);
             await expectRevert(res6, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (underlyingSecondsForPayment)", async () => {
             let newSettings7 = createTestSettings(contracts, testChainInfo.eth);
             newSettings7.underlyingSecondsForPayment = 0;
             let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7, collaterals);
             await expectRevert(res7, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (redemptionFeeBIPS)", async () => {
             let newSettings8 = createTestSettings(contracts, testChainInfo.eth);
             newSettings8.redemptionFeeBIPS = 0;
             let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings8, collaterals);
             await expectRevert(res8, "cannot be zero");;
+        });
 
+        it("should validate settings - cannot be zero (maxRedeemedTickets)", async () => {
             let newSettings10 = createTestSettings(contracts, testChainInfo.eth);
             newSettings10.maxRedeemedTickets = 0;
             let res10 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings10, collaterals);
             await expectRevert(res10, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (ccbTimeSeconds)", async () => {
             let newSettings11 = createTestSettings(contracts, testChainInfo.eth);
             newSettings11.ccbTimeSeconds = 0;
             let res11 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings11, collaterals);
             await expectRevert(res11, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (liquidationStepSeconds)", async () => {
             let newSettings12 = createTestSettings(contracts, testChainInfo.eth);
             newSettings12.liquidationStepSeconds = 0;
             let res12 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings12, collaterals);
             await expectRevert(res12, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (maxTrustedPriceAgeSeconds)", async () => {
             let newSettings13 = createTestSettings(contracts, testChainInfo.eth);
             newSettings13.maxTrustedPriceAgeSeconds = 0;
             let res13 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings13, collaterals);
             await expectRevert(res13, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (minUpdateRepeatTimeSeconds)", async () => {
             let newSettings15 = createTestSettings(contracts, testChainInfo.eth);
             newSettings15.minUpdateRepeatTimeSeconds = 0;
             let res15 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings15, collaterals);
             await expectRevert(res15, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (buybackCollateralFactorBIPS)", async () => {
             let newSettings16 = createTestSettings(contracts, testChainInfo.eth);
             newSettings16.buybackCollateralFactorBIPS = 0;
             let res16 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings16, collaterals);
             await expectRevert(res16, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (withdrawalWaitMinSeconds)", async () => {
             let newSettings17 = createTestSettings(contracts, testChainInfo.eth);
             newSettings17.withdrawalWaitMinSeconds = 0;
             let res17 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings17, collaterals);
             await expectRevert(res17, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (lotSizeAMG)", async () => {
             let newSettings19 = createTestSettings(contracts, testChainInfo.eth)
             newSettings19.lotSizeAMG = 0;
             let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19, collaterals);
             await expectRevert(res19, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (announcedUnderlyingConfirmationMinSeconds)", async () => {
             let newSettings20 = createTestSettings(contracts, testChainInfo.eth)
             newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
             let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20, collaterals);
             await expectRevert(res20, "confirmation time too big");
+        });
 
+        it("should validate settings - cannot be zero (underlyingSecondsForPayment)", async () => {
             let newSettings21 = createTestSettings(contracts, testChainInfo.eth)
             newSettings21.underlyingSecondsForPayment = 25 * HOURS;
             let res21 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings21, collaterals);
             await expectRevert(res21, "value too high");
+        });
 
+        it("should validate settings - cannot be zero (underlyingBlocksForPayment)", async () => {
             let newSettings22 = createTestSettings(contracts, testChainInfo.eth)
             newSettings22.underlyingBlocksForPayment = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
             let res22 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings22, collaterals);
             await expectRevert(res22, "value too high");
+        });
 
+        it("should validate settings - cannot be zero (cancelCollateralReservationAfterSeconds)", async () => {
             let newSettings23 = createTestSettings(contracts, testChainInfo.eth)
             newSettings23.cancelCollateralReservationAfterSeconds = 0;
             let res23 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings23, collaterals);
             await expectRevert(res23, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (rejectRedemptionRequestWindowSeconds)", async () => {
             let newSettings24 = createTestSettings(contracts, testChainInfo.eth)
             newSettings24.rejectRedemptionRequestWindowSeconds = 0;
             let res24 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings24, collaterals);
             await expectRevert(res24, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (takeOverRedemptionRequestWindowSeconds)", async () => {
             let newSettings25 = createTestSettings(contracts, testChainInfo.eth)
             newSettings25.takeOverRedemptionRequestWindowSeconds = 0;
             let res25 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings25, collaterals);
             await expectRevert(res25, "cannot be zero");
+        });
 
+        it("should validate settings - cannot be zero (rejectedRedemptionDefaultFactorVaultCollateralBIPS)", async () => {
             let newSettings26 = createTestSettings(contracts, testChainInfo.eth)
             newSettings26.rejectedRedemptionDefaultFactorVaultCollateralBIPS = 9999;
             newSettings26.rejectedRedemptionDefaultFactorPoolBIPS = 0;
@@ -987,72 +1029,96 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res26, "bips value too low");
         });
 
-        it("should validate settings - other validators", async () => {
+        it("should validate settings - other validators (collateralReservationFeeBIPS)", async () => {
             let newSettings0 = createTestSettings(contracts, testChainInfo.eth);
             newSettings0.collateralReservationFeeBIPS = 10001;
             let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0, collaterals);
             await expectRevert(res0, "bips value too high");
+        });
 
+        it("should validate settings - other validators (redemptionFeeBIPS)", async () => {
             let newSettings1 = createTestSettings(contracts, testChainInfo.eth);
             newSettings1.redemptionFeeBIPS = 10001;
             let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1, collaterals);
             await expectRevert(res1, "bips value too high");
+        });
 
+        it("should validate settings - other validators (redemptionDefaultFactorVaultCollateralBIPS)", async () => {
             let newSettings2 = createTestSettings(contracts, testChainInfo.eth);
             newSettings2.redemptionDefaultFactorVaultCollateralBIPS = 5000;
             newSettings2.redemptionDefaultFactorPoolBIPS = 5000;
             let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2, collaterals);
             await expectRevert(res2, "bips value too low");
+        });
 
+        it("should validate settings - other validators (attestationWindowSeconds)", async () => {
             let newSettings3 = createTestSettings(contracts, testChainInfo.eth);
             newSettings3.attestationWindowSeconds = 0.9 * DAYS;
             let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings3, collaterals);
             await expectRevert(res3, "window too small");
+        });
 
+        it("should validate settings - other validators (confirmationByOthersAfterSeconds)", async () => {
             let newSettings4 = createTestSettings(contracts, testChainInfo.eth);
             newSettings4.confirmationByOthersAfterSeconds = 1.9 * HOURS;
             let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4, collaterals);
             await expectRevert(res4, "must be at least two hours");
+        });
 
+        it("should validate settings - other validators (mintingCapAMG)", async () => {
             let newSettings5 = createTestSettings(contracts, testChainInfo.eth);
             newSettings5.mintingCapAMG = toBN(newSettings5.lotSizeAMG).divn(2);
             let res5x = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5, collaterals);
             await expectRevert(res5x, "minting cap too small");
+        });
 
+        it("should validate settings - other validators (mintingCapAMG 2)", async () => {
             // should work for nonzero cap greater than lot size
             let newSettings6 = createTestSettings(contracts, testChainInfo.eth);
             newSettings6.mintingCapAMG = toBN(newSettings6.lotSizeAMG).muln(2);
             await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals);
+        });
 
+        it("should validate settings - other validators (rejectOrCancelCollateralReservationReturnFactorBIPS)", async () => {
             let newSettings7 = createTestSettings(contracts, testChainInfo.eth);
             newSettings7.rejectOrCancelCollateralReservationReturnFactorBIPS = 10001;
             let res7x = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7, collaterals);
             await expectRevert(res7x, "bips value too high");
+        });
 
+        it("should validate settings - other validators (liquidationCollateralFactorBIPS - 1)", async () => {
             let liquidationSettings5 = createTestSettings(contracts, testChainInfo.eth);
             liquidationSettings5.liquidationCollateralFactorBIPS = [];
             liquidationSettings5.liquidationFactorVaultCollateralBIPS = [];
             let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, liquidationSettings5, collaterals);
             await expectRevert(res5, "at least one factor required");
+        });
 
+        it("should validate settings - other validators (liquidationCollateralFactorBIPS - 2)", async () => {
             let liquidationSettings6 = createTestSettings(contracts, testChainInfo.eth);
             liquidationSettings6.liquidationCollateralFactorBIPS = [12000, 11000];
             liquidationSettings6.liquidationFactorVaultCollateralBIPS = [12000, 11000];
             let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, liquidationSettings6, collaterals);
             await expectRevert(res6, "factors not increasing");
+        });
 
+        it("should validate settings - other validators (liquidationCollateralFactorBIPS - 3)", async () => {
             let liquidationSettings7 = createTestSettings(contracts, testChainInfo.eth);
             liquidationSettings7.liquidationCollateralFactorBIPS = [12000];
             liquidationSettings7.liquidationFactorVaultCollateralBIPS = [12001];
             let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, liquidationSettings7, collaterals);
             await expectRevert(res7, "vault collateral factor higher than total");
+        });
 
+        it("should validate settings - other validators (liquidationCollateralFactorBIPS - 4)", async () => {
             let liquidationSettings8 = createTestSettings(contracts, testChainInfo.eth);
             liquidationSettings8.liquidationCollateralFactorBIPS = [1000];
             liquidationSettings8.liquidationFactorVaultCollateralBIPS = [1000];
             let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, liquidationSettings8, collaterals);
             await expectRevert(res8, "factor not above 1");
+        });
 
+        it("should validate settings - other validators (collateral ratios)", async () => {
             let collaterals6 = createTestCollaterals(contracts, testChainInfo.eth);
             collaterals6[0].minCollateralRatioBIPS = 1_8000;
             collaterals6[0].ccbMinCollateralRatioBIPS = 2_2000;
@@ -3042,12 +3108,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const priceReader = await assetManager.priceReader();
                 expect(priceReader).to.not.be.equal(ZERO_ADDRESS);
                 expect(priceReader).to.equal(settings.priceReader);
-            })
+            });
+
             it("should read AMG UBA", async () => {
                 const amgUba = await assetManager.assetMintingGranularityUBA();
                 expect(amgUba.toString()).to.not.equal("0");
                 expect(amgUba.toString()).to.equal(settings.assetMintingGranularityUBA.toString());
-            })
+            });
+
             it("should read asset minting decimals", async () => {
                 const assetMintingDecimals = await assetManager.assetMintingDecimals();
                 expect(assetMintingDecimals.toString()).to.not.equal("0");
@@ -3060,7 +3128,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
                 const collateralToken = await assetManager.getAgentVaultCollateralToken(agentVault.address)
                 expect(collateralToken).to.equal(usdc.address);
-            })
+            });
+
             it("should read agent's full vault and pool collaterals", async () => {
                 const vaultCollateralDeposit = toWei(3e8);
                 const poolCollateralDeposit = toWei(3e10);
@@ -3071,7 +3140,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 expect(fullVaultCollateral.toString()).to.equal(vaultCollateralDeposit.toString());
                 const fullPoolCollateral = await assetManager.getAgentFullPoolCollateral(agentVault.address);
                 expect(fullPoolCollateral.toString()).to.equal(poolCollateralDeposit.toString());
-            })
+            });
+
             it("should get agent's liquidation params", async () => {
                 const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
                 const {
@@ -3082,7 +3152,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 expect(liquidationPaymentFactorVaultBIPS.toString()).to.equal("0");
                 expect(liquidationPaymentFactorPoolBIPS.toString()).to.equal("0");
                 expect(maxLiquidationAmountUBA.toString()).to.equal("0");
-            })
+            });
+
             it("should get agent's minimum collateral ratios", async () => {
                 const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
                 const info = await assetManager.getAgentInfo(agentVault.address);
@@ -3092,7 +3163,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const minPoolCR = await assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault.address);
                 const poolToken = collaterals.filter(x => x.token == wNat.address)[0];
                 expect(minPoolCR.toString()).to.equal(poolToken.minCollateralRatioBIPS.toString());
-        })
+            });
         })
 
         describe("emergency pause", () => {
