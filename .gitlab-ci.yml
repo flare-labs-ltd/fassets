@@ -89,10 +89,18 @@ test-unit:
     matrix:
     - TEST_PATH:
       - ./test/unit/fasset/library
-      - ./test/unit/fasset/implementation
       - ./test/unit/{bots,governance,utils,fasset/mock,addressValidator}
   script:
   - yarn hardhat test --network hardhat
+
+test-unit-lg:
+  extends: test-unit
+  tags:
+  - flarenetwork-lg
+  parallel:
+    matrix:
+    - TEST_PATH:
+      - ./test/unit/fasset/implementation
 
 
 test-contract-integration:
