@@ -88,8 +88,8 @@ test-unit:
   parallel:
     matrix:
     - TEST_PATH:
-      - ./test/unit/fasset/library
-      - ./test/unit/{bots,governance,utils,fasset/mock,addressValidator}
+      - ./test/unit/fasset/!(implementation)
+      - ./test/unit/!(fasset)
   script:
   - yarn hardhat test --network hardhat
 
