@@ -528,35 +528,34 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         it("transfer fee share can be updated with scheduled effect", async () => {
             const startTime = await time.latest();
             // will use time.increaseTo(currentTime += ...) instead of deterministicTimeIncrease(...) because time can unexpectedly jump a lot on CI
-            let currentTime = startTime;
             const startFee = await assetManager.transferFeeMillionths();
             assertWeb3Equal(startFee, 200);
             // update fee to 500 in 100 sec
-            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 200, { from: governance});
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 2000, { from: governance});
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
-            await time.increaseTo(currentTime += 100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
-            await time.increaseTo(currentTime += 100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
             // updating is rate-limited
-            await expectRevert(context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 200, { from: governance }),
+            await expectRevert(context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 2000, { from: governance }),
                 "too close to previous update");
             // update fee again, to 400
-            await time.increaseTo(currentTime += 1 * DAYS);  // skip to avoid too close updates
-            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 200, { from: governance });
+            await deterministicTimeIncrease(1 * DAYS);  // skip to avoid too close updates
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 2000, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
-            await time.increaseTo(currentTime += 100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
-            await time.increaseTo(currentTime += 100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 400);
             // update in past/now/0 updates immediately
-            await time.increaseTo(currentTime += 1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 300, startTime, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 300);
-            await time.increaseTo(currentTime += 1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 150, await time.latest() + 1, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 150);
-            await time.increaseTo(currentTime += 1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 100, 0, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 100);
         });
