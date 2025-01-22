@@ -72,7 +72,7 @@ build-smart-contracts:
   before_script:
   - yarn install --frozen-lockfile
   script:
-  - yarn c
+  - yarn compile
   artifacts:
     paths:
     - artifacts
