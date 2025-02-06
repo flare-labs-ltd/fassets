@@ -325,13 +325,13 @@
   {
     "name": "AssetManager_FTestBTC",
     "contractName": "AssetManager.sol",
-    "address": "0x55A9aB03c04b5d11faB6924E34E7b411297356c2",
+    "address": "0x052B64F06a5075A68796E87a2bEe9B7165B7Da26",
     "mustSwitchToProduction": true
   },
   {
     "name": "FTestBTC",
     "contractName": "FAssetProxy.sol",
-    "address": "0x8D3B8939978298264D3C6236121737ea143f64bC"
+    "address": "0x6cb0F2022F7b972baA22BF97dFd3C0ec21bdbE0E"
   },
   {
     "name": "AssetManager_FTestDOGE",
