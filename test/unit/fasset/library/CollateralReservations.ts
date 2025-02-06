@@ -1,17 +1,17 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
+import { BNish, toBN, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, MinterMockInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
@@ -37,7 +37,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     // addresses
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
-    const noExecutorAddress = constants.ZERO_ADDRESS;
+    const noExecutorAddress = ZERO_ADDRESS;
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingMinter1 = "Minter1";
@@ -282,7 +282,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [underlyingMinter1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         // move time for cancelCollateralReservationAfterSeconds
-        await time.increase(Number(settings.cancelCollateralReservationAfterSeconds));
+        await deterministicTimeIncrease(Number(settings.cancelCollateralReservationAfterSeconds));
         // cancel reservation
         const minterBalanceBefore = await web3.eth.getBalance(minterAddress1);
         const burnAddressBalanceBefore = await web3.eth.getBalance(settings.burnAddress);

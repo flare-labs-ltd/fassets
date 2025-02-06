@@ -1,11 +1,11 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -494,7 +494,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             }
             // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
-            await time.increase(DAYS);
+            await deterministicTimeIncrease(DAYS);
             context.skipToProofUnavailability(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
             // test rewarding for redemption payment default
             const vaultCollateralToken = agent.vaultCollateralToken();
@@ -646,7 +646,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
         // nobody takes over. Redeemer request payment default
         // move time forward for take over window
-        await time.increase(Number(context.settings.takeOverRedemptionRequestWindowSeconds));
+        await deterministicTimeIncrease(Number(context.settings.takeOverRedemptionRequestWindowSeconds));
         const defaultsRes = await context.assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: redeemer.address });
         const defaultArgs = requiredEventArgs(defaultsRes, 'RedemptionDefault')
         await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(lotsUBA3), redeemingUBA: 0, totalVaultCollateralWei: fullAgentCollateral.sub(defaultArgs.redeemedVaultCollateralWei) });

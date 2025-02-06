@@ -2,7 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { BN_ZERO, BNish, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -145,7 +145,7 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, async 
         }
         // redeem pool tokens to empty the pool (agent only works in tests where there are no other pool token holders)
         const poolTokenBalance = await agent.poolTokenBalance();
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
         const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
         console.log(`Pool Token Balance to Redeem: ${poolTokenBalance}`);
         await time.increaseTo(withdrawalAllowedAt);

@@ -1,10 +1,9 @@
-import { constants } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../lib/fasset/AssetManagerTypes";
 import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp, WEEKS } from "../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance,
@@ -69,16 +68,16 @@ export type TestSettingOptions = Partial<AssetManagerInitSettings>;
 
 export function createTestSettings(contracts: TestSettingsCommonContracts, ci: TestChainInfo, options?: TestSettingOptions): AssetManagerInitSettings {
     const result: AssetManagerInitSettings = {
-        assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
-        fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
+        assetManagerController: ZERO_ADDRESS,     // replaced in newAssetManager(...)
+        fAsset: ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
         collateralPoolFactory: contracts.collateralPoolFactory.address,
         collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         fdcVerification: contracts.fdcVerification.address,
         priceReader: contracts.priceReader.address,
-        whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
-        agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? constants.ZERO_ADDRESS,
-        burnAddress: constants.ZERO_ADDRESS,
+        whitelist: contracts.whitelist?.address ?? ZERO_ADDRESS,
+        agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? ZERO_ADDRESS,
+        burnAddress: ZERO_ADDRESS,
         chainId: ci.chainId,
         poolTokenSuffix: ci.assetSymbol,
         collateralReservationFeeBIPS: toBIPS("1%"),
@@ -246,13 +245,13 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create price reader
     const priceReader = await PriceReader.new(addressUpdater.address, ftsoRegistry.address);
     // create agent vault factory
-    const agentVaultImplementation = await AgentVault.new(constants.ZERO_ADDRESS);
+    const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
     const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
     // create collateral pool factory
-    const collateralPoolImplementation = await CollateralPool.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, 0);
+    const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
     const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
     // create collateral pool token factory
-    const collateralPoolTokenImplementation = await CollateralPoolToken.new(constants.ZERO_ADDRESS, "", "");
+    const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
     // create allow-all agent whitelist
     const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);

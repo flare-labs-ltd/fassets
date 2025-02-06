@@ -1,8 +1,8 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -11,7 +11,6 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
-import { Liquidator } from "../utils/Liquidator";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -75,7 +74,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.announceVaultCollateralWithdrawal(withdrawalAmount);
             await agent.checkAgentInfo({ reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: withdrawalAmount });
             await expectRevert(agent.withdrawVaultCollateral(withdrawalAmount), "withdrawal: not allowed yet");
-            await time.increase(context.settings.withdrawalWaitMinSeconds);
+            await deterministicTimeIncrease(context.settings.withdrawalWaitMinSeconds);
             const startVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress));
             await agent.withdrawVaultCollateral(withdrawalAmount);
             await agent.checkAgentInfo({ totalVaultCollateralWei: lockedCollateral, announcedVaultCollateralWithdrawalWei: 0 });
@@ -103,7 +102,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //Deprecate collateral token
             await context.assetManagerController.deprecateCollateralType([context.assetManager.address], 2,context.usdc.address,
                 currentSettings.tokenInvalidationTimeMinSeconds, {from: governance});
-            await time.increase(context.settings.tokenInvalidationTimeMinSeconds);
+            await deterministicTimeIncrease(context.settings.tokenInvalidationTimeMinSeconds);
             //Owner can't switch collateral if there is not enough collateral of the new token
             const res = context.assetManager.switchVaultCollateral(agent.agentVault.address,context.usdt.address, { from: agent.ownerWorkAddress });
             await expectRevert(res,"not enough collateral");
@@ -201,7 +200,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const underlyingWithdrawal1 = await agent1.announceUnderlyingWithdrawal();
             await agent1.checkAgentInfo({ announcedUnderlyingWithdrawalId: underlyingWithdrawal1.announcementId });
             assert.isAbove(Number(underlyingWithdrawal1.announcementId), 0);
-            await time.increase(context.settings.confirmationByOthersAfterSeconds);
+            await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
             await agent1.cancelUnderlyingWithdrawal(underlyingWithdrawal1);
             // agent can exit now
             await agent1.exitAndDestroy(fullAgentCollateral);
@@ -229,7 +228,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "only agent vault owner");
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
             // others can confirm underlying withdrawal after some time
-            await time.increase(context.settings.confirmationByOthersAfterSeconds);
+            await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             const res = await challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent);
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
@@ -293,7 +292,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // stop FAsset
             await expectRevert(agent.buybackAgentCollateral(), "f-asset not terminated");
             await expectRevert(context.assetManagerController.terminate([context.assetManager.address], { from: governance }), "asset manager not paused enough");
-            await time.increase(30 * DAYS);
+            await deterministicTimeIncrease(30 * DAYS);
             mockChain.skipTime(30 * DAYS);
             const [redemptionRequests2, remainingLots2, dustChanges2] = await redeemer.requestRedemption(1);
             assertWeb3Equal(remainingLots2, 0);
@@ -355,7 +354,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //Test withdrawal
             //Announce vault collateral withdrawal
             await agent.announceVaultCollateralWithdrawal(withdrawalAmount);
-            await time.increase(context.settings.withdrawalWaitMinSeconds);
+            await deterministicTimeIncrease(context.settings.withdrawalWaitMinSeconds);
             await agent.withdrawVaultCollateral(withdrawalAmount);
             //Check that CR is safe
             const vaultCollateralRatioBIPS = toBN((await agent.getAgentInfo()).vaultCollateralRatioBIPS);
@@ -366,7 +365,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //Try to withdraw after price swing
             //Announce vault collateral withdrawal
             await agent.announceVaultCollateralWithdrawal(withdrawalAmount);
-            await time.increase(context.settings.withdrawalWaitMinSeconds);
+            await deterministicTimeIncrease(context.settings.withdrawalWaitMinSeconds);
             //Price changes vault CR
             await agent.setVaultCollateralRatioByChangingAssetPrice(1000000);
             //Agent shouldn't be able to withdraw if it would make CR too low

@@ -1,11 +1,11 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toBNExp, toWei, trace } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { calculateReceivedNat } from "../../utils/eth";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -130,7 +130,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const prms1 = agent.collateralPoolToken.transfer(accounts[1], toWei(2e8), {from: minter.address});
         await expectRevert(prms1, "insufficient non-timelocked balance");
         //After 1 day the minter can exit the pool
-        await time.increase(time.duration.days(1));
+        await deterministicTimeIncrease(time.duration.days(1));
         // check locked balance
         const timelockedTokens2 = await agent.collateralPoolToken.timelockedBalanceOf(minter.address);
         const lockedTokens2 = await agent.collateralPoolToken.lockedBalanceOf(minter.address);
@@ -210,7 +210,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minterPoolFees = await agent.collateralPool.fAssetFeesOf(minter.address);
         assert(minterPoolFees.gt(minted.poolFeeUBA));
         // minter waits for the token timelock and exits the pool
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
         await agent.collateralPool.exit(minterPoolTokens, 0, { from: minter.address });
     });
 
@@ -300,7 +300,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.collateralPool.withdrawFees(redeemerFAssetFeesAfter, { from: minter.address });
         assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), redeemerFAssetFeesAfter);
         const minterPoolTokens = await agent.collateralPoolToken.balanceOf(minter.address);
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
         const response = await agent.collateralPool.exit(minterPoolTokens, 0, { from: minter.address });
         const receivedNat = await calculateReceivedNat(response, minter.address);
         assertApproximatelyEqual(receivedNat, minterPoolDeposit, 'relative', 1e-20);
@@ -336,7 +336,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.finishRedemptionWithoutPayment(redemptionRequests[0]);
         // minter partially exits the pool after waiting for the token timelock
         const exitTokens1 = toWei(22_200);
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
         await agent.collateralPool.exit(exitTokens1, 0, { from: minter.address });
         // minter enters the pool again
         const minterPoolDeposit2 = toWei(11_544);
@@ -370,7 +370,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await context.fAsset.approve(agent.collateralPool.address, 100000000000, { from: minter.address });
         const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
         const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(minterPoolTokensWei);
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
         const response = await agent.collateralPool.selfCloseExit(minterPoolTokensWei, false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
         const receivedNat = await calculateReceivedNat(response, minter.address);
         const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
@@ -412,7 +412,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const enterRes = await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
         const minterPoolTokens = toBN(requiredEventArgs(enterRes, "Entered").receivedTokensWei);
         await context.fAsset.approve(agent.collateralPool.address, toWei(5e12), { from: minter.address });
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
         const resp = await agent.collateralPool.selfCloseExit(minterPoolTokens, false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
         const info = await agent.getAgentInfo();
         //Check for redemption request and incomplete self close
@@ -449,7 +449,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const selfCloseAmount = minterPoolTokens;
         const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
         const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(selfCloseAmount);
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
         const response = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
         const receivedNat = await calculateReceivedNat(response, minter.address);
         const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
@@ -493,7 +493,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
         const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(selfCloseAmount);
         const { 1: transferFee } = await context.fAsset.getSendAmount(minter.address, agent.collateralPool.address, fAssetReqForClose);
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
         const response = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
         const receivedNat = await calculateReceivedNat(response, minter.address);
         const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
@@ -564,7 +564,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.setPoolCollateralRatioByChangingAssetPrice(10_000);
         // minters triggers self-close exit
         const minterTokens = await agent.collateralPoolToken.balanceOf(minter.address);
-        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
         const response = await agent.collateralPool.selfCloseExit(minterTokens, false, minter.underlyingAddress, ZERO_ADDRESS, { from: minter.address });
         const receivedNat = await calculateReceivedNat(response, minter.address);
         assertApproximatelyEqual(receivedNat, minterPoolDeposit, 'absolute', 10);
@@ -681,7 +681,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const txHash = await minter.performMintingPayment(crt);
         await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
         // perform minting and check fees
-        await time.increase(time.duration.days(7));
+        await deterministicTimeIncrease(time.duration.days(7));
         const lots2 = 3;
         const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots2);
         const txHash2 = await minter.performMintingPayment(crt2);
@@ -747,7 +747,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const vaultCollateralBalanceAgentBefore = await context.usdc.balanceOf(agent.agentVault.address);
         const vaultCollateralBalanceUser2Before = await context.usdc.balanceOf(user2);
         //Wait for timelocked tokens
-        await time.increase(context.settings.collateralPoolTokenTimelockSeconds);
+        await deterministicTimeIncrease(context.settings.collateralPoolTokenTimelockSeconds);
         const response2 = await agent.collateralPool.selfCloseExit(userPoolTokenBalance3User2, true, underlyingMinter2, ZERO_ADDRESS, { from: user2});
         const user2ReceivedNat = await calculateReceivedNat(response2);
         const info = await agent.getAgentInfo();
@@ -829,7 +829,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await context.fAsset.increaseAllowance(agent.collateralPool.address, await context.fAsset.balanceOf(user5), { from: user5});
         await agent.collateralPool.payFAssetFeeDebt(await agent.collateralPool.fAssetFeeDebtOf(user5), {from: user5});
         //User5 transfers pool tokens
-        await time.increase(context.settings.collateralPoolTokenTimelockSeconds);
+        await deterministicTimeIncrease(context.settings.collateralPoolTokenTimelockSeconds);
         await agent.collateralPoolToken.transfer(user7, await agent.collateralPoolToken.balanceOf(user5), { from: user5});
         // User5 should have no fasset fees now
         assertWeb3Equal(await agent.collateralPool.fAssetFeesOf(user5), 0);
@@ -881,7 +881,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assert(user2FassetFees.gte(userFassetFees.muln(1000)));
         assert(user2FassetFees.gte(vaultFassetFees.muln(1000)));
         //Wait for timelocked tokens
-        await time.increase(context.settings.collateralPoolTokenTimelockSeconds);
+        await deterministicTimeIncrease(context.settings.collateralPoolTokenTimelockSeconds);
         //Both users exit
         await agent.collateralPool.exit(await agent.collateralPoolToken.balanceOf(user2),0, { from: user2});
         await agent.collateralPool.exit(await agent.collateralPoolToken.balanceOf(user),0, {from: user});

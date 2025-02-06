@@ -4,7 +4,7 @@ import { BN_ZERO, BNish, DAYS, MAX_BIPS, toBN, toBNExp, toWei, WEEKS, ZERO_ADDRE
 import { FAssetInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { Agent } from "../utils/Agent";
@@ -96,7 +96,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(epochData.totalFees, transferFee);
             assertWeb3Equal(claimableAmount0, 0);
             // skip 1 epoch and claim
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             const claimableAmount1 = await agent.transferFeeShare(10);
             assertWeb3Equal(claimableAmount1, transferFee);
             const claimed = await agent.claimTransferFees(agent.ownerWorkAddress, 10);
@@ -159,7 +159,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
             const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(selfCloseAmount);
             const { 1: transferFee } = await context.fAsset.getSendAmount(minter.address, agent.collateralPool.address, fAssetReqForClose);
-            await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+            await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
             const response = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingUser1, ZERO_ADDRESS, { from: minter.address });
             const receivedNat = await calculateReceivedNat(response, minter.address);
             const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
@@ -177,13 +177,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(agent.ownerWorkAddress, fAssetBalanceAfter, { from: minter.address });
             await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
             // skip 1 epoch and claim (multiple times)
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             await agent.claimTransferFees(agent.ownerWorkAddress, 10);
             await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             await agent.claimTransferFees(agent.ownerWorkAddress, 10);
             await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             await agent.claimTransferFees(agent.ownerWorkAddress, 10);
             const totalSupply = await context.fAsset.totalSupply();
             const [dustChanges, selfClosedUBA] = await agent.selfClose(totalSupply);
@@ -223,7 +223,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(fAssetReqForClose, 0);
             const fee = await agent.collateralPool.fAssetFeesOf(minter.address);
             const { 1: transferFee } = await context.fAsset.getReceivedAmount(minter.address, agent.collateralPool.address, fee);
-            await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+            await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
             const response = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingUser1, ZERO_ADDRESS, { from: minter.address });
             const receivedNat = await calculateReceivedNat(response, minter.address);
             const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
@@ -241,13 +241,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(agent.ownerWorkAddress, fAssetBalanceAfter, { from: minter.address });
             await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
             // skip 1 epoch and claim (multiple times)
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             await agent.claimTransferFees(agent.ownerWorkAddress, 10);
             await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             await agent.claimTransferFees(agent.ownerWorkAddress, 10);
             await agent.withdrawPoolFees(await agent.poolFeeBalance(), agent.ownerWorkAddress);
-            await time.increase(epochDuration);
+            await deterministicTimeIncrease(epochDuration);
             await agent.claimTransferFees(agent.ownerWorkAddress, 10);
             const totalSupply = await context.fAsset.totalSupply();
             const [dustChanges, selfClosedUBA] = await agent.selfClose(totalSupply);
@@ -527,34 +527,35 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     describe("transfer fee settings", () => {
         it("transfer fee share can be updated with scheduled effect", async () => {
             const startTime = await time.latest();
+            // will use time.increaseTo(currentTime += ...) instead of deterministicTimeIncrease(...) because time can unexpectedly jump a lot on CI
             const startFee = await assetManager.transferFeeMillionths();
             assertWeb3Equal(startFee, 200);
             // update fee to 500 in 100 sec
-            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 200, { from: governance});
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 2000, { from: governance});
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
-            await time.increase(100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
-            await time.increase(100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
             // updating is rate-limited
-            await expectRevert(context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 200, { from: governance }),
+            await expectRevert(context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 2000, { from: governance }),
                 "too close to previous update");
             // update fee again, to 400
-            await time.increase(1 * DAYS);  // skip to avoid too close updates
-            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 200, { from: governance });
+            await deterministicTimeIncrease(1 * DAYS);  // skip to avoid too close updates
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 400, await time.latest() + 2000, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
-            await time.increase(100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
-            await time.increase(100);
+            await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 400);
             // update in past/now/0 updates immediately
-            await time.increase(1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 300, startTime, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 300);
-            await time.increase(1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 150, await time.latest() + 1, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 150);
-            await time.increase(1 * DAYS);
+            await deterministicTimeIncrease(1 * DAYS);
             await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 100, 0, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), 100);
         });

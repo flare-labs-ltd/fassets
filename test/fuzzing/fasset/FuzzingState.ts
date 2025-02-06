@@ -1,4 +1,3 @@
-import { constants } from "@openzeppelin/test-helpers";
 import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 import { InitialAgentData } from "../../../lib/state/TrackedAgentState";
 import { TrackedState } from "../../../lib/state/TrackedState";
@@ -7,7 +6,7 @@ import { EventFormatter } from "../../../lib/utils/events/EventFormatter";
 import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
-import { sumBN, toBN } from "../../../lib/utils/helpers";
+import { sumBN, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingAgentState } from "./FuzzingAgentState";
@@ -44,11 +43,11 @@ export class FuzzingState extends TrackedState {
         super.registerHandlers();
         // track fAsset balances (Transfer for mint/burn is seen as transfer from/to address(0))
         this.truffleEvents.event(this.context.fAsset, 'Transfer').immediate().subscribe(args => {
-            if (args.from !== constants.ZERO_ADDRESS) {
+            if (args.from !== ZERO_ADDRESS) {
                 this.fAssetBalance.addTo(args.from, args.value.neg());
                 this.agentsByPool.get(args.from)?.handlePoolFeeWithdrawal(args.to, toBN(args.value));
             }
-            if (args.to !== constants.ZERO_ADDRESS) {
+            if (args.to !== ZERO_ADDRESS) {
                 this.fAssetBalance.addTo(args.to, args.value);
                 this.agentsByPool.get(args.to)?.handlePoolFeeDeposit(args.from, toBN(args.value));
             }

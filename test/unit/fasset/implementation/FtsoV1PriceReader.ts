@@ -1,5 +1,5 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { erc165InterfaceId, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { FtsoV1PriceReaderInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
@@ -27,7 +27,7 @@ contract(`FtsoV1PriceReader.sol; ${getTestFile(__filename)}; FtsoV1PriceReader b
 
     describe("method tests", () => {
         it("should require nonzero ftsoRegistry", async () => {
-            const pr = FtsoV1PriceReader.new(contracts.addressUpdater.address, constants.ZERO_ADDRESS);
+            const pr = FtsoV1PriceReader.new(contracts.addressUpdater.address, ZERO_ADDRESS);
             await expectRevert(pr, "zero address");
         });
 

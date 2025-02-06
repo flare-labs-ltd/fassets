@@ -72,7 +72,7 @@ build-smart-contracts:
   before_script:
   - yarn install --frozen-lockfile
   script:
-  - yarn c
+  - yarn compile
   artifacts:
     paths:
     - artifacts
@@ -88,11 +88,19 @@ test-unit:
   parallel:
     matrix:
     - TEST_PATH:
-      - ./test/unit/fasset/library
-      - ./test/unit/fasset/implementation
-      - ./test/unit/{bots,governance,utils,fasset/mock,addressValidator}
+      - ./test/unit/fasset/!(implementation)
+      - ./test/unit/!(fasset)
   script:
   - yarn hardhat test --network hardhat
+
+test-unit-lg:
+  extends: test-unit
+  tags:
+  - flarenetwork-lg
+  parallel:
+    matrix:
+    - TEST_PATH:
+      - ./test/unit/fasset/implementation
 
 
 test-contract-integration:

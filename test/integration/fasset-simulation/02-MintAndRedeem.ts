@@ -1,8 +1,8 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { BN_ZERO, deepFormat, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { expectRevert } from "@openzeppelin/test-helpers";
+import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -13,7 +13,6 @@ import { testChainInfo } from "../utils/TestChainInfo";
 import { ERC20MockInstance } from "../../../typechain-truffle";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
-import common from "mocha/lib/interfaces/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -171,7 +170,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
             // wait until another setting update is possible
-            await time.increase(currentSettings.minUpdateRepeatTimeSeconds);
+            await deterministicTimeIncrease(currentSettings.minUpdateRepeatTimeSeconds);
             // change redemption fee bips
             await context.setCollateralReservationFeeBips(toBN(currentSettings.redemptionFeeBIPS).muln(2));
             // perform redemption
@@ -706,7 +705,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // wait for token timelock
-            await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+            await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
             // mine some blocks to skip the agent creation time
             mockChain.mine(5);
             // Upgrade wNat contract
@@ -718,7 +717,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const agentInfo = await context.assetManager.getAgentInfo(agent.agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
             await context.assetManager.announceAgentPoolTokenRedemption(agent.agentVault.address, tokens, { from: agentOwner1 });
-            await time.increase((await context.assetManager.getSettings()).withdrawalWaitMinSeconds);
+            await deterministicTimeIncrease((await context.assetManager.getSettings()).withdrawalWaitMinSeconds);
             const poolTokensBefore = await agent.collateralPoolToken.totalSupply();
             //Redeem collateral pool tokens
             await agent.agentVault.redeemCollateralPoolTokens(tokens, agentOwner1, { from: agentOwner1 });

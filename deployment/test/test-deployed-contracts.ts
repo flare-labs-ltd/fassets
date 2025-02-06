@@ -75,15 +75,20 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
     };
 
-    const testPrices: Array<[string, string, number, number]> = [
-        ['CFLR', 'FtsoNat', 5, 0.20],
-        ['testUSDC', 'FtsoUSDC', 5, 1.01],
-        ['testUSDT', 'FtsoUSDT', 5, 0.99],
-        ['testETH', 'FtsoETH', 3, 3000],
-        ['testBTC', 'FtsoBtc', 2, 20_000],
-        ['testDOGE', 'FtsoDoge', 5, 0.05],
-        ['testXRP', 'FtsoXrp', 5, 0.50],
-    ];
+    const testPrices: Record<string, [string, number, number]> = {
+        'CFLR': ['FtsoNat', 5, 0.20],
+        'testUSDC': ['FtsoUSDC', 5, 1.01],
+        'testUSDT': ['FtsoUSDT', 5, 0.99],
+        'testETH': ['FtsoETH', 3, 3000],
+        'testBTC': ['FtsoBtc', 2, 20_000],
+        'testDOGE': ['FtsoDoge', 5, 0.05],
+        'testXRP': ['FtsoXrp', 5, 0.50],
+        'SGB': ['FtsoNat', 5, 0.20],
+        'USDX': ['FtsoUSDT', 5, 0.99],
+        'XRP': ['FtsoXrp', 5, 0.50],
+        'BTC': ['FtsoBtc', 2, 20_000],
+        'DOGE': ['FtsoDoge', 5, 0.05],
+    };
 
     itSkipIf(networkConfig !== 'hardhat')("Can create an agent on all managers", async () => {
         const { deployer } = loadDeployAccounts(hre);
@@ -94,7 +99,8 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         const relay = await artifacts.require('RelayMock').at(contracts.Relay.address);
         const fdcHub = await artifacts.require('FdcHubMock').at(contracts.FdcHub.address);
         const priceStore = await artifacts.require('FtsoV2PriceStoreMock').at(contracts.FtsoV2PriceStore!.address);
-        for (const [symbol, _, decimals, price] of testPrices) {
+        for (const symbol of await priceStore.getSymbols()) {
+            const [_, decimals, price] = testPrices[symbol];
             await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
             await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
         }

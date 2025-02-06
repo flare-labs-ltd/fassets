@@ -3,7 +3,7 @@ import { network } from "hardhat";
 import { Future, formatBN, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
 import { WNatInstance } from "../../../typechain-truffle";
 import { currentRealTime, elapsedTime } from "../../utils/fuzzing-utils";
-import { getTestFile } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile } from "../../utils/test-helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
 const WNAT = artifacts.require("WNat");
@@ -49,7 +49,7 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
         await setDefaultVPContract(wNat, account.address);
     });
 
-    describe("web3 hardhat experiments", () => {
+    describe.skip("web3 hardhat experiments", () => {
         // a fresh contract for each test
         let wNat: WNatInstance;
 
@@ -76,7 +76,7 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
             }
         });
 
-        it.only("try run network by manual mining", async () => {
+        it("try run network by manual mining", async () => {
             // console.log('defaultAccount', network.config.from);
 
             for (let i = 0; i < 50; i++) {
@@ -125,6 +125,30 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
         });
 
         it("test time skip", async () => {
+            console.log(`Start time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await wNat.deposit({ from: accounts[1], value: toBN(10_000) });
+            console.log(`After deposit time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await time.increase(0);
+            console.log(`After skip(0) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await time.increase(1);
+            console.log(`After skip(1) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await time.increase(10);
+            console.log(`After skip(10) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+        });
+
+        it("test time skip -deterministic", async () => {
+            console.log(`Start time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await wNat.deposit({ from: accounts[1], value: toBN(10_000) });
+            console.log(`After deposit time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await deterministicTimeIncrease(0);
+            console.log(`After skip(0) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await deterministicTimeIncrease(1);
+            console.log(`After skip(1) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await deterministicTimeIncrease(10);
+            console.log(`After skip(10) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+        });
+
+        it("test time skip with wait", async () => {
             console.log(`Start time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
             await wNat.deposit({ from: accounts[1], value: toBN(10_000) });
             console.log(`After deposit time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);

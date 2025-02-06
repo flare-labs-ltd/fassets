@@ -1,4 +1,4 @@
-import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -6,7 +6,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, toBIPS, toBN, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -318,7 +318,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         const crt = await reserveCollateral(agentVault1.address, 1);
         const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
@@ -341,7 +341,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "HandshakeRequired");
         const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
         const crt = requiredEventArgs(tx1, "CollateralReserved");

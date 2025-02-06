@@ -1,8 +1,7 @@
 import Web3 from "web3";
-import { constants } from "@openzeppelin/test-helpers";
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { TX_FAILED, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { BN_ZERO } from "../../../lib/utils/helpers";
+import { BN_ZERO, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 
@@ -47,7 +46,7 @@ export class MockAttestationProver {
             sourceAddressesRoot: AttestationHelper.merkleRootOfAddresses(transaction.inputs.map(input => input[0])),
             receivingAddressHash: receivingAddressHash,
             intendedReceivingAddressHash: receivingAddressHash,
-            standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
+            standardPaymentReference: transaction.reference ?? ZERO_BYTES32,
             spentAmount: String(spent),
             intendedSpentAmount: String(spent),
             receivedAmount: String(received),
@@ -68,7 +67,7 @@ export class MockAttestationProver {
             blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
             spentAmount: String(spent),
-            standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
+            standardPaymentReference: transaction.reference ?? ZERO_BYTES32,
         };
     }
 

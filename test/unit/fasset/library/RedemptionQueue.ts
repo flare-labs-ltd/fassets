@@ -1,5 +1,5 @@
-import { constants, expectRevert } from "@openzeppelin/test-helpers";
-import { BNish, randomAddress, toStringExp } from "../../../../lib/utils/helpers";
+import { expectRevert } from "@openzeppelin/test-helpers";
+import { BNish, randomAddress, toStringExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { RedemptionQueueMockInstance } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -135,12 +135,12 @@ contract(`RedemptionQueue.sol; ${getTestFile(__filename)};  RedemptionQueue unit
         assertWeb3Equal(ticketId6, 6);
         assertWeb3Equal(ticketId7, 7);
         assertWeb3Equal(ticketId8, 8);
-        await checkTicket(ticketId1, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0);
+        await checkTicket(ticketId1, ZERO_ADDRESS, 0, 0, 0, 0, 0);
         await checkTicket(ticketId2, agentVault2, amgValue2, 0, 3, 0, 4);
         await checkTicket(ticketId3, agentVault1, amgValue3, 2, 4, 0, 7);
         await checkTicket(ticketId4, agentVault2, amgValue4, 3, 7, 2, 8);
-        await checkTicket(ticketId5, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0);
-        await checkTicket(ticketId6, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0);
+        await checkTicket(ticketId5, ZERO_ADDRESS, 0, 0, 0, 0, 0);
+        await checkTicket(ticketId6, ZERO_ADDRESS, 0, 0, 0, 0, 0);
         await checkTicket(ticketId7, agentVault1, amgValue7, 4, 8, 3, 0);
         await checkTicket(ticketId8, agentVault2, amgValue8, 7, 0, 4, 0);
     });
@@ -159,7 +159,7 @@ contract(`RedemptionQueue.sol; ${getTestFile(__filename)};  RedemptionQueue unit
         assertWeb3Equal(ticketId1, 1);
         assertWeb3Equal(ticketId2, 2);
         assertWeb3Equal(ticketId3, 3);
-        await checkTicket(ticketId1, constants.ZERO_ADDRESS, 0, 0, 0, 0, 0);
+        await checkTicket(ticketId1, ZERO_ADDRESS, 0, 0, 0, 0, 0);
         await checkTicket(ticketId2, agentVault1, amgValue2, 0, 3, 0, 3);
         await checkTicket(ticketId3, agentVault1, amgValue3, 2, 0, 2, 0);
         await expectRevert.unspecified(redemptionQueue.deleteRedemptionTicket(0));

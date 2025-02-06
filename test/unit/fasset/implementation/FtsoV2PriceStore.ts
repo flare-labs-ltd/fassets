@@ -1,4 +1,4 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 import { FtsoV2PriceStoreInstance, MockContractInstance } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";

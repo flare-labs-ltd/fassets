@@ -1,7 +1,7 @@
-import { constants, time } from "@openzeppelin/test-helpers";
+import { time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import * as rlp from "rlp";
-import { toBN } from "../../lib/utils/helpers";
+import { toBN, ZERO_BYTES32 } from "../../lib/utils/helpers";
 import { AllEvents as IGovernedEvents } from "../../typechain-truffle/IGoverned";
 import { Web3EventDecoder } from "./Web3EventDecoder";
 
@@ -66,7 +66,7 @@ export async function testDeployGovernanceSettings(governance: string, timelock:
     const tempGovSettings = await GovernanceSettings.new();
     const governanceSettingsCode = await web3.eth.getCode(tempGovSettings.address);   // get deployed code
     await network.provider.send("hardhat_setCode", [GOVERNANCE_SETTINGS_ADDRESS, governanceSettingsCode]);
-    await network.provider.send("hardhat_setStorageAt", [GOVERNANCE_SETTINGS_ADDRESS, "0x0", constants.ZERO_BYTES32]);  // clear initialisation
+    await network.provider.send("hardhat_setStorageAt", [GOVERNANCE_SETTINGS_ADDRESS, "0x0", ZERO_BYTES32]);  // clear initialisation
     const governanceSettings = await GovernanceSettings.at(GOVERNANCE_SETTINGS_ADDRESS);
     await governanceSettings.initialise(governance, timelock, executors, { from: GENESIS_GOVERNANCE_ADDRESS });
     return governanceSettings;

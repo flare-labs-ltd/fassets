@@ -1,9 +1,9 @@
-import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
-import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
+import { erc165InterfaceId, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -12,7 +12,6 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
@@ -144,10 +143,10 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             assert.equal(info2.ownerManagementAddress, agentOwner1);
             assert.equal(info2.ownerWorkAddress, "0x27e80dB1f5a975f4C43C5eC163114E796cdB603D");
             // set owner work address again with address 0
-            await agentOwnerRegistry.setWorkAddress(constants.ZERO_ADDRESS, { from: agentOwner1 });
+            await agentOwnerRegistry.setWorkAddress(ZERO_ADDRESS, { from: agentOwner1 });
             const info3 = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(info3.ownerManagementAddress, agentOwner1);
-            assert.equal(info3.ownerWorkAddress, constants.ZERO_ADDRESS);
+            assert.equal(info3.ownerWorkAddress, ZERO_ADDRESS);
         });
 
         it("should not set owner work address when not whitelisted", async () => {

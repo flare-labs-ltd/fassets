@@ -8,7 +8,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { impersonateContract } from "../../../utils/contract-test-helpers";
@@ -141,9 +141,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
-            await time.increase(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
+            await deterministicTimeIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
-            await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
+            await deterministicTimeIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             await agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: owner });
             const pool = await getCollateralPoolToken(assetManager, agentVault);
             const poolTokenBalance = await pool.balanceOf(agentVault.address);
@@ -209,7 +209,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.depositCollateral(usdc.address, 100, { from: owner });
         // withdraw collateral
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: owner });
-        await time.increase(time.duration.hours(1));
+        await deterministicTimeIncrease(time.duration.hours(1));
         await agentVault.withdrawCollateral(usdc.address, 100, recipient, { from: owner });
         assertWeb3Equal(await usdc.balanceOf(recipient), toBN(100));
     });
@@ -401,7 +401,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await createAgentVault(owner, underlyingAgent1);
         await agentVault.delegateGovernance(wNat.address, accounts[5], { from: owner });
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
-        await time.increase(settings.withdrawalWaitMinSeconds);
+        await deterministicTimeIncrease(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
         const undelegate = web3.eth.abi.encodeFunctionCall({ type: "function", name: "undelegate", inputs: [] } as AbiItem, []);
         const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
@@ -489,7 +489,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         //Withdraw token so balance is 0
         await agentVault.withdrawCollateral(wNat.address, toBN(100), accounts[12], { from: owner });
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
-        await time.increase(settings.withdrawalWaitMinSeconds);
+        await deterministicTimeIncrease(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
     });
 
@@ -566,7 +566,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
-            await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
+            await deterministicTimeIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
             await expectRevert(res, "only owner");
         });

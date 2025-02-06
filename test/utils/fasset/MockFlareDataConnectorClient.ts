@@ -1,9 +1,8 @@
-import { constants } from "@openzeppelin/test-helpers";
 import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "@flarenetwork/state-connector-protocol";
 import { SourceId } from "../../../lib/underlying-chain/SourceId";
 import { AttestationNotProved, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "../../../lib/underlying-chain/interfaces/IFlareDataConnectorClient";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
-import { filterStackTrace, sleep, toBN, toNumber } from "../../../lib/utils/helpers";
+import { filterStackTrace, sleep, toBN, toNumber, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { stringifyJson } from "../../../lib/utils/json-bn";
 import { ILogger } from "../../../lib/utils/logging";
 import { AttestationRequest } from "../../../typechain-truffle/IFdcHub";
@@ -152,7 +151,7 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
         // build merkle tree
         const hashes = Object.values(proofs).map(proof => proof.hash);
         const tree = new MerkleTree(hashes);
-        await this.relay.setMerkleRoot(200, round, tree.root ?? constants.ZERO_BYTES32);
+        await this.relay.setMerkleRoot(200, round, tree.root ?? ZERO_BYTES32);
         // add new finalized round
         this.finalizedRounds.push({ proofs, tree });
         // log
