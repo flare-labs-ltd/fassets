@@ -12,6 +12,7 @@ import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
 import "./Liquidation.sol";
 import "./TransactionAttestation.sol";
+import "./CoreVault.sol";
 
 
 library RedemptionRequests {
@@ -47,6 +48,8 @@ library RedemptionRequests {
         for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
             // redemption queue empty?
             if (AssetManagerState.get().redemptionQueue.firstTicketId == 0) {
+                // redeem the remaining amount from core vault
+                redeemedLots += CoreVault.redeemFromCoreVault(_redeemer, _lots, _redeemerUnderlyingAddress);
                 require(redeemedLots != 0, "redeem 0 lots");
                 break;
             }
@@ -58,8 +61,8 @@ library RedemptionRequests {
             // distribute executor fee over redemption request with at most 1 gwei leftover
             uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
             executorFeeNatGWei -= currentExecutorFeeNatGWei;
-            _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
-                _executor, currentExecutorFeeNatGWei.toUint64());
+            createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
+                _executor, currentExecutorFeeNatGWei.toUint64(), true);
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
@@ -88,8 +91,8 @@ library RedemptionRequests {
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false, false);
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
-        _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
-            _executor, (msg.value / Conversion.GWEI).toUint64());
+        createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
+            _executor, (msg.value / Conversion.GWEI).toUint64(), true);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -179,8 +182,8 @@ library RedemptionRequests {
         uint256 executorFeeNatGWei = uint256(request.executorFeeNatGWei) * closedAMG / request.valueAMG;
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
-        uint64 newRedemptionRequestId = _createRedemptionRequest(redemption, request.redeemer,
-            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64());
+        uint64 newRedemptionRequestId = createRedemptionRequest(redemption, request.redeemer,
+            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64(), true);
         // emit event
         emit IAssetManagerEvents.RedemptionRequestTakenOver(request.agentVault, request.redeemer, _redemptionRequestId,
             closedUBA, _agentVault, newRedemptionRequestId);
@@ -303,15 +306,16 @@ library RedemptionRequests {
         }
     }
 
-    function _createRedemptionRequest(
+    function createRedemptionRequest(
         AgentRedemptionData memory _data,
         address _redeemer,
         string memory _redeemerUnderlyingAddressString,
         bool _poolSelfClose,
         address payable _executor,
-        uint64 _executorFeeNatGWei
+        uint64 _executorFeeNatGWei,
+        bool _chargeRedemptionFee
     )
-        private
+        internal
         returns (uint64 _requestId)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -332,7 +336,8 @@ library RedemptionRequests {
         request.firstUnderlyingBlock = state.currentUnderlyingBlock;
         (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) = _lastPaymentBlock(_data.agentVault);
         request.timestamp = block.timestamp.toUint64();
-        request.underlyingFeeUBA = redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
+        request.underlyingFeeUBA = _chargeRedemptionFee ?
+            redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128() : 0;
         request.redeemer = _redeemer;
         request.agentVault = _data.agentVault;
         request.valueAMG = _data.valueAMG;

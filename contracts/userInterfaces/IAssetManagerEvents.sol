@@ -576,4 +576,23 @@ interface IAssetManagerEvents {
      * Emergency pause transfers was canceled.
      */
     event EmergencyPauseTransfersCanceled();
+
+    /**
+     * Agent has transferred some of their backing to the core vault.
+     */
+    event TransferredToCoreVault(
+        address indexed agentVault,
+        uint256 transferRedemptionRequestId,
+        uint256 valueUBA);
+
+    /**
+     * Redemption was requested from a core vault, because the redemption queue was empty.
+     */
+    event CoreVaultRedemption(
+        address indexed redeemer,
+        uint256 indexed requestId,
+        string paymentAddress,
+        uint256 valueUBA,
+        uint256 feeUBA,
+        bytes32 paymentReference);
 }
