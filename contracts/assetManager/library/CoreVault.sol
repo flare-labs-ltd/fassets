@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "../../utils/lib/SafePct.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
+import "../../userInterfaces/ICoreVault.sol";
 import "./data/AssetManagerState.sol";
 import "./data/PaymentReference.sol";
 import "./Redemptions.sol";
@@ -34,6 +34,7 @@ library CoreVault {
     {
         State storage state = getState();
         address agentVault = _agent.vaultAddress();
+        // TODO: value (fee) gets paid to the core vault
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
         // create ordinary redemption request to core vault address
@@ -45,7 +46,7 @@ library CoreVault {
         // immediately take over backing
         state.mintedAMG += transferredAMG;
         // send event
-        emit IAssetManagerEvents.TransferredToCoreVault(agentVault, redemptionRequestId,
+        emit ICoreVault.TransferredToCoreVault(agentVault, redemptionRequestId,
             Conversion.convertAmgToUBA(_amountAMG));
     }
 
@@ -66,7 +67,7 @@ library CoreVault {
         uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG);
         uint256 feeUBA = redeemedUBA.mulBips(state.redemptionFeeBIPS);
         bytes32 paymentReference = PaymentReference.coreVaultRedemption(requestId);
-        emit IAssetManagerEvents.CoreVaultRedemption(_redeemer, requestId, _redeemerUnderlyingAddress,
+        emit ICoreVault.CoreVaultRedemption(_redeemer, requestId, _redeemerUnderlyingAddress,
             redeemedUBA, feeUBA, paymentReference);
     }
 
