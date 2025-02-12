@@ -45,14 +45,14 @@ library RedemptionRequests {
         });
         uint64 redeemedLots = 0;
         for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
-            // each loop, firstTicketId will change since we delete the first ticket
-            uint64 redeemedForTicket = _redeemFirstTicket(_lots - redeemedLots, redemptionList);
-            if (redeemedForTicket == 0) {
-                break;   // queue empty
+            // redemption queue empty?
+            if (AssetManagerState.get().redemptionQueue.firstTicketId == 0) {
+                require(redeemedLots != 0, "redeem 0 lots");
+                break;
             }
-            redeemedLots += redeemedForTicket;
+            // each loop, firstTicketId will change since we delete the first ticket
+            redeemedLots += _redeemFirstTicket(_lots - redeemedLots, redemptionList);
         }
-        require(redeemedLots != 0, "redeem 0 lots");
         uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
         for (uint256 i = 0; i < redemptionList.length; i++) {
             // distribute executor fee over redemption request with at most 1 gwei leftover
@@ -69,6 +69,12 @@ library RedemptionRequests {
         uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
         return redeemedUBA;
+    }
+
+    function cleanSmallTickets()
+        internal
+    {
+
     }
 
     function redeemFromAgent(
@@ -280,21 +286,26 @@ library RedemptionRequests {
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
         uint64 maxRedeemLots = ticket.valueAMG / settings.lotSizeAMG;
         _redeemedLots = SafeMath64.min64(_lots, maxRedeemLots);
-        uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
-        address agentVault = ticket.agentVault;
-        // find list index for ticket's agent
-        uint256 index = 0;
-        while (index < _list.length && _list.items[index].agentVault != agentVault) {
-            ++index;
-        }
-        // add to list item or create new item
-        if (index < _list.length) {
-            _list.items[index].valueAMG = _list.items[index].valueAMG + redeemedAMG;
+        if (_redeemedLots > 0) {
+            uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
+            address agentVault = ticket.agentVault;
+            // find list index for ticket's agent
+            uint256 index = 0;
+            while (index < _list.length && _list.items[index].agentVault != agentVault) {
+                ++index;
+            }
+            // add to list item or create new item
+            if (index < _list.length) {
+                _list.items[index].valueAMG = _list.items[index].valueAMG + redeemedAMG;
+            } else {
+                _list.items[_list.length++] = AgentRedemptionData({ agentVault: agentVault, valueAMG: redeemedAMG });
+            }
+            // _removeFromTicket may delete ticket data, so we call it at end
+            Redemptions.removeFromTicket(ticketId, redeemedAMG);
         } else {
-            _list.items[_list.length++] = AgentRedemptionData({ agentVault: agentVault, valueAMG: redeemedAMG });
+            // this will just convert ticket to dust
+            Redemptions.removeFromTicket(ticketId, 0);
         }
-        // _removeFromTicket may delete ticket data, so we call it at end
-        Redemptions.removeFromTicket(ticketId, redeemedAMG);
     }
 
     function _createRedemptionRequest(
