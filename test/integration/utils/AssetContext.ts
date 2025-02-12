@@ -13,7 +13,7 @@ import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AgentOwnerRegistryInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
-import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { createTestCollaterals, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
@@ -49,10 +49,12 @@ export class AssetContext implements IAssetContext {
         public assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
-        public settings: AssetManagerSettings,
+        public initSettings: AssetManagerInitSettings,
         public collaterals: CollateralType[],
     ) {
     }
+
+    settings: AssetManagerSettings = this.initSettings;
 
     governance = this.common.governance;
     addressUpdater = this.common.addressUpdater;

@@ -7,6 +7,27 @@ import "./AssetManagerBase.sol";
 
 
 contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard {
+    constructor() {
+        initCoreVaultFacet(payable(address(0)), payable(address(0)), "", 0);
+    }
+
+    function initCoreVaultFacet(
+        address payable _nativeAddress,
+        address payable _executorAddress,
+        string memory _underlyingAddressString,
+        uint32 _redemptionFeeBIPS
+    )
+        public
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        require(!state.initialized, "already initialized");
+        state.initialized = true;
+        state.nativeAddress = _nativeAddress;
+        state.executorAddress = _executorAddress;
+        state.underlyingAddressString = _underlyingAddressString;
+        state.redemptionFeeBIPS = _redemptionFeeBIPS;
+    }
+
     /**
      * Agent can transfer their backing to core vault.
      * They then get a redemption requests which the owner pays just like any other redemption request.

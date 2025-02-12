@@ -22,6 +22,7 @@ library CoreVault {
         uint32 redemptionFeeBIPS;
 
         // state
+        bool initialized;
         uint64 lastRedemptionRequestId;
         uint64 mintedAMG;
     }
