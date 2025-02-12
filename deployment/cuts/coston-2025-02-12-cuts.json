@@ -1,0 +1,10 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestBTC"],
+    "facets": [
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}
