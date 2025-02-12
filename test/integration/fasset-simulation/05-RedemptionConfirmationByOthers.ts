@@ -50,7 +50,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
-    describe("", () => {
+    describe("simple scenarios - redemption confirmation by others", () => {
         it("mint and redeem f-assets (others can confirm redemption payment after some time)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -193,7 +193,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // test rewarding for redemption payment default
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward).sub(res[1].redeemedVaultCollateralWei), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
             const [redemptionDefaultValueVaultCollateral, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
-            assertWeb3Equal(res[1].redeemedVaultCollateralWei,redemptionDefaultValueVaultCollateral);
+            assertWeb3Equal(res[1].redeemedVaultCollateralWei, redemptionDefaultValueVaultCollateral);
             assertWeb3Equal(res[1].redeemedPoolCollateralWei, redemptionDefaultValuePool);
             assertWeb3Equal(endVaultCollateralBalanceRedeemer.sub(startVaultCollateralBalanceRedeemer), res[1].redeemedVaultCollateralWei);
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), challengerVaultCollateralReward.add(res[1].redeemedVaultCollateralWei));

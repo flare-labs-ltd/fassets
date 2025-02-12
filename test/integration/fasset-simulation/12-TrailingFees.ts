@@ -531,7 +531,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const startFee = await assetManager.transferFeeMillionths();
             assertWeb3Equal(startFee, 200);
             // update fee to 500 in 100 sec
-            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 2000, { from: governance});
+            await context.assetManagerController.setTransferFeeMillionths([assetManager.address], 500, startTime + 2000, { from: governance });
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
             await deterministicTimeIncrease(1000);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);

@@ -101,7 +101,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform some payment with correct minting reference and wrong amount
             await minter.performPayment(crt.paymentAddress, 100, crt.paymentReference);
             // mine some blocks to create overflow block
-            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment+10; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for mint default
@@ -149,7 +149,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: 0,
                 mintedUBA: 0,
-                reservedUBA: context.convertLotsToUBA(lots).add(agent.poolFeeShare(crt.feeUBA)) });
+                reservedUBA: context.convertLotsToUBA(lots).add(agent.poolFeeShare(crt.feeUBA))
+            });
             // test rewarding for unstick default
             const vaultCollateralToken = agent.vaultCollateralToken();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;

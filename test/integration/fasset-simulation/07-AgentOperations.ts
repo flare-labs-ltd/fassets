@@ -100,19 +100,19 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             const agentInfo = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             //Deprecate collateral token
-            await context.assetManagerController.deprecateCollateralType([context.assetManager.address], 2,context.usdc.address,
-                currentSettings.tokenInvalidationTimeMinSeconds, {from: governance});
+            await context.assetManagerController.deprecateCollateralType([context.assetManager.address], 2, context.usdc.address,
+                currentSettings.tokenInvalidationTimeMinSeconds, { from: governance });
             await deterministicTimeIncrease(context.settings.tokenInvalidationTimeMinSeconds);
             //Owner can't switch collateral if there is not enough collateral of the new token
-            const res = context.assetManager.switchVaultCollateral(agent.agentVault.address,context.usdt.address, { from: agent.ownerWorkAddress });
-            await expectRevert(res,"not enough collateral");
+            const res = context.assetManager.switchVaultCollateral(agent.agentVault.address, context.usdt.address, { from: agent.ownerWorkAddress });
+            await expectRevert(res, "not enough collateral");
             // Agent deposits new collateral
             await context.usdt.mintAmount(agent.ownerWorkAddress, fullAgentCollateral);
             await context.usdt.approve(agent.agentVault.address, fullAgentCollateral, { from: agent.ownerWorkAddress });
             await agent.agentVault.depositCollateral(context.usdt.address, fullAgentCollateral, { from: agent.ownerWorkAddress });
             // Agent switches vault collateral and withdraws previous collateral
-            await context.assetManager.switchVaultCollateral(agent.agentVault.address,context.usdt.address, { from: agent.ownerWorkAddress });
-            await agent.agentVault.transferExternalToken(context.usdc.address, fullAgentCollateral,{from: agent.ownerWorkAddress});
+            await context.assetManager.switchVaultCollateral(agent.agentVault.address, context.usdt.address, { from: agent.ownerWorkAddress });
+            await agent.agentVault.transferExternalToken(context.usdc.address, fullAgentCollateral, { from: agent.ownerWorkAddress });
             //Minter mints again
             const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash2 = await minter.performMintingPayment(crt2);
@@ -122,9 +122,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
             // perform self close
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA.add(minted2.mintedAmountUBA));
-            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA:
-                minted.mintedAmountUBA.add(minted2.mintedAmountUBA).add(crt.feeUBA.sub(minted.poolFeeUBA).add(crt2.feeUBA.sub(minted2.poolFeeUBA)))
-                , mintedUBA: minted.poolFeeUBA.add(minted.poolFeeUBA) });
+            await agent.checkAgentInfo({
+                freeUnderlyingBalanceUBA:
+                    minted.mintedAmountUBA.add(minted2.mintedAmountUBA).add(crt.feeUBA.sub(minted.poolFeeUBA).add(crt2.feeUBA.sub(minted2.poolFeeUBA)))
+                , mintedUBA: minted.poolFeeUBA.add(minted.poolFeeUBA)
+            });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA.add(minted2.mintedAmountUBA));
         });
 
@@ -286,9 +288,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(selfClosedUBA, minted1.mintedAmountUBA);
             assert.equal(dustChanges1.length, 1); // pool fees
             assertWeb3Equal(dustChanges1[0], 0);
-            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA).add(selfClosedUBA),
-                mintedUBA: minted1.poolFeeUBA.add(minted2.mintedAmountUBA).add(minted2.poolFeeUBA).sub(request.valueUBA) });
+                mintedUBA: minted1.poolFeeUBA.add(minted2.mintedAmountUBA).add(minted2.poolFeeUBA).sub(request.valueUBA)
+            });
             // stop FAsset
             await expectRevert(agent.buybackAgentCollateral(), "f-asset not terminated");
             await expectRevert(context.assetManagerController.terminate([context.assetManager.address], { from: governance }), "asset manager not paused enough");
@@ -305,9 +309,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(request2.agentVault, agent.vaultAddress);
             const tx3Hash = await agent.performRedemptionPayment(request2);
             await agent.confirmActiveRedemptionPayment(request2, tx3Hash);
-            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA).add(selfClosedUBA).add(request2.feeUBA),
-                mintedUBA: minted1.poolFeeUBA.add(minted2.mintedAmountUBA).add(minted2.poolFeeUBA).sub(request.valueUBA).sub(request2.valueUBA) });
+                mintedUBA: minted1.poolFeeUBA.add(minted2.mintedAmountUBA).add(minted2.poolFeeUBA).sub(request.valueUBA).sub(request2.valueUBA)
+            });
             // buybackAgentCollateral (note that buybackUBA is agent's mintedUBA + reservedUBA)
             const [buybackAgentVaultCollateral, buybackUBA, buybackBurnCost] = await agent.getBuybackAgentCollateralValue();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
@@ -321,8 +327,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), buybackBurnCost.subn(1)); // numerical error
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), buybackAgentVaultCollateral);
             assertWeb3Equal(endVaultCollateralBalanceAgentOwner.sub(startVaultCollateralBalanceAgentOwner), buybackAgentVaultCollateral);
-            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(buybackAgentVaultCollateral),
-                freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA).add(selfClosedUBA).add(request2.feeUBA).add(buybackUBA), mintedUBA: 0 });
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral.sub(buybackAgentVaultCollateral),
+                freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA).add(selfClosedUBA).add(request2.feeUBA).add(buybackUBA), mintedUBA: 0
+            });
             // agent can exit now
             // TODO: how to destroy agent with terminated f-assets, need collateral pool modification
             //await agent.exitAndDestroyWithTerminatedFAsset(fullAgentCollateral.sub(buybackAgentVaultCollateral));
@@ -343,10 +351,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0 });
+                reservedUBA: 0, redeemingUBA: 0
+            });
             //Agent announces vault collateral withdrawal
             const agentInfo = await agent.getAgentInfo();
             const lockedCollateral = toBN(agentInfo.totalVaultCollateralWei).sub(toBN(agentInfo.freeVaultCollateralWei));
@@ -370,7 +380,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.setVaultCollateralRatioByChangingAssetPrice(1000000);
             //Agent shouldn't be able to withdraw if it would make CR too low
             const res = agent.withdrawVaultCollateral(withdrawalAmount);
-            await expectRevert(res,"CR too low");
+            await expectRevert(res, "CR too low");
         });
     });
 });
