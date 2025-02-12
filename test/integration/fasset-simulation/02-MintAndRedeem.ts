@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, deepFormat, MAX_BIPS, sumBN, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -1202,5 +1202,53 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent1 can now exit
             await agent.exitAndDestroy(fullAgentCollateral);
         });
+    });
+
+    it("redemption after lot size increase should work", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint 1 lot
+        await minter.performMinting(agent.vaultAddress, 1);
+        await minter.performMinting(agent2.vaultAddress, 1);
+        // increase lot size
+        await context.setLotSizeAmg(toBN(context.settings.lotSizeAMG).muln(2));
+        // mint 1 more lot
+        await minter.performMinting(agent.vaultAddress, 1);
+        // try redeem
+        const [requests] = await redeemer.requestRedemption(1);
+        assert.equal(requests.length, 1);
+        assertWeb3Equal(requests[0].valueUBA, context.lotSize());
+    });
+
+    it("redemption after lot size increase should work - large number of tickets", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint 1 lot (30 times)
+        for (let i = 0; i < 15; i++) {
+            await minter.performMinting(agent.vaultAddress, 1);
+            await minter.performMinting(agent2.vaultAddress, 1);
+        }
+        // increase lot size
+        await context.setLotSizeAmg(toBN(context.settings.lotSizeAMG).muln(2));
+        // mint 1 more lot
+        await minter.performMinting(agent.vaultAddress, 1);
+        // try redeem
+        // console.log(deepFormat(await context.assetManager.redemptionQueue(0, 10)));
+        const [requests] = await redeemer.requestRedemption(1);
+        assert.equal(requests.length, 0);
+        // try again - now it should get 1 lot
+        const [requests2] = await redeemer.requestRedemption(1);
+        assert.equal(requests2.length, 1);
+        assertWeb3Equal(requests2[0].valueUBA, context.lotSize());
     });
 });
