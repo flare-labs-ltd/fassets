@@ -71,12 +71,6 @@ library RedemptionRequests {
         return redeemedUBA;
     }
 
-    function cleanSmallTickets()
-        internal
-    {
-
-    }
-
     function redeemFromAgent(
         address _agentVault,
         address _redeemer,
