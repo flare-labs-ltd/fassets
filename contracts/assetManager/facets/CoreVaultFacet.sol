@@ -8,14 +8,15 @@ import "./AssetManagerBase.sol";
 
 contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard {
     constructor() {
-        initCoreVaultFacet(payable(address(0)), payable(address(0)), "", 0);
+        initCoreVaultFacet(payable(address(0)), payable(address(0)), "", 0, 0);
     }
 
     function initCoreVaultFacet(
         address payable _nativeAddress,
         address payable _executorAddress,
         string memory _underlyingAddressString,
-        uint32 _redemptionFeeBIPS
+        uint32 _redemptionFeeBIPS,
+        uint32 _transferTimeExtensionSeconds
     )
         public
     {
@@ -26,6 +27,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard {
         state.executorAddress = _executorAddress;
         state.underlyingAddressString = _underlyingAddressString;
         state.redemptionFeeBIPS = _redemptionFeeBIPS;
+        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds;
     }
 
     /**

@@ -62,7 +62,7 @@ library RedemptionRequests {
             uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
             executorFeeNatGWei -= currentExecutorFeeNatGWei;
             createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
-                _executor, currentExecutorFeeNatGWei.toUint64(), true);
+                _executor, currentExecutorFeeNatGWei.toUint64(), true, 0);
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
@@ -92,7 +92,7 @@ library RedemptionRequests {
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
-            _executor, (msg.value / Conversion.GWEI).toUint64(), true);
+            _executor, (msg.value / Conversion.GWEI).toUint64(), true, 0);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -183,7 +183,7 @@ library RedemptionRequests {
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         uint64 newRedemptionRequestId = createRedemptionRequest(redemption, request.redeemer,
-            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64(), true);
+            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64(), true, 0);
         // emit event
         emit IAssetManagerEvents.RedemptionRequestTakenOver(request.agentVault, request.redeemer, _redemptionRequestId,
             closedUBA, _agentVault, newRedemptionRequestId);
@@ -313,7 +313,8 @@ library RedemptionRequests {
         bool _poolSelfClose,
         address payable _executor,
         uint64 _executorFeeNatGWei,
-        bool _chargeRedemptionFee
+        bool _chargeRedemptionFee,
+        uint64 _additionalPaymentTime
     )
         internal
         returns (uint64 _requestId)
@@ -334,7 +335,8 @@ library RedemptionRequests {
         request.redeemerUnderlyingAddressHash = underlyingAddressHash;
         request.underlyingValueUBA = redeemedValueUBA;
         request.firstUnderlyingBlock = state.currentUnderlyingBlock;
-        (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) = _lastPaymentBlock(_data.agentVault);
+        (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) =
+            _lastPaymentBlock(_data.agentVault, _additionalPaymentTime);
         request.timestamp = block.timestamp.toUint64();
         request.underlyingFeeUBA = _chargeRedemptionFee ?
             redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128() : 0;
@@ -389,7 +391,7 @@ library RedemptionRequests {
         return requestId;
     }
 
-    function _lastPaymentBlock(address _agentVault)
+    function _lastPaymentBlock(address _agentVault, uint64 _additionalPaymentTime)
         private
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
@@ -398,7 +400,8 @@ library RedemptionRequests {
         // timeshift amortizes for the time that passed from the last underlying block update;
         // it also adds redemption time extension when there are many redemption requests in short time
         uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt
-            + RedemptionTimeExtension.extendTimeForRedemption(_agentVault);
+            + RedemptionTimeExtension.extendTimeForRedemption(_agentVault)
+            + _additionalPaymentTime;
         uint64 blockshift = (uint256(timeshift) * 1000 / settings.averageBlockTimeMS).toUint64();
         _lastUnderlyingBlock =
             state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;

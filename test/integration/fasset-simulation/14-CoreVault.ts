@@ -1,8 +1,8 @@
-import { expectEvent } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { filterEvents } from "../../../lib/utils/events/truffle";
-import { toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { deepFormat, HOURS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -44,7 +44,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
-        context = await AssetContext.createTest(commonContext, testChainInfo.btc);
+        context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
         return { commonContext, context };
     }
 
@@ -55,8 +55,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     it("should transfer all backing to core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        const cb = await Redeemer.create(context, context.initSettings.coreVaultNativeAddress, context.initSettings.coreVaultUnderlyingAddress);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
         await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
@@ -64,6 +65,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await agent.collateralPool.enter(0, false, { from: minterAddress2, value: toWei(3e8) });
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // update time
+        await context.updateUnderlyingBlock();
+        const { 0: currentBlock, 1: currentTimestamp } = await context.assetManager.currentUnderlyingBlock();
         // agent requests transfer for all backing to core vault
         const info = await agent.getAgentInfo();
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, info.mintedUBA, { from: agent.ownerWorkAddress });
@@ -71,6 +75,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, info.mintedUBA);
         assertWeb3Equal(rdreqs[0].feeUBA, 0);
+        // wait 20 blocks and 1 hour - transfer can be defaulted without time extension
+        context.skipToExpiration(currentBlock.addn(20), currentTimestamp.addn(1 * HOURS));
+        await expectRevert(cb.redemptionPaymentDefault(rdreqs[0]), "overflow block not found");
         // perform transfer of underlying
         await agent.performRedemptions(rdreqs);
         // agent now has 0 backing
@@ -87,7 +94,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     it("should transfer partial backing to core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
         const fullAgentCollateral = toWei(3e8);

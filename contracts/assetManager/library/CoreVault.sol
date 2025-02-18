@@ -20,6 +20,7 @@ library CoreVault {
         address payable executorAddress;
         string underlyingAddressString;
         uint32 redemptionFeeBIPS;
+        uint32 transferTimeExtensionSeconds;
 
         // state
         bool initialized;
@@ -43,7 +44,8 @@ library CoreVault {
         //  underlying transaction fee, otherwise they will go into full liquidation
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
             RedemptionRequests.AgentRedemptionData(_agent.vaultAddress(), transferredAMG),
-            state.nativeAddress, state.underlyingAddressString, false, state.executorAddress, 0, false);
+            state.nativeAddress, state.underlyingAddressString, false, state.executorAddress, 0,
+            false, state.transferTimeExtensionSeconds);
         // immediately take over backing
         state.mintedAMG += transferredAMG;
         // send event

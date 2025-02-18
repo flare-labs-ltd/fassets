@@ -137,6 +137,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         coreVaultExecutorAddress: "0x6c365935CA8710200C7595F0a72EB6023A7706Cd",   // one of test accounts
         coreVaultUnderlyingAddress: "CORE_VAULT_UNDERLYING",
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
+        coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
     };
     return Object.assign(result, options ?? {});
 }
