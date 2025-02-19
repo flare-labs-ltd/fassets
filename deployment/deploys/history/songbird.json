@@ -155,7 +155,8 @@
     "contractName": "RedemptionRequestsFacet.sol",
     "addresses": [
       "0x2B6923C03615AeB8616c7C683D76BD43Ebd66B3f",
-      "0x59B92f064bEd979A2F4E47a2A3ABCbCda91e2AE4"
+      "0x59B92f064bEd979A2F4E47a2A3ABCbCda91e2AE4",
+      "0x73bc711Ec8e157f1ADA60D694415ccbf8A560a05"
     ]
   },
   {
@@ -163,7 +164,8 @@
     "contractName": "RedemptionConfirmationsFacet.sol",
     "addresses": [
       "0x1D83f1B26025acF8bbE13E972337000bD9f3fA21",
-      "0x9A56c590Ea5dA91708085fE0C3De8DBeC22b58A7"
+      "0x9A56c590Ea5dA91708085fE0C3De8DBeC22b58A7",
+      "0xe7bBAbb802F51f5ce6750792E2B42630acbbe2d3"
     ]
   },
   {
@@ -171,7 +173,15 @@
     "contractName": "RedemptionDefaultsFacet.sol",
     "addresses": [
       "0x722Af818Dc84179795aEfeA83f23f1Fa9b1D148E",
-      "0x769A7cd19944B02Cf2B1FE193ba69ddB51A1526B"
+      "0x769A7cd19944B02Cf2B1FE193ba69ddB51A1526B",
+      "0xD4C4C07ea09893ae9fe332A18923D5d2c82Df558"
+    ]
+  },
+  {
+    "name": "RedemptionHandshakeFacet",
+    "contractName": "RedemptionHandshakeFacet.sol",
+    "addresses": [
+      "0xb66D244256c75Ca794818b0d10A0a90eD4d518F4"
     ]
   },
   {
