@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/Transfers.sol";
 import "./data/AssetManagerState.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
@@ -322,7 +323,7 @@ library CollateralReservations {
         // guarded against reentrancy in CollateralReservationsFacet
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = minter.call{value: returnFee, gas: 100000}("");
+        (bool success, ) = minter.call{value: returnFee, gas: Transfers.TRANSFER_GAS_ALLOWANCE}("");
         /* solhint-enable avoid-low-level-calls */
         // if failed, burn the whole fee, otherwise burn the difference
         if (!success) {

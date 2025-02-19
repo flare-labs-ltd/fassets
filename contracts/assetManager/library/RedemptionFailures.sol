@@ -47,6 +47,7 @@ library RedemptionFailures {
         // pay redeemer in collateral
         executeDefaultPayment(agent, request, _redemptionRequestId);
         // pay the executor if the executor called this
+        // guarded against reentrancy in RedemptionDefaultsFacet
         Redemptions.payOrBurnExecutorFee(request);
         // don't delete redemption request at end - the agent might still confirm failed payment
         request.status = Redemption.Status.DEFAULTED;
@@ -72,6 +73,7 @@ library RedemptionFailures {
         // pay redeemer in collateral
         executeDefaultPayment(agent, request, _redemptionRequestId);
         // pay the executor if the executor called this
+        // guarded against reentrancy in RedemptionDefaultsFacet
         Redemptions.payOrBurnExecutorFee(request);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
@@ -102,6 +104,7 @@ library RedemptionFailures {
                 "should default first");
             executeDefaultPayment(agent, request, _redemptionRequestId);
             // burn the executor fee
+            // guarded against reentrancy in RedemptionDefaultsFacet
             Redemptions.payOrBurnExecutorFee(request);
             // make sure it cannot be defaulted again
             request.status = Redemption.Status.DEFAULTED;

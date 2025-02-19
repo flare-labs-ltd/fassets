@@ -2,12 +2,13 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/AgentsExternal.sol";
 import "../library/RedemptionRequests.sol";
 import "./AssetManagerBase.sol";
 
 
-contract RedemptionRequestsFacet is AssetManagerBase {
+contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
 
     /**
@@ -87,6 +88,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
         uint256 _redemptionRequestId
     )
         external
+        nonReentrant
     {
         RedemptionRequests.rejectRedemptionRequest(_redemptionRequestId.toUint64());
     }

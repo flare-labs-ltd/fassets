@@ -2,11 +2,12 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/RedemptionConfirmations.sol";
 import "./AssetManagerBase.sol";
 
 
-contract RedemptionConfirmationsFacet is AssetManagerBase {
+contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
 
     /**
@@ -29,6 +30,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase {
         uint256 _redemptionRequestId
     )
         external
+        nonReentrant
     {
         RedemptionConfirmations.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
     }

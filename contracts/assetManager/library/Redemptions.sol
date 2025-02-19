@@ -83,6 +83,7 @@ library Redemptions {
         Globals.getFAsset().burn(_owner, _amountUBA);
     }
 
+    // WARNING: every call must be guarded for reentrancy!
     // pay executor for executor calls, otherwise burn executor fee
     function payOrBurnExecutorFee(
         Redemption.Request storage _request

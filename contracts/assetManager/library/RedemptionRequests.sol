@@ -140,6 +140,7 @@ library RedemptionRequests {
             // release agent collateral
             RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
             // burn the executor fee
+            // guarded against reentrancy in RedemptionRequestsFacet
             Redemptions.payOrBurnExecutorFee(request);
             // delete redemption request at end
             Redemptions.deleteRedemptionRequest(_redemptionRequestId);
