@@ -140,6 +140,7 @@ library RedemptionRequests {
             // release agent collateral
             RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
             // burn the executor fee
+            // guarded against reentrancy in RedemptionRequestsFacet
             Redemptions.payOrBurnExecutorFee(request);
             // delete redemption request at end
             Redemptions.deleteRedemptionRequest(_redemptionRequestId);
@@ -316,6 +317,11 @@ library RedemptionRequests {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
         bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
+        // both addresses must be normalized (agent's address is checked at vault creation,
+        // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
+        // so this comparison quarantees the redemption is not to the agent's address
+        require(underlyingAddressHash != Agent.get(_data.agentVault).underlyingAddressHash,
+            "cannot redeem to agent's address");
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         _requestId = _newRequestId(_poolSelfClose);

@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 library Transfers {
+    uint256 internal constant TRANSFER_GAS_ALLOWANCE = 100000;
     /**
      * Transfer the given amount of NAT to recipient without gas limit of `address.transfer()`.
      *
@@ -17,7 +18,7 @@ library Transfers {
         if (_amount > 0) {
             /* solhint-disable avoid-low-level-calls */
             //slither-disable-next-line arbitrary-send-eth
-            (bool success, ) = _recipient.call{value: _amount}("");
+            (bool success, ) = _recipient.call{value: _amount, gas: TRANSFER_GAS_ALLOWANCE}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, "transfer failed");
         }

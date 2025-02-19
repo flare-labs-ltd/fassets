@@ -144,6 +144,7 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
         await deployFacet('CollateralReservationsFacet', interfaceSelectors),
         await deployFacet('MintingFacet', interfaceSelectors),
         await deployFacet('RedemptionRequestsFacet', interfaceSelectors),
+        await deployFacet('RedemptionHandshakeFacet', interfaceSelectors),
         await deployFacet('RedemptionConfirmationsFacet', interfaceSelectors),
         await deployFacet('RedemptionDefaultsFacet', interfaceSelectors),
         await deployFacet('LiquidationFacet', interfaceSelectors),

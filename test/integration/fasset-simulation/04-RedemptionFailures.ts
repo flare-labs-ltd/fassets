@@ -1,7 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { DAYS, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
@@ -13,6 +13,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
