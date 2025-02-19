@@ -55,8 +55,11 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         require(internalWithdrawal, "internal use only");
     }
 
-    // only supposed to be used from asset manager, but safe to be used by anybody
-    function depositNat(IWNat _wNat) external payable override {
+    // used by asset manager to transfer collateral reservation fee to the agent vault
+    function depositNat(IWNat _wNat)
+        external payable override
+        onlyAssetManager
+    {
         _wNat.deposit{value: msg.value}();
         assetManager.updateCollateral(address(this), _wNat);
         _tokenUsed(_wNat, TOKEN_DEPOSIT);
