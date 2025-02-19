@@ -10,6 +10,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { filterEvents } from "../../../lib/utils/events/truffle";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -125,5 +126,43 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // FIX: must be zero
         assertWeb3Equal(afterBalance, 0);
         assertWeb3Equal(vaultCollateralBalanceAfter, 0);
+    });
+
+    it.only("HaliPot-force-default", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block
+        await context.updateUnderlyingBlock();
+        // perform minting
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+
+        // redeemer "buys" f-assets
+
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+
+        // perform redemption, the receiveUnderlyingAddress param set to agent.underlyingAddress
+        const resD = await context.assetManager.redeem(lots, agent.underlyingAddress, "0x0000000000000000000000000000000000000000",
+            { from: redeemer.address, value: undefined });
+        const redemptionRequests = filterEvents(resD, 'RedemptionRequested').map(e => e.args);
+
+        const request = redemptionRequests[0];
+
+        // the agent make a payment in underlyingchain, but the souceAddress == spendAddress, so recieveAmount == spentAmount == 0,
+        // the recieveAmount < request.underlyingValueUBA - request.underlyingFeeUBA, so _validatePament returns false
+        const tx1Hash = await agent.performRedemptionPayment(request);
+        // malicious reddemer make the payment field, get the agent's collateral plus a redemption default premium
+        await agent.confirmFailedRedemptionPayment(request, tx1Hash);
     });
 });
