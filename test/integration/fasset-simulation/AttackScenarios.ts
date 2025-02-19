@@ -195,4 +195,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             { from: redeemer.address, value: undefined }),
             "cannot redeem to agent's address");
     });
+
+    it.only("attacker can prevent agent from calling destroy by depositing malcious token to vault", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // deposit malicious token
+        const MaliciousToken = artifacts.require("MaliciousToken");
+        const maliciousToken = await MaliciousToken.new();
+        await agent.agentVault.depositNat(maliciousToken.address, { value: "1" });
+        // close vault
+        await agent.exitAndDestroy();
+    });
 });
