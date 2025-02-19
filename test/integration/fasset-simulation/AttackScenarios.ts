@@ -128,7 +128,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         assertWeb3Equal(vaultCollateralBalanceAfter, 0);
     });
 
-    it.only("HaliPot-force-default", async () => {
+    it.skip("HaliPot-force-default", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -164,5 +164,35 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         const tx1Hash = await agent.performRedemptionPayment(request);
         // malicious reddemer make the payment field, get the agent's collateral plus a redemption default premium
         await agent.confirmFailedRedemptionPayment(request, tx1Hash);
+    });
+
+    it("HaliPot-force-default - fixed", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block
+        await context.updateUnderlyingBlock();
+        // perform minting
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+
+        // redeemer "buys" f-assets
+
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+
+        // perform redemption, the receiveUnderlyingAddress param set to agent.underlyingAddress
+        await expectRevert(context.assetManager.redeem(lots, agent.underlyingAddress, "0x0000000000000000000000000000000000000000",
+            { from: redeemer.address, value: undefined }),
+            "cannot redeem to agent's address");
     });
 });
