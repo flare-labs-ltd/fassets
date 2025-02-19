@@ -382,17 +382,22 @@
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0xe8397F9630794fB3573807C120eacbE6A98963Ad"
+    "address": "0xB21C55BDe4765625Bf6a1fc4Fd1d3D5Ee029c582"
   },
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0xbEf69D030bfd0514A26ffa00A40567263c878990"
+    "address": "0xEb552D13b465783570C1E33B76084DDBB6A69FAE"
   },
   {
     "name": "RedemptionDefaultsFacet",
     "contractName": "RedemptionDefaultsFacet.sol",
-    "address": "0x6864726B7F7DD227c724DA68c650eC6172443BDc"
+    "address": "0xd0C9A629a842fadFD59Ea39725B4A7E802108a39"
+  },
+  {
+    "name": "RedemptionHandshakeFacet",
+    "contractName": "RedemptionHandshakeFacet.sol",
+    "address": "0x5593104232619631133eFFa26c19BA6cCFaBabE2"
   },
   {
     "name": "LiquidationFacet",
