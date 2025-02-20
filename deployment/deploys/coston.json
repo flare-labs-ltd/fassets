@@ -257,7 +257,7 @@
   {
     "name": "AgentVaultProxyImplementation",
     "contractName": "AgentVault.sol",
-    "address": "0xF575260b27aACd8076fFe0Fb8e3576F81e065cfD"
+    "address": "0x299d678f67e7ADD4efdf295Ebe0E92FCb4f75C4c"
   },
   {
     "name": "CollateralPoolProxyImplementation",
@@ -272,7 +272,7 @@
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0x3A1B05A74155327aE7c54219b1b62Ecf1EB3b6B5"
+    "address": "0x1a6d9C80a2BCD949C6Fb87E9c2a98342970c3c0D"
   },
   {
     "name": "CollateralPoolFactory",
