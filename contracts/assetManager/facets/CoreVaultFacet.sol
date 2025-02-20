@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "../../diamond/library/LibDiamond.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/CoreVault.sol";
 import "./AssetManagerBase.sol";
 
 
-contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard {
+contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
     constructor() {
-        initCoreVaultFacet(payable(address(0)), payable(address(0)), "", 0, 0);
+        CoreVault.getState().initialized = true;
     }
 
     function initCoreVaultFacet(
@@ -20,6 +21,10 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard {
     )
         public
     {
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
+        ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
+        // init settings
         CoreVault.State storage state = CoreVault.getState();
         require(!state.initialized, "already initialized");
         state.initialized = true;
@@ -48,5 +53,22 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         CoreVault.transferToCoreVault(agent, amountAMG);
+    }
+
+    /**
+     * Return the core vault settings.
+     */
+    function getCoreVaultSettings()
+        external view
+        returns (CoreVaultSettings memory)
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        return CoreVaultSettings({
+            nativeAddress: state.nativeAddress,
+            executorAddress: state.executorAddress,
+            underlyingAddressString: state.underlyingAddressString,
+            redemptionFeeBIPS: state.redemptionFeeBIPS,
+            transferTimeExtensionSeconds: state.transferTimeExtensionSeconds
+        });
     }
 }

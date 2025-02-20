@@ -247,6 +247,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.transferFeeClaimFirstEpochStartTs = tfSettings.firstEpochStartTs;
             resInitSettings.transferFeeClaimEpochDurationSeconds = tfSettings.epochDuration;
             resInitSettings.transferFeeClaimMaxUnexpiredEpochs = tfSettings.maxUnexpiredEpochs;
+            // add CoreVault settings
+            const cbSettings = await assetManager.getCoreVaultSettings();
+            resInitSettings.coreVaultNativeAddress = cbSettings.nativeAddress;
+            resInitSettings.coreVaultExecutorAddress = cbSettings.executorAddress;
+            resInitSettings.coreVaultUnderlyingAddress = cbSettings.underlyingAddressString;
+            resInitSettings.coreVaultRedemptionFeeBIPS = cbSettings.redemptionFeeBIPS;
+            resInitSettings.coreVaultTransferTimeExtensionSeconds = cbSettings.transferTimeExtensionSeconds;
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
@@ -1855,6 +1862,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IAgentPing = artifacts.require("IAgentPing");
             const IRedemptionTimeExtension = artifacts.require("IRedemptionTimeExtension");
             const ITransferFees = artifacts.require("ITransferFees");
+            const ICoreVault = artifacts.require("ICoreVault");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IERC165)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondLoupe)));
@@ -1863,7 +1871,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAgentPing)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IRedemptionTimeExtension)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ITransferFees)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager, [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ICoreVault)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager, [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IIAssetManager, [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });

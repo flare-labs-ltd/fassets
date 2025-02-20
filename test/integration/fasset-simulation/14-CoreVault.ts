@@ -1,8 +1,8 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { filterEvents } from "../../../lib/utils/events/truffle";
-import { deepFormat, HOURS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { HOURS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";

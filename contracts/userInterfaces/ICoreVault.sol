@@ -6,6 +6,14 @@ pragma solidity >=0.7.6 <0.9;
  * Core vault
  */
 interface ICoreVault {
+    struct CoreVaultSettings {
+        address payable nativeAddress;
+        address payable executorAddress;
+        string underlyingAddressString;
+        uint32 redemptionFeeBIPS;
+        uint32 transferTimeExtensionSeconds;
+    }
+
     /**
      * Agent has transferred some of their backing to the core vault.
      */
@@ -34,4 +42,11 @@ interface ICoreVault {
      */
     function transferToCoreVault(address _agentVault, uint256 _amountUBA)
         external payable;
+
+    /**
+     * Return the core vault settings.
+     */
+    function getCoreVaultSettings()
+        external view
+        returns (CoreVaultSettings memory);
 }
