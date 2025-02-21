@@ -321,6 +321,7 @@ library CollateralReservations {
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
 
         // guarded against reentrancy in CollateralReservationsFacet
+        Reentrancy.requireReentrancyGuard();
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = minter.call{value: returnFee, gas: Transfers.TRANSFER_GAS_ALLOWANCE}("");

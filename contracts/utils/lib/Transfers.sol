@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "../../openzeppelin/library/Reentrancy.sol";
+
+
 library Transfers {
     uint256 internal constant TRANSFER_GAS_ALLOWANCE = 100000;
+
     /**
      * Transfer the given amount of NAT to recipient without gas limit of `address.transfer()`.
      *
@@ -15,6 +19,8 @@ library Transfers {
      * @param _amount the amount in NAT Wei
      */
     function transferNAT(address payable _recipient, uint256 _amount) internal {
+        // make sure the transfer is only called in non-reentrant method
+        Reentrancy.requireReentrancyGuard();
         if (_amount > 0) {
             /* solhint-disable avoid-low-level-calls */
             //slither-disable-next-line arbitrary-send-eth
