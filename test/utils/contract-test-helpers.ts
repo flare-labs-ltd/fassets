@@ -56,6 +56,9 @@ export async function executeTimelockedGovernanceCall(contract: Truffle.Contract
         const timelock = timelockEvent.args;
         await time.increaseTo(timelock.allowedAfterTimestamp.toNumber() + 1);
         await contractGoverned.executeGovernanceCall(timelock.encodedCall, { from: executor });
+        return true;
+    } else {
+        return false;
     }
 }
 

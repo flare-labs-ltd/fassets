@@ -276,7 +276,8 @@ export class AssetContext implements IAssetContext {
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
-            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol);
+            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol,
+            { governanceSettings: common.governanceSettings.address });
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, flareDataConnectorClient, attestationProvider,
             options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);

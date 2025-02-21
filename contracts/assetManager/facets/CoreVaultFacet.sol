@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../diamond/library/LibDiamond.sol";
+import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/CoreVault.sol";
 import "./AssetManagerBase.sol";
 
 
-contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
+contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, ReentrancyGuard, ICoreVault {
+    using SafeCast for uint256;
+
     constructor() {
         CoreVault.getState().initialized = true;
     }
@@ -16,8 +20,8 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         address payable _nativeAddress,
         address payable _executorAddress,
         string memory _underlyingAddressString,
-        uint32 _redemptionFeeBIPS,
-        uint32 _transferTimeExtensionSeconds
+        uint256 _redemptionFeeBIPS,
+        uint256 _transferTimeExtensionSeconds
     )
         public
     {
@@ -31,8 +35,8 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         state.nativeAddress = _nativeAddress;
         state.executorAddress = _executorAddress;
         state.underlyingAddressString = _underlyingAddressString;
-        state.redemptionFeeBIPS = _redemptionFeeBIPS;
-        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds;
+        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
+        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
     }
 
     /**
@@ -53,6 +57,48 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         CoreVault.transferToCoreVault(agent, amountAMG);
+    }
+
+    function setCoreVaultAddress(
+        address payable _nativeAddress,
+        string memory _underlyingAddressString
+    )
+        external
+        onlyGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.nativeAddress = _nativeAddress;
+        state.underlyingAddressString = _underlyingAddressString;
+    }
+
+    function setCoreVaultExecutorAddress(
+        address payable _executorAddress
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.executorAddress = _executorAddress;
+    }
+
+    function setCoreVaultRedemptionFeeBIPS(
+        uint256 _redemptionFeeBIPS
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
+    }
+
+    function setCoreVaultTransferTimeExtensionSeconds(
+        uint256 _transferTimeExtensionSeconds
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
     }
 
     /**

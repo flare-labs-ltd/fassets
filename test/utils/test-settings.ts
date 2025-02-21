@@ -133,8 +133,8 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         transferFeeClaimFirstEpochStartTs: Math.floor(new Date("2024-09-01").getTime() / 1000),
         transferFeeClaimEpochDurationSeconds: 1 * WEEKS,
         transferFeeClaimMaxUnexpiredEpochs: 12,
-        coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts
-        coreVaultExecutorAddress: "0x6c365935CA8710200C7595F0a72EB6023A7706Cd",   // one of test accounts
+        coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts [9]
+        coreVaultExecutorAddress: "0x6c365935CA8710200C7595F0a72EB6023A7706Cd",   // one of test accounts [10]
         coreVaultUnderlyingAddress: "CORE_VAULT_UNDERLYING",
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultTransferTimeExtensionSeconds: 2 * HOURS,

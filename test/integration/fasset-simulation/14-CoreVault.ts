@@ -11,6 +11,7 @@ import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { executeTimelockedGovernanceCall } from "../../utils/contract-test-helpers";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -119,5 +120,50 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         expectEvent(redemptionRes, "CoreVaultRedemption", { valueUBA: transferAmount });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: remainingTicketAmount });
         expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+    });
+
+    it("modify core vault settings", async () => {
+        // update address
+        await context.assetManager.setCoreVaultAddress(accounts[31], "SOME_NEW_ADDRESS", { from: context.governance });
+        let settings = await context.assetManager.getCoreVaultSettings();
+        assertWeb3Equal(settings.nativeAddress, accounts[31]);
+        assertWeb3Equal(settings.underlyingAddressString, "SOME_NEW_ADDRESS");
+        // update executor address
+        await context.assetManager.setCoreVaultExecutorAddress(accounts[32], { from: context.governance });
+        settings = await context.assetManager.getCoreVaultSettings();
+        assertWeb3Equal(settings.executorAddress, accounts[32]);
+        // update redemption fee
+        await context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: context.governance });
+        settings = await context.assetManager.getCoreVaultSettings();
+        assertWeb3Equal(settings.redemptionFeeBIPS, 211);
+        // update transfer time extension
+        await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150, { from: context.governance });
+        settings = await context.assetManager.getCoreVaultSettings();
+        assertWeb3Equal(settings.transferTimeExtensionSeconds, 150);
+    });
+
+    it("core vault setting modification requires governance call", async () => {
+        await expectRevert(context.assetManager.setCoreVaultAddress(accounts[31], "SOME_NEW_ADDRESS"), "only governance");
+        await expectRevert(context.assetManager.setCoreVaultExecutorAddress(accounts[32]), "only governance");
+        await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "only governance");
+        await expectRevert(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150), "only governance");
+    });
+
+    it("core vault address setting is timelocked, the others aren't", async () => {
+        await context.assetManager.switchToProductionMode({ from: context.governance });
+        // address is timelocked
+        let timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultAddress(accounts[31], "SOME_NEW_ADDRESS", { from: governance }));
+        assert.equal(timelocked, true);
+        // others aren't timelocked
+        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultExecutorAddress(accounts[32], { from: governance }));
+        assert.equal(timelocked, false);
+        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: governance }));
+        assert.equal(timelocked, false);
+        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150, { from: governance }));
+        assert.equal(timelocked, false);
     });
 });

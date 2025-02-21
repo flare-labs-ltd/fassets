@@ -43,6 +43,26 @@ interface ICoreVault {
     function transferToCoreVault(address _agentVault, uint256 _amountUBA)
         external payable;
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Settings
+
+    function setCoreVaultAddress(
+        address payable _nativeAddress,
+        string memory _underlyingAddressString
+    ) external;
+
+    function setCoreVaultExecutorAddress(
+        address payable _executorAddress
+    ) external;
+
+    function setCoreVaultRedemptionFeeBIPS(
+        uint256 _redemptionFeeBIPS
+    ) external;
+
+    function setCoreVaultTransferTimeExtensionSeconds(
+        uint256 _transferTimeExtensionSeconds
+    ) external;
+
     /**
      * Return the core vault settings.
      */
