@@ -15,12 +15,32 @@ interface ICoreVault {
     }
 
     /**
-     * Agent has transferred some of their backing to the core vault.
+     * Agent has requested transfer of (some of) their backing to the core vault.
      */
-    event TransferredToCoreVault(
+    event CoreVaultTransferStarted(
         address indexed agentVault,
-        uint256 transferRedemptionRequestId,
+        uint256 indexed transferRedemptionRequestId,
         uint256 valueUBA);
+
+    /**
+     * The transfer of underlying to the core vault was successfuly completed.
+     */
+    event CoreVaultTransferSuccessful(
+        address indexed agentVault,
+        uint256 indexed transferRedemptionRequestId,
+        uint256 valueUBA);
+
+    /**
+     * The transfer of underlying to the core vault defaulted. The core vault's native address
+     * received vault collateral (and possibly pool WNat).
+     */
+    event CoreVaultTransferDefault(
+        address indexed agentVault,
+        uint256 indexed transferRedemptionRequestId,
+        uint256 expectedValueUBA,
+        address paidVaultCollateralToken,
+        uint256 paidVaultCollateralAmount,
+        uint256 paidPoolWNatAmount);
 
     /**
      * Redemption was requested from a core vault, because the redemption queue was empty.

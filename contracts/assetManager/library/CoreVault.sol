@@ -45,11 +45,11 @@ library CoreVault {
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
             RedemptionRequests.AgentRedemptionData(_agent.vaultAddress(), transferredAMG),
             state.nativeAddress, state.underlyingAddressString, false, state.executorAddress, 0,
-            false, state.transferTimeExtensionSeconds);
+            state.transferTimeExtensionSeconds, true);
         // immediately take over backing
         state.mintedAMG += transferredAMG;
         // send event
-        emit ICoreVault.TransferredToCoreVault(agentVault, redemptionRequestId,
+        emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId,
             Conversion.convertAmgToUBA(_amountAMG));
     }
 

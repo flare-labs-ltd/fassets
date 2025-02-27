@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "./data/AssetManagerState.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
@@ -48,6 +49,10 @@ library RedemptionConfirmations {
                 emit IAssetManagerEvents.RedemptionPerformed(request.agentVault, request.redeemer,
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
+                if (request.transferToCoreVault) {
+                    emit ICoreVault.CoreVaultTransferSuccessful(request.agentVault, _redemptionRequestId,
+                        SafeCast.toUint256(_payment.data.responseBody.receivedAmount));
+                }
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,

@@ -132,6 +132,11 @@ library RedemptionFailures {
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
         emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
             _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
+            if (_request.transferToCoreVault) {
+                address vaultToken = address(Agents.getVaultCollateralToken(_agent));
+                emit ICoreVault.CoreVaultTransferDefault(_request.agentVault, _redemptionRequestId,
+                    _request.underlyingValueUBA, vaultToken, paidC1Wei, paidPoolWei);
+            }
     }
 
     // payment calculation: pay redemptionDefaultFactorVaultCollateralBIPS (>= 1) from agent vault collateral and

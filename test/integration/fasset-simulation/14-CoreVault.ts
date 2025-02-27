@@ -72,6 +72,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for all backing to core vault
         const info = await agent.getAgentInfo();
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, info.mintedUBA, { from: agent.ownerWorkAddress });
+        expectEvent(res, "CoreVaultTransferStarted", { agentVault: agent.vaultAddress, valueUBA: info.mintedUBA });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, info.mintedUBA);
@@ -80,7 +81,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         context.skipToExpiration(currentBlock.addn(20), currentTimestamp.addn(1 * HOURS));
         await expectRevert(cb.redemptionPaymentDefault(rdreqs[0]), "overflow block not found");
         // perform transfer of underlying
-        await agent.performRedemptions(rdreqs);
+        const resps = await agent.performRedemptions(rdreqs);
+        // check that CoreVaultTransferSuccessful event was emitted
+        const transferRes = resps[String(rdreqs[0].requestId)];
+        assert(transferRes != null);
+        expectEvent(transferRes, "CoreVaultTransferSuccessful");
         // agent now has 0 backing
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: 0, redeemingUBA: 0, dustUBA: 0, requiredUnderlyingBalanceUBA: 0 }, "reset");
         // all backing has been transferred from agent's underlying address

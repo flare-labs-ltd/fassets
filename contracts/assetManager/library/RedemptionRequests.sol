@@ -62,7 +62,7 @@ library RedemptionRequests {
             uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
             executorFeeNatGWei -= currentExecutorFeeNatGWei;
             createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
-                _executor, currentExecutorFeeNatGWei.toUint64(), true, 0);
+                _executor, currentExecutorFeeNatGWei.toUint64(), 0, false);
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
@@ -92,7 +92,7 @@ library RedemptionRequests {
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
-            _executor, (msg.value / Conversion.GWEI).toUint64(), true, 0);
+            _executor, (msg.value / Conversion.GWEI).toUint64(), 0, false);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -183,7 +183,7 @@ library RedemptionRequests {
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         uint64 newRedemptionRequestId = createRedemptionRequest(redemption, request.redeemer,
-            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64(), true, 0);
+            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64(), 0, false);
         // emit event
         emit IAssetManagerEvents.RedemptionRequestTakenOver(request.agentVault, request.redeemer, _redemptionRequestId,
             closedUBA, _agentVault, newRedemptionRequestId);
@@ -313,8 +313,8 @@ library RedemptionRequests {
         bool _poolSelfClose,
         address payable _executor,
         uint64 _executorFeeNatGWei,
-        bool _chargeRedemptionFee,
-        uint64 _additionalPaymentTime
+        uint64 _additionalPaymentTime,
+        bool _transferToCoreVault
     )
         internal
         returns (uint64 _requestId)
@@ -338,8 +338,8 @@ library RedemptionRequests {
         (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) =
             _lastPaymentBlock(_data.agentVault, _additionalPaymentTime);
         request.timestamp = block.timestamp.toUint64();
-        request.underlyingFeeUBA = _chargeRedemptionFee ?
-            redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128() : 0;
+        request.underlyingFeeUBA = _transferToCoreVault ?
+            0 : redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
         request.redeemer = _redeemer;
         request.agentVault = _data.agentVault;
         request.valueAMG = _data.valueAMG;
@@ -348,6 +348,7 @@ library RedemptionRequests {
         request.executor = _executor;
         request.executorFeeNatGWei = _executorFeeNatGWei;
         request.redeemerUnderlyingAddressString = _redeemerUnderlyingAddressString;
+        request.transferToCoreVault = _transferToCoreVault;
         state.redemptionRequests[_requestId] = request;
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)

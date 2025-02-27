@@ -26,5 +26,6 @@ library Redemption {
         uint64 rejectionTimestamp;
         uint64 takeOverTimestamp;
         string redeemerUnderlyingAddressString;
+        bool transferToCoreVault;
     }
 }
