@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/Liquidation.sol";
 import "./AssetManagerBase.sol";
 
 
-contract LiquidationFacet is AssetManagerBase {
+contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
     /**
      * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
@@ -20,6 +21,7 @@ contract LiquidationFacet is AssetManagerBase {
         external
         onlyWhitelistedSender
         notEmergencyPaused
+        nonReentrant
         returns (uint8 _liquidationStatus, uint256 _liquidationStartAt)
     {
         (Agent.LiquidationPhase phase, uint256 startTs) = Liquidation.startLiquidation(_agentVault);
@@ -47,6 +49,7 @@ contract LiquidationFacet is AssetManagerBase {
         external
         onlyWhitelistedSender
         notEmergencyPaused
+        nonReentrant
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool)
     {
         return Liquidation.liquidate(_agentVault, _amountUBA);
@@ -64,6 +67,7 @@ contract LiquidationFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        nonReentrant
     {
         Liquidation.endLiquidation(_agentVault);
     }

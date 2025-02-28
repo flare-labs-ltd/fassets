@@ -39,6 +39,7 @@ contract RedemptionHandshakeFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
+        nonReentrant
     {
         RedemptionRequests.takeOverRedemptionRequest(_agentVault, _redemptionRequestId.toUint64());
     }
