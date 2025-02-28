@@ -315,16 +315,13 @@ library CollateralReservations {
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 returnFee = totalFee.mulBips(settings.rejectOrCancelCollateralReservationReturnFactorBIPS);
-        address minter = crt.minter;
+        address payable minter = payable(crt.minter);
 
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
 
         // guarded against reentrancy in CollateralReservationsFacet
-        /* solhint-disable avoid-low-level-calls */
-        //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = minter.call{value: returnFee, gas: Transfers.TRANSFER_GAS_ALLOWANCE}("");
-        /* solhint-enable avoid-low-level-calls */
+        bool success = Transfers.transferNATAllowFailure(minter, returnFee);
         // if failed, burn the whole fee, otherwise burn the difference
         if (!success) {
             Agents.burnDirectNAT(totalFee);

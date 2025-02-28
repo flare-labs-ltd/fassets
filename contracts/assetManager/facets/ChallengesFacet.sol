@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/Challenges.sol";
 import "./AssetManagerBase.sol";
 
 
-contract ChallengesFacet is AssetManagerBase {
+contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
     /**
      * Called with a proof of payment made from agent's underlying address, for which
      * no valid payment reference exists (valid payment references are from redemption and
@@ -21,6 +22,7 @@ contract ChallengesFacet is AssetManagerBase {
     )
         external
         onlyWhitelistedSender
+        nonReentrant
     {
         Challenges.illegalPaymentChallenge(_transaction, _agentVault);
     }
@@ -41,6 +43,7 @@ contract ChallengesFacet is AssetManagerBase {
     )
         external
         onlyWhitelistedSender
+        nonReentrant
     {
         Challenges.doublePaymentChallenge(_payment1, _payment2, _agentVault);
     }
@@ -60,6 +63,7 @@ contract ChallengesFacet is AssetManagerBase {
     )
         external
         onlyWhitelistedSender
+        nonReentrant
     {
         Challenges.paymentsMakeFreeBalanceNegative(_payments, _agentVault);
     }

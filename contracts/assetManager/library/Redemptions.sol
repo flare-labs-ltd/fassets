@@ -92,7 +92,6 @@ library Redemptions {
     {
         if (_request.executorFeeNatGWei == 0) return;
         if (msg.sender == _request.executor) {
-            // safe - 1) guarded by nonReentrant in AssetManager.executeMinting, 2) recipient is msg.sender
             Transfers.transferNAT(_request.executor, _request.executorFeeNatGWei * Conversion.GWEI);
         } else if (_request.executorFeeNatGWei > 0) {
             Agents.burnDirectNAT(_request.executorFeeNatGWei * Conversion.GWEI);

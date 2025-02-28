@@ -38,6 +38,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         external payable
         onlyWhitelistedSender
         notEmergencyPaused
+        nonReentrant
         returns (uint256 _redeemedAmountUBA)
     {
         return RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString, _executor);
@@ -56,6 +57,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     )
         external payable
         notEmergencyPaused
+        nonReentrant
     {
         RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress, _executor);
     }
@@ -73,6 +75,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
+        nonReentrant
     {
         RedemptionRequests.redeemFromAgentInCollateral(_agentVault, _receiver, _amountUBA);
     }
@@ -105,6 +108,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _redemptionRequestId
     )
         external
+        nonReentrant
     {
         RedemptionRequests.rejectInvalidRedemption(_proof, _redemptionRequestId.toUint64());
     }
@@ -125,6 +129,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
+        nonReentrant
         returns (uint256 _closedAmountUBA)
     {
         // in SelfClose.selfClose we check that only agent can do this
@@ -145,6 +150,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        nonReentrant
     {
         AgentsExternal.convertDustToTicket(_agentVault);
     }

