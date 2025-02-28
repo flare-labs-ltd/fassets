@@ -16,10 +16,12 @@ contract ReentrancyMock is ReentrancyGuard {
     }
 
     function callback() external nonReentrant {
+        requireReentrancyGuard();
         _count();
     }
 
     function countLocalRecursive(uint256 n) public nonReentrant {
+        requireReentrancyGuard();
         if (n > 0) {
             _count();
             countLocalRecursive(n - 1);
@@ -27,12 +29,18 @@ contract ReentrancyMock is ReentrancyGuard {
     }
 
     function countThisRecursive(uint256 n) public nonReentrant {
+        requireReentrancyGuard();
         if (n > 0) {
             _count();
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(this).call(abi.encodeWithSignature("countThisRecursive(uint256)", n - 1));
             require(success, "ReentrancyMock: failed call");
         }
+    }
+
+    function unguardedMethodThatShouldFail() public {
+        requireReentrancyGuard();
+        _count();
     }
 
     function countAndCall(ReentrancyAttackMock attacker) public nonReentrant {
@@ -46,10 +54,10 @@ contract ReentrancyMock is ReentrancyGuard {
     }
 
     function guardedCheckEntered() public nonReentrant {
-        require(_reentrancyGuardEntered());
+        require(Reentrancy.reentrancyGuardEntered());
     }
 
     function unguardedCheckNotEntered() public view {
-        require(!_reentrancyGuardEntered());
+        require(!Reentrancy.reentrancyGuardEntered());
     }
 }
