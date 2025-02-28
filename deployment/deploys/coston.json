@@ -372,17 +372,17 @@
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0xE73CEFC69168AF6f53A8A405AFd079963ec90973"
+    "address": "0x39604C55D2eB20B2316CE430ab296aAB9dEAC75F"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x3D8f7C29Ac55b5987721432c606F206DE8EaBC42"
+    "address": "0x5A632247D08B3eD5De30fe74C6DA55d6CC7c29ed"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0xB21C55BDe4765625Bf6a1fc4Fd1d3D5Ee029c582"
+    "address": "0x379088515A8Ff3519Fe6045103174e976F8Aa2f3"
   },
   {
     "name": "RedemptionConfirmationsFacet",
@@ -397,22 +397,22 @@
   {
     "name": "RedemptionHandshakeFacet",
     "contractName": "RedemptionHandshakeFacet.sol",
-    "address": "0x5593104232619631133eFFa26c19BA6cCFaBabE2"
+    "address": "0xF8f900395E0E263E77FED565C75E204fdd7A8a06"
   },
   {
     "name": "LiquidationFacet",
     "contractName": "LiquidationFacet.sol",
-    "address": "0x20010a766284A2e885D51E8b904D50a3D379a958"
+    "address": "0xD745612ae0879928e360A66436d7F80BbEdbbEb0"
   },
   {
     "name": "ChallengesFacet",
     "contractName": "ChallengesFacet.sol",
-    "address": "0xA43f2D04B9C4abe20d8DdB6Fa7592c43b180D7D7"
+    "address": "0x381C6FCc6186B6fBB3712c0c2440638177AFD110"
   },
   {
     "name": "UnderlyingBalanceFacet",
     "contractName": "UnderlyingBalanceFacet.sol",
-    "address": "0x15753A4d9748701F3F6a65F58A57B5D3deeB4D25"
+    "address": "0x4B556B75bd4c02df1d7e2a767eFf77bA0Df816D3"
   },
   {
     "name": "UnderlyingTimekeepingFacet",
