@@ -41,6 +41,7 @@ library RedemptionConfirmations {
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
         if (paymentValid) {
+            assert(request.status == Redemption.Status.ACTIVE); // checked in _validatePayment
             // release agent collateral
             Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
             // notify
@@ -132,7 +133,7 @@ library RedemptionConfirmations {
             // Redemption is already defaulted, although the payment was not too late.
             // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
             // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
-            return (false, "redemption payment too late");
+            return (false, "redemption already defaulted");
         }
         return (true, "");
     }

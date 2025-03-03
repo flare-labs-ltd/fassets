@@ -316,7 +316,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const resRe = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(resRe, 'RedemptionPaymentFailed');
         const resReArgs = requiredEventArgs(resRe, 'RedemptionPaymentFailed');
-        assert.equal(resReArgs.failureReason, "redemption payment too late");
+        assert.equal(resReArgs.failureReason, "redemption already defaulted");
     });
 
     it("should not confirm redemption payment - invalid request id", async () => {
