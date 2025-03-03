@@ -358,7 +358,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log(">> before prove on non-existence is available");
         // agent invokes `rejectInvalidRedemption` on his own DEFAULTED redemption since it has not been deleted to reduce backing redeeming amount
         const proof = await context.attestationProvider.proveAddressValidity(request.paymentAddress);
-        await context.assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 });
+        await expectRevert(context.assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
+            "invalid redemption status");
 
         agentInfo = await agent.getAgentInfo();
         console.log("AgentInfo after agent rejecting their own redemption");

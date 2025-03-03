@@ -234,6 +234,8 @@ library RedemptionRequests {
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
+        // check status
+        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
         // only owner can call
         Agents.requireAgentVaultOwner(agent);
         // check proof
