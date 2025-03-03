@@ -1,8 +1,8 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -278,5 +278,221 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log("free lots: ", agentInfo.freeCollateralLots.toString());
         console.log("vaultCR after exploit: ", agentInfo.vaultCollateralRatioBIPS);
         console.log("poolCR after exploit: ", agentInfo.poolCollateralRatioBIPS);
+    });
+
+    it("nnez-double-redemption", async() => {
+        // prepare an agent with collateral
+        console.log(">> Prepare an agent with collateral");
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        const innocentBystander = redeemerAddress2;
+
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        mockChain.mine(5);
+
+        // mint 4 lots of f-asset (1 lot = 2 BTC)
+        await context.updateUnderlyingBlock();
+        const lots = 4;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        // agent info after minting
+        console.log(">> Simulate minting with agent (4 lots occupied)");
+        let agentInfo = await agent.getAgentInfo();
+        console.log("AgentInfo after minting");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> Distribute f-asset to agent's redeemer and innocent bystander");
+        // agent controlled redeemer gets some f-asset
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.divRound(toBN(2)), { from: minter.address });
+        // innocent bystander gets some f-asset
+        await context.fAsset.transfer(innocentBystander, minted.mintedAmountUBA.divRound(toBN(2)), { from: minter.address });
+
+        // agent prepares the exploit
+        // create a redemption with invalid receiver address
+        console.log(">> Agent creates a redemption request with invalid receiver address");
+        const res = await context.assetManager.redeem(1, "MY_INVALID_ADDRESS", "0x0000000000000000000000000000000000000000", { from: redeemer.address });
+        agentInfo = await agent.getAgentInfo();
+        console.log("AgentInfo after redemption request");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        const redemptionRequests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
+        const request = redemptionRequests[0];
+
+        console.log(">> Simulate timeskip for 1 day, passing attestation window");
+        // time skip for about one day for both underlying chain and this chain
+        // attestation window seconds: 86400
+        mockChain.mine(144);
+        mockChain.skipTime(87000);
+        await deterministicTimeIncrease(87000);
+        await context.updateUnderlyingBlock();
+
+        console.log(">> Agent invokes finishRedemptionWithoutPayment on their own redemption");
+        // finish redemption without payment
+        // mark first redemption as DEFAULTED and payout via vault/pool collateral
+        // because agent is in control of redeemer address, we can just deposit those funds back to the vault and pool
+        await agent.finishRedemptionWithoutPayment(request);
+
+        agentInfo = await agent.getAgentInfo();
+        console.log("AgenInfo after finishRedemptionWithoutPayment");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> innocentBystander tries to redeem 1 lot of f-asset");
+        // innocentBystander happens to redeem
+        const res2 = await context.assetManager.redeem(1, underlyingRedeemer2, "0x0000000000000000000000000000000000000000", { from: innocentBystander });
+        const redemptionRequests2 = filterEvents(res2, 'RedemptionRequested').map(e => e.args);
+        const request2 = redemptionRequests2[0];
+
+        console.log("AgentInfo after innocentBystander redemption request");
+        agentInfo = await agent.getAgentInfo();
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> Agent invokes rejectInvalidRedemption again on their own previous redemption request");
+        console.log(">> before prove on non-existence is available");
+        // agent invokes `rejectInvalidRedemption` on his own DEFAULTED redemption since it has not been deleted to reduce backing redeeming amount
+        const proof = await context.attestationProvider.proveAddressValidity(request.paymentAddress);
+        await expectRevert(context.assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
+            "invalid redemption status");
+
+        agentInfo = await agent.getAgentInfo();
+        console.log("AgentInfo after agent rejecting their own redemption");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> Simluate timeskip to payment expiration");
+        // skip to payment expiration
+        context.skipToExpiration(request2.lastUnderlyingBlock, request2.lastUnderlyingTimestamp);
+
+        console.log(">> innocentBystander tries to claim collateral with prove of non-existence payment... but fail terribly");
+        // since there is no payment from agent, innocentBystander has to invoke redemptionPaymentDefault to claim agent's collateral
+        const proof2 = await context.attestationProvider.proveReferencedPaymentNonexistence(
+            request2.paymentAddress,
+            request2.paymentReference,
+            request2.valueUBA.sub(request.feeUBA),
+            request2.firstUnderlyingBlock.toNumber(),
+            request2.lastUnderlyingBlock.toNumber(),
+            request2.lastUnderlyingTimestamp.toNumber());
+
+        // This will revert due to assertion failure while calculating maxRedemptionCollateral in `executeDefaultPayment`
+        // because agent.redeemingAMG is less than request.valueAMG
+        await context.assetManager.redemptionPaymentDefault(proof2, request2.requestId, { from: innocentBystander });
+
+    });
+
+    it("nnez-double-redemption with confirmation after finish doesn't work", async () => {
+        // prepare an agent with collateral
+        console.log(">> Prepare an agent with collateral");
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        const innocentBystander = redeemerAddress2;
+
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        mockChain.mine(5);
+
+        // mint 4 lots of f-asset (1 lot = 2 BTC)
+        await context.updateUnderlyingBlock();
+        const lots = 4;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        // agent info after minting
+        console.log(">> Simulate minting with agent (4 lots occupied)");
+        let agentInfo = await agent.getAgentInfo();
+        console.log("AgentInfo after minting");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> Distribute f-asset to agent's redeemer and innocent bystander");
+        // agent controlled redeemer gets some f-asset
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.divRound(toBN(2)), { from: minter.address });
+        // innocent bystander gets some f-asset
+        await context.fAsset.transfer(innocentBystander, minted.mintedAmountUBA.divRound(toBN(2)), { from: minter.address });
+
+        // agent prepares the exploit
+        // create a redemption with invalid receiver address
+        console.log(">> Agent creates a redemption request with invalid receiver address");
+        const res = await context.assetManager.redeem(1, "MY_INVALID_ADDRESS", "0x0000000000000000000000000000000000000000", { from: redeemer.address });
+        agentInfo = await agent.getAgentInfo();
+        console.log("AgentInfo after redemption request");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        const redemptionRequests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
+        const request = redemptionRequests[0];
+
+        // pay for redemption
+        const rpTx = await agent.performRedemptionPayment(request);
+
+        console.log(">> Simulate timeskip for 1 day, passing attestation window");
+        // time skip for about one day for both underlying chain and this chain
+        // attestation window seconds: 86400
+        mockChain.mine(144);
+        mockChain.skipTime(87000);
+        await deterministicTimeIncrease(87000);
+        await context.updateUnderlyingBlock();
+
+        console.log(">> Agent invokes finishRedemptionWithoutPayment on their own redemption");
+        // finish redemption without payment
+        // mark first redemption as DEFAULTED and payout via vault/pool collateral
+        // because agent is in control of redeemer address, we can just deposit those funds back to the vault and pool
+        await agent.finishRedemptionWithoutPayment(request);
+
+        agentInfo = await agent.getAgentInfo();
+        console.log("AgenInfo after finishRedemptionWithoutPayment");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> innocentBystander tries to redeem 1 lot of f-asset");
+        // innocentBystander happens to redeem
+        const res2 = await context.assetManager.redeem(1, underlyingRedeemer2, "0x0000000000000000000000000000000000000000", { from: innocentBystander });
+        const redemptionRequests2 = filterEvents(res2, 'RedemptionRequested').map(e => e.args);
+        const request2 = redemptionRequests2[0];
+
+        console.log("AgentInfo after innocentBystander redemption request");
+        agentInfo = await agent.getAgentInfo();
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> Agent invokes rejectInvalidRedemption again on their own previous redemption request");
+        console.log(">> before prove on non-existence is available");
+        // agent invokes `confirmActiveRedemptionPayment` on his own expired redemption since it has not been deleted to reduce backing redeeming amount
+        const proof1 = await context.attestationProvider.provePayment(rpTx, agent.underlyingAddress, request.paymentAddress);
+        const res1 = await context.assetManager.confirmRedemptionPayment(proof1, request.requestId, { from: agent.ownerWorkAddress });
+        expectEvent.notEmitted(res1, "RedemptionPerformed");
+        expectEvent(res1, "RedemptionPaymentFailed", { failureReason: "redemption already defaulted" });
+
+        agentInfo = await agent.getAgentInfo();
+        console.log("AgentInfo after agent rejecting their own redemption");
+        console.log("minted | redeeming | reserved");
+        console.log(agentInfo.mintedUBA, agentInfo.redeemingUBA, agentInfo.reservedUBA);
+
+        console.log(">> Simluate timeskip to payment expiration");
+        // skip to payment expiration
+        context.skipToExpiration(request2.lastUnderlyingBlock, request2.lastUnderlyingTimestamp);
+
+        console.log(">> innocentBystander tries to claim collateral with prove of non-existence payment... but fail terribly");
+        // since there is no payment from agent, innocentBystander has to invoke redemptionPaymentDefault to claim agent's collateral
+        const proof2 = await context.attestationProvider.proveReferencedPaymentNonexistence(
+            request2.paymentAddress,
+            request2.paymentReference,
+            request2.valueUBA.sub(request.feeUBA),
+            request2.firstUnderlyingBlock.toNumber(),
+            request2.lastUnderlyingBlock.toNumber(),
+            request2.lastUnderlyingTimestamp.toNumber());
+
+        // This will revert due to assertion failure while calculating maxRedemptionCollateral in `executeDefaultPayment`
+        // because agent.redeemingAMG is less than request.valueAMG
+        await context.assetManager.redemptionPaymentDefault(proof2, request2.requestId, { from: innocentBystander });
+
     });
 });
