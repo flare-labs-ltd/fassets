@@ -19,6 +19,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     coreVaultNativeAddress: string;
     coreVaultExecutorAddress: string;
     coreVaultUnderlyingAddress: string;
+    coreVaultTransferFeeBIPS: BNish;
     coreVaultRedemptionFeeBIPS: BNish;
     coreVaultTransferTimeExtensionSeconds: BNish;
 }
@@ -78,7 +79,7 @@ export async function newAssetManager(
             assetManagerSettings.transferFeeClaimEpochDurationSeconds, assetManagerSettings.transferFeeClaimMaxUnexpiredEpochs));
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"],
         (c) => c.initCoreVaultFacet(assetManagerSettings.coreVaultNativeAddress, assetManagerSettings.coreVaultExecutorAddress,
-            assetManagerSettings.coreVaultUnderlyingAddress, assetManagerSettings.coreVaultRedemptionFeeBIPS,
+            assetManagerSettings.coreVaultUnderlyingAddress, assetManagerSettings.coreVaultTransferFeeBIPS, assetManagerSettings.coreVaultRedemptionFeeBIPS,
             assetManagerSettings.coreVaultTransferTimeExtensionSeconds));
     // verify interface implementation
     await checkAllMethodsImplemented(assetManager, interfaceSelectors);

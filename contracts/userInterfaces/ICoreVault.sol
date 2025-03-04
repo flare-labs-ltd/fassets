@@ -10,6 +10,7 @@ interface ICoreVault {
         address payable nativeAddress;
         address payable executorAddress;
         string underlyingAddressString;
+        uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
         uint32 transferTimeExtensionSeconds;
     }
@@ -63,6 +64,16 @@ interface ICoreVault {
     function transferToCoreVault(address _agentVault, uint256 _amountUBA)
         external payable;
 
+    /**
+     * Return the amount of NAT that has to be paid in `transferToCoreVault` call.
+     * @param _amountUBA the amount to transfer to the core vault
+     * @return _transferFeeNatWei the amount that has to be included as `msg.value` and is paid to the core vault
+     */
+    function coreVaultTransferFee(
+        uint256 _amountUBA
+    ) external view
+        returns (uint256 _transferFeeNatWei);
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings
 
@@ -73,6 +84,10 @@ interface ICoreVault {
 
     function setCoreVaultExecutorAddress(
         address payable _executorAddress
+    ) external;
+
+    function setCoreVaultTransferFeeBIPS(
+        uint256 _transferFeeBIPS
     ) external;
 
     function setCoreVaultRedemptionFeeBIPS(

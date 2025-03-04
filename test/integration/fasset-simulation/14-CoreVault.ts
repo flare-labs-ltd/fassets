@@ -71,7 +71,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const { 0: currentBlock, 1: currentTimestamp } = await context.assetManager.currentUnderlyingBlock();
         // agent requests transfer for all backing to core vault
         const info = await agent.getAgentInfo();
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, info.mintedUBA, { from: agent.ownerWorkAddress });
+        const transferAmount = info.mintedUBA;
+        // calculate the transfer fee
+        const cbTransferFee = await context.assetManager.coreVaultTransferFee(transferAmount);
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee.subn(1) }),
+            "transfer fee payment too small");
+        // transfer request
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
         expectEvent(res, "CoreVaultTransferStarted", { agentVault: agent.vaultAddress, valueUBA: info.mintedUBA });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
@@ -110,7 +116,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for all backing to core vault
         const transferAmount = context.lotSize().muln(5);
         const remainingTicketAmount = context.lotSize().muln(5);
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
+        const cbTransferFee = await context.assetManager.coreVaultTransferFee(transferAmount);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, transferAmount);
@@ -137,6 +144,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await context.assetManager.setCoreVaultExecutorAddress(accounts[32], { from: context.governance });
         settings = await context.assetManager.getCoreVaultSettings();
         assertWeb3Equal(settings.executorAddress, accounts[32]);
+        // update transfer fee
+        await context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: context.governance });
+        settings = await context.assetManager.getCoreVaultSettings();
+        assertWeb3Equal(settings.transferFeeBIPS, 123);
         // update redemption fee
         await context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: context.governance });
         settings = await context.assetManager.getCoreVaultSettings();
@@ -150,6 +161,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     it("core vault setting modification requires governance call", async () => {
         await expectRevert(context.assetManager.setCoreVaultAddress(accounts[31], "SOME_NEW_ADDRESS"), "only governance");
         await expectRevert(context.assetManager.setCoreVaultExecutorAddress(accounts[32]), "only governance");
+        await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(123), "only governance");
         await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "only governance");
         await expectRevert(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150), "only governance");
     });
@@ -164,9 +176,15 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultExecutorAddress(accounts[32], { from: governance }));
         assert.equal(timelocked, false);
+        //
+        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: governance }));
+        assert.equal(timelocked, false);
+        //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: governance }));
         assert.equal(timelocked, false);
+        //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150, { from: governance }));
         assert.equal(timelocked, false);

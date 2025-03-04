@@ -20,6 +20,7 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         address payable _nativeAddress,
         address payable _executorAddress,
         string memory _underlyingAddressString,
+        uint256 _transferFeeBIPS,
         uint256 _redemptionFeeBIPS,
         uint256 _transferTimeExtensionSeconds
     )
@@ -35,6 +36,7 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         state.nativeAddress = _nativeAddress;
         state.executorAddress = _executorAddress;
         state.underlyingAddressString = _underlyingAddressString;
+        state.transferFeeBIPS = _transferFeeBIPS.toUint16();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
     }
@@ -59,6 +61,24 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         CoreVault.transferToCoreVault(agent, amountAMG);
     }
 
+    /**
+     * Return the amount of NAT that has to be paid in `transferToCoreVault` call.
+     * @param _amountUBA the amount to transfer to the core vault
+     * @return _transferFeeNatWei the amount that has to be included as `msg.value` and is paid to the core vault
+     */
+    function coreVaultTransferFee(
+        uint256 _amountUBA
+    )
+        external view
+        returns (uint256 _transferFeeNatWei)
+    {
+        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        return CoreVault.getTransferFee(amountAMG);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    // Settings
+
     function setCoreVaultAddress(
         address payable _nativeAddress,
         string memory _underlyingAddressString
@@ -79,6 +99,16 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
     {
         CoreVault.State storage state = CoreVault.getState();
         state.executorAddress = _executorAddress;
+    }
+
+    function setCoreVaultTransferFeeBIPS(
+        uint256 _transferFeeBIPS
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.transferFeeBIPS = _transferFeeBIPS.toUint16();
     }
 
     function setCoreVaultRedemptionFeeBIPS(
@@ -113,6 +143,7 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
             nativeAddress: state.nativeAddress,
             executorAddress: state.executorAddress,
             underlyingAddressString: state.underlyingAddressString,
+            transferFeeBIPS: state.transferFeeBIPS,
             redemptionFeeBIPS: state.redemptionFeeBIPS,
             transferTimeExtensionSeconds: state.transferTimeExtensionSeconds
         });

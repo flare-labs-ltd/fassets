@@ -19,6 +19,7 @@ library CoreVault {
         address payable nativeAddress;
         address payable executorAddress;
         string underlyingAddressString;
+        uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
         uint32 transferTimeExtensionSeconds;
 
@@ -39,6 +40,9 @@ library CoreVault {
         // TODO: value (fee) gets paid to the core vault
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
+        // check the transfer fee
+        uint256 transferFeeWei = getTransferFee(_amountAMG);
+        require(msg.value >= transferFeeWei, "transfer fee payment too small");
         // create ordinary redemption request to core vault address
         // NOTE: there will be no redemption fee, so the agent needs enough free underlying for the
         //  underlying transaction fee, otherwise they will go into full liquidation
@@ -48,6 +52,8 @@ library CoreVault {
             state.transferTimeExtensionSeconds, true);
         // immediately take over backing
         state.mintedAMG += transferredAMG;
+        // pay the transfer fee
+        Transfers.transferNAT(state.nativeAddress, msg.value);  // guarded by nonReentrant in the facet
         // send event
         emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId,
             Conversion.convertAmgToUBA(_amountAMG));
@@ -72,6 +78,16 @@ library CoreVault {
         bytes32 paymentReference = PaymentReference.coreVaultRedemption(requestId);
         emit ICoreVault.CoreVaultRedemption(_redeemer, requestId, _redeemerUnderlyingAddress,
             redeemedUBA, feeUBA, paymentReference);
+    }
+
+    function getTransferFee(uint64 _amountAMG)
+        internal view
+        returns (uint256)
+    {
+        State storage state = getState();
+        uint256 amgToNatWeiPrice = Conversion.currentAmgPriceInTokenWei(Globals.getPoolCollateral());
+        uint256 transferAmountWei = Conversion.convertAmgToTokenWei(_amountAMG, amgToNatWeiPrice);
+        return transferAmountWei.mulBips(state.transferFeeBIPS);
     }
 
     bytes32 internal constant STATE_POSITION = keccak256("fasset.CoreVault.State");

@@ -252,6 +252,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.coreVaultNativeAddress = cbSettings.nativeAddress;
             resInitSettings.coreVaultExecutorAddress = cbSettings.executorAddress;
             resInitSettings.coreVaultUnderlyingAddress = cbSettings.underlyingAddressString;
+            resInitSettings.coreVaultTransferFeeBIPS = cbSettings.transferFeeBIPS;
             resInitSettings.coreVaultRedemptionFeeBIPS = cbSettings.redemptionFeeBIPS;
             resInitSettings.coreVaultTransferTimeExtensionSeconds = cbSettings.transferTimeExtensionSeconds;
             //
