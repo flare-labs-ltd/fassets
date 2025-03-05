@@ -36,6 +36,8 @@ library CoreVault {
     {
         State storage state = getState();
         address agentVault = _agent.vaultAddress();
+        // only one transfer can be active
+        require(_agent.activeCoreVaultTransfer == 0, "transfer already active");
         // TODO: value (fee) gets paid to the core vault
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
@@ -59,14 +61,15 @@ library CoreVault {
     }
 
     function cancelTransferToCoreVault(
-        Agent.State storage _agent,
-        uint64 _requestId
+        Agent.State storage _agent
     )
         internal
     {
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_requestId);
+        uint64 requestId = _agent.activeCoreVaultTransfer;
+        require(requestId != 0, "no active transfer");
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId);
         Redemptions.reCreateRedemptionTicket(_agent, request);
-        Redemptions.deleteRedemptionRequest(_requestId);
+        Redemptions.deleteRedemptionRequest(requestId);
     }
 
     function redeemFromCoreVault(

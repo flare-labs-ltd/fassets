@@ -167,6 +167,9 @@ library Agent {
         // 0 - no verification, 1 - manual verification, ...
         uint32 handshakeType;
 
+        // There can only be one transfer to core vault per agent active at any time.
+        uint64 activeCoreVaultTransfer;
+
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;
     }

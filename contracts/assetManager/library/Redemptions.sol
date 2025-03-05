@@ -112,8 +112,21 @@ library Redemptions {
     function deleteRedemptionRequest(uint64 _redemptionRequestId)
         internal
     {
+        releaseTransferToCoreVault(_redemptionRequestId);
         AssetManagerState.State storage state = AssetManagerState.get();
         delete state.redemptionRequests[_redemptionRequestId];
+    }
+
+    function releaseTransferToCoreVault(uint64 _redemptionRequestId)
+        internal
+    {
+        Redemption.Request storage request = getRedemptionRequest(_redemptionRequestId);
+        if (request.transferToCoreVault) {
+            Agent.State storage agent = Agent.get(request.agentVault);
+            if (agent.activeCoreVaultTransfer == _redemptionRequestId) {
+                agent.activeCoreVaultTransfer = 0;
+            }
+        }
     }
 
     function maxClosedFromAgentPerTransaction(
