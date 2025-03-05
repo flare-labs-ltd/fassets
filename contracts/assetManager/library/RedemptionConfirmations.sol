@@ -63,10 +63,14 @@ library RedemptionConfirmations {
             // lower the attack surface in case of report from other address.
             require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
                 "confirm failed payment only from agent's address");
-            // We do not allow retrying failed payments, so just default here if not defaulted already.
-            // This will also release the remaining agent's collateral.
+            // We do not allow retrying failed payments, so just default or cancel here if not defaulted already.
             if (request.status == Redemption.Status.ACTIVE) {
-                RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
+                if (request.transferToCoreVault) {
+                    Redemptions.reCreateRedemptionTicket(agent, request);
+                } else {
+                    // This will also release the remaining agent's collateral.
+                    RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
+                }
             }
             // notify
             emit IAssetManagerEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
@@ -104,6 +108,8 @@ library RedemptionConfirmations {
         // others can confirm payments only after several hours
         if (block.timestamp <= _request.timestamp + settings.confirmationByOthersAfterSeconds) return false;
         // others can confirm only payments arriving from agent's underlying address
+        // - malicious user could create payment with correct payment reference but very small amount,
+        //   to force the agent to default (if the agent was late with proving a successful payment)
         // - on utxo chains for multi-source payment, 3rd party might lie about payment not coming from agent's
         //   source, which would delete redemption request but not mark source decreasing transaction as used;
         //   so afterwards there can be an illegal payment challenge for this transaction

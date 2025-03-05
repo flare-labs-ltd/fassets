@@ -99,6 +99,16 @@ library Redemptions {
         _request.executorFeeNatGWei = 0;
     }
 
+    function reCreateRedemptionTicket(
+        Agent.State storage _agent,
+        Redemption.Request storage _request
+    )
+        internal
+    {
+        Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
+        Agents.createNewMinting(_agent, _request.valueAMG);
+    }
+
     function deleteRedemptionRequest(uint64 _redemptionRequestId)
         internal
     {

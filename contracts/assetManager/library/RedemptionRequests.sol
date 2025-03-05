@@ -134,6 +134,7 @@ library RedemptionRequests {
         require(request.status == Redemption.Status.ACTIVE, "not active");
         require(request.rejectionTimestamp == 0, "already rejected");
         require(request.takeOverTimestamp == 0, "already taken over");
+        require(!request.transferToCoreVault, "core vault transfer cannot be rejected");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(request.timestamp + settings.rejectRedemptionRequestWindowSeconds > block.timestamp,
             "reject redemption request window closed");
@@ -167,6 +168,7 @@ library RedemptionRequests {
         internal
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        assert(!request.transferToCoreVault);   // transfer to core vault cannot be rejected
         Agent.State storage oldAgent = Agent.get(request.agentVault);
         require(request.agentVault != _agentVault, "same agent");
         Agent.State storage newAgent = Agent.get(_agentVault);
@@ -236,6 +238,7 @@ library RedemptionRequests {
         internal
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        assert(!request.transferToCoreVault);   // we have a problem if core vault has invalid address
         Agent.State storage agent = Agent.get(request.agentVault);
         // only owner can call
         Agents.requireAgentVaultOwner(agent);

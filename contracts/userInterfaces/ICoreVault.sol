@@ -58,11 +58,22 @@ interface ICoreVault {
      * Agent can transfer their backing to core vault.
      * They then get a redemption requests which the owner pays just like any other redemption request.
      * After that, the agent's collateral is released.
+     * NOTE: only agent vault owner can call
      * @param _agentVault the agent vault address
      * @param _amountUBA the amount to transfer to the core vault
      */
     function transferToCoreVault(address _agentVault, uint256 _amountUBA)
         external payable;
+
+    /**
+     * Cancel a transfer to core vault.
+     * If the payment was not made, this is the only way to release agent's collateral,
+     * since redemption requests for transfer to core vault cannot default or expire.
+     * NOTE: only agent vault owner can call
+     * @param _agentVault the agent vault address
+     */
+    function cancelTransferToCoreVault(address _agentVault)
+        external;
 
     /**
      * Return the amount of NAT that has to be paid in `transferToCoreVault` call.

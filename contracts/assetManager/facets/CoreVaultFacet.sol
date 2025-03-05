@@ -45,6 +45,7 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
      * Agent can transfer their backing to core vault.
      * They then get a redemption requests which the owner pays just like any other redemption request.
      * After that, the agent's collateral is released.
+     * NOTE: only agent vault owner can call
      * @param _agentVault the agent vault address
      * @param _amountUBA the amount to transfer to the core vault
      */
@@ -59,6 +60,24 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         CoreVault.transferToCoreVault(agent, amountAMG);
+    }
+
+    /**
+     * Cancel a transfer to core vault.
+     * If the payment was not made, this is the only way to release agent's collateral,
+     * since redemption requests for transfer to core vault cannot default or expire.
+     * NOTE: only agent vault owner can call
+     * @param _agentVault the agent vault address
+     */
+    function cancelTransferToCoreVault(
+        address _agentVault
+    )
+        external
+        nonReentrant
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        CoreVault.cancelTransferToCoreVault(agent);
     }
 
     /**

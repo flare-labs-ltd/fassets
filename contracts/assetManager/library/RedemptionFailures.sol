@@ -26,6 +26,7 @@ library RedemptionFailures {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
+        require(!request.transferToCoreVault, "core vault transfer cannot default");
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
         // check non-payment proof
@@ -62,6 +63,7 @@ library RedemptionFailures {
         Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
         require(request.rejectionTimestamp != 0, "only rejected redemption");
+        require(!request.transferToCoreVault, "core vault transfer cannot default");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds <= block.timestamp,
             "rejected redemption default too early");
@@ -89,6 +91,7 @@ library RedemptionFailures {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
+        require(!request.transferToCoreVault, "core vault transfer cannot default");
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
         // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof

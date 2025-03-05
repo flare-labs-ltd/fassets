@@ -7,7 +7,6 @@ import "./data/AssetManagerState.sol";
 import "./data/PaymentReference.sol";
 import "./Redemptions.sol";
 import "./RedemptionRequests.sol";
-import "./RedemptionRequests.sol";
 
 
 library CoreVault {
@@ -45,7 +44,7 @@ library CoreVault {
         require(msg.value >= transferFeeWei, "transfer fee payment too small");
         // create ordinary redemption request to core vault address
         // NOTE: there will be no redemption fee, so the agent needs enough free underlying for the
-        //  underlying transaction fee, otherwise they will go into full liquidation
+        // underlying transaction fee, otherwise they will go into full liquidation
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
             RedemptionRequests.AgentRedemptionData(_agent.vaultAddress(), transferredAMG),
             state.nativeAddress, state.underlyingAddressString, false, state.executorAddress, 0,
@@ -57,6 +56,17 @@ library CoreVault {
         // send event
         emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId,
             Conversion.convertAmgToUBA(_amountAMG));
+    }
+
+    function cancelTransferToCoreVault(
+        Agent.State storage _agent,
+        uint64 _requestId
+    )
+        internal
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_requestId);
+        Redemptions.reCreateRedemptionTicket(_agent, request);
+        Redemptions.deleteRedemptionRequest(_requestId);
     }
 
     function redeemFromCoreVault(

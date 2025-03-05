@@ -167,21 +167,8 @@ library Minting {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible
-        // to the created ticket. At the end, there will always be less than 1 lot of dust left.
         uint64 poolFeeAMG = Conversion.convertUBAToAmg(_poolFeeUBA);
-        uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
-        uint64 ticketValueAMG = _mintValueAMG;
-        if (newDustAMG >= settings.lotSizeAMG) {
-            uint64 remainder = newDustAMG % settings.lotSizeAMG;
-            ticketValueAMG += newDustAMG - remainder;
-            newDustAMG = remainder;
-        }
-        // create ticket and change dust
-        Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
-        Agents.createRedemptionTicket(_agent, ticketValueAMG);
-        Agents.changeDust(_agent, newDustAMG);
+        Agents.createNewMinting(_agent, _mintValueAMG + poolFeeAMG);
         // update agent balance with deposited amount (received amount is 0 in mintFromFreeUnderlying)
         UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
         // perform minting

@@ -167,6 +167,26 @@ library Agents {
         }
     }
 
+    function createNewMinting(
+        Agent.State storage _agent,
+        uint64 _valueAMG
+    )
+        internal
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // Add value with dust, then take the whole number of lots from it to create the new ticket,
+        // and the remainder as new dust. At the end, there will always be less than 1 lot of dust left.
+        uint64 valueWithDustAMG = _agent.dustAMG + _valueAMG;
+        uint64 newDustAMG = valueWithDustAMG % settings.lotSizeAMG;
+        uint64 ticketValueAMG = valueWithDustAMG - newDustAMG;
+        // create ticket and change dust
+        allocateMintedAssets(_agent, _valueAMG);
+        if (ticketValueAMG > 0) {
+            createRedemptionTicket(_agent, ticketValueAMG);
+        }
+        changeDust(_agent, newDustAMG);
+    }
+
     function createRedemptionTicket(
         Agent.State storage _agent,
         uint64 _ticketValueAMG
@@ -186,7 +206,7 @@ library Agents {
             // either queue is empty or the last ticket belongs to another agent - create new ticket
             uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
             uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
-        emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
+            emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
         }
     }
 
