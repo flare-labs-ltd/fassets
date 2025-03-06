@@ -139,6 +139,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         coreVaultTransferFeeBIPS: toBIPS("0.5%"),
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
+        coreVaultMinimumAmountLeftBIPS: 0,
     };
     return Object.assign(result, options ?? {});
 }

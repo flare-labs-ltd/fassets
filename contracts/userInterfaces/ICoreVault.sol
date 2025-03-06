@@ -13,6 +13,7 @@ interface ICoreVault {
         uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
         uint32 transferTimeExtensionSeconds;
+        uint16 minimumAmountLeftBIPS;
     }
 
     /**
@@ -85,6 +86,19 @@ interface ICoreVault {
     ) external view
         returns (uint256 _transferFeeNatWei);
 
+    /**
+     * Return the maximum amount that can be transfered and the minimum amount that
+     * has to remain on the agent vault's underlying address.
+     * @param _agentVault the agent vault address
+     * @return _maximumTransferUBA maximum amount that can be transferred
+     * @return _minimumLeftAmountUBA the minimum amount that has to remain on the agent vault's underlying address
+     *  after the transfer
+     */
+    function coreVaultMaximumTransfer(
+        address _agentVault
+    ) external view
+        returns (uint256 _maximumTransferUBA, uint256 _minimumLeftAmountUBA);
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings
 
@@ -107,6 +121,10 @@ interface ICoreVault {
 
     function setCoreVaultTransferTimeExtensionSeconds(
         uint256 _transferTimeExtensionSeconds
+    ) external;
+
+    function setCoreVaultMinimumAmountLeftBIPS(
+        uint256 _minimumAmountLeftBIPS
     ) external;
 
     /**

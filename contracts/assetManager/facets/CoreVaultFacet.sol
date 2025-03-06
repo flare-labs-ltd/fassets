@@ -22,7 +22,8 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         string memory _underlyingAddressString,
         uint256 _transferFeeBIPS,
         uint256 _redemptionFeeBIPS,
-        uint256 _transferTimeExtensionSeconds
+        uint256 _transferTimeExtensionSeconds,
+        uint256 _minimumAmountLeftBIPS
     )
         public
     {
@@ -39,6 +40,7 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
+        state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
     }
 
     /**
@@ -93,6 +95,18 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
     {
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         return CoreVault.getTransferFee(amountAMG);
+    }
+
+    function coreVaultMaximumTransfer(
+        address _agentVault
+    )
+        external view
+        returns (uint256 _maximumTransferUBA, uint256 _minimumLeftAmountUBA)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        (uint256 _maximumTransferAMG, uint256 _minimumLeftAmountAMG) = CoreVault.getMaximumTransferAMG(agent);
+        _maximumTransferUBA = Conversion.convertAmgToUBA(_maximumTransferAMG.toUint64());
+        _minimumLeftAmountUBA = Conversion.convertAmgToUBA(_minimumLeftAmountAMG.toUint64());
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -150,6 +164,16 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
     }
 
+    function setCoreVaultMinimumAmountLeftBIPS(
+        uint256 _minimumAmountLeftBIPS
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
+    }
+
     /**
      * Return the core vault settings.
      */
@@ -164,7 +188,8 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
             underlyingAddressString: state.underlyingAddressString,
             transferFeeBIPS: state.transferFeeBIPS,
             redemptionFeeBIPS: state.redemptionFeeBIPS,
-            transferTimeExtensionSeconds: state.transferTimeExtensionSeconds
+            transferTimeExtensionSeconds: state.transferTimeExtensionSeconds,
+            minimumAmountLeftBIPS: state.minimumAmountLeftBIPS
         });
     }
 }
