@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.7.6 <0.9;
+
+import "../../userInterfaces/ICoreVaultManager.sol";
+
+/**
+ * Core vault manager internal interface
+ */
+interface IICoreVaultManager is ICoreVaultManager {
+
+    event TransferRequested(
+        bytes32 indexed paymentReference,
+        string destinationAddress,
+        uint256 amount,
+        bool cancelable
+    );
+
+    event TransferRequestCanceled(
+        bytes32 indexed paymentReference,
+        string destinationAddress,
+        uint256 amount
+    );
+
+    /**
+     * Requests transfer from core vault to destination address.
+     * @param _destinationAddress destination address
+     * @param _amount amount
+     * @param _paymentReference payment reference
+     * @param _cancelable cancelable flag (if true, the request can be canceled)
+     * NOTE: destination address must be allowed otherwise the request will revert.
+     * NOTE: may only be called by the asset manager.
+     */
+    function requestTransferFromCoreVault(
+        string memory _destinationAddress,
+        uint256 _amount,
+        bytes32 _paymentReference,
+        bool _cancelable
+    )
+        external;
+
+    /**
+     * Cancels transfer request from core vault.
+     * @param _paymentReference payment reference
+     * NOTE: if the request does not exist (anymore), the call will revert.
+     * NOTE: may only be called by the asset manager.
+     */
+    function cancelTransferRequestFromCoreVault(
+        bytes32 _paymentReference
+    )
+        external;
+}
