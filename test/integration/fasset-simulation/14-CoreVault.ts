@@ -97,11 +97,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // all backing has been transferred from agent's underlying address
         assertWeb3Equal(await mockChain.getBalance(agent.underlyingAddress), minted.agentFeeUBA);
         assertWeb3Equal(await mockChain.getBalance(context.initSettings.coreVaultUnderlyingAddress), toBN(minted.mintedAmountUBA).add(minted.poolFeeUBA));
-        // redemption requests now go to core vault
-        const redemptionRes = await context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
-        expectEvent(redemptionRes, "CoreVaultRedemption", { valueUBA: context.lotSize().muln(10) });
-        expectEvent.notEmitted(redemptionRes, "RedemptionRequested");
-        expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+        // normal redemption requests are now impossible
+        await expectRevert(context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address }),
+            "redeem 0 lots");
     });
 
     it("should transfer partial backing to core vault", async () => {
@@ -127,11 +125,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent now has approx half backing left
         const expectRemainingMinted = remainingTicketAmount.add(toBN(minted.poolFeeUBA));
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: 0 }, "reset");
-        // redemption requests now partially go to core vault
+        // redemption requests are now partial
         const redemptionRes = await context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
-        expectEvent(redemptionRes, "CoreVaultRedemption", { valueUBA: transferAmount });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: remainingTicketAmount });
-        expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+        expectEvent(redemptionRes, "RedemptionRequestIncomplete");
     });
 
     it("modify core vault settings", async () => {

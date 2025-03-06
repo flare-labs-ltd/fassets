@@ -48,8 +48,6 @@ library RedemptionRequests {
         for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
             // redemption queue empty?
             if (AssetManagerState.get().redemptionQueue.firstTicketId == 0) {
-                // redeem the remaining amount from core vault
-                redeemedLots += CoreVault.redeemFromCoreVault(_redeemer, _lots, _redeemerUnderlyingAddress);
                 require(redeemedLots != 0, "redeem 0 lots");
                 break;
             }
