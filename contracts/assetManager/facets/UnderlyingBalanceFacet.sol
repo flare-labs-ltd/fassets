@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/UnderlyingBalance.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "./AssetManagerBase.sol";
 
 
-contract UnderlyingBalanceFacet is AssetManagerBase {
+contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     /**
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
      * which updates the underlying free balance value.
@@ -54,6 +55,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        nonReentrant
     {
         UnderlyingWithdrawalAnnouncements.confirmUnderlyingWithdrawal(_payment, _agentVault);
     }

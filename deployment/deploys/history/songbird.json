@@ -139,7 +139,8 @@
     "contractName": "CollateralReservationsFacet.sol",
     "addresses": [
       "0xe291983b9F6E6f0f28d8f0904a6FBA86c7b64C35",
-      "0xa7a04172BeBecC59ee219a162f043d37F370c452"
+      "0xa7a04172BeBecC59ee219a162f043d37F370c452",
+      "0x34FE1b0e3fEf64039Dce8045Bde76aE97F2eDD05"
     ]
   },
   {
@@ -147,7 +148,8 @@
     "contractName": "MintingFacet.sol",
     "addresses": [
       "0x2b3a2D8529C51Ca8555c3ac31C031413b5f7dD5E",
-      "0x02099c45ECe034BB1D7869cF5CBfD7676549BAC7"
+      "0x02099c45ECe034BB1D7869cF5CBfD7676549BAC7",
+      "0x2f53166Bd95ADe05b2739eEF50E21FF9DDd9b1a3"
     ]
   },
   {
@@ -156,7 +158,9 @@
     "addresses": [
       "0x2B6923C03615AeB8616c7C683D76BD43Ebd66B3f",
       "0x59B92f064bEd979A2F4E47a2A3ABCbCda91e2AE4",
-      "0x73bc711Ec8e157f1ADA60D694415ccbf8A560a05"
+      "0x73bc711Ec8e157f1ADA60D694415ccbf8A560a05",
+      "0xc5530AB630127b4F3c793fA3BE2fDc2A79Fc76b1",
+      "0xa5e9c2DC2f514B67e404CFfe383AEC3d6740de9E"
     ]
   },
   {
@@ -165,7 +169,8 @@
     "addresses": [
       "0x1D83f1B26025acF8bbE13E972337000bD9f3fA21",
       "0x9A56c590Ea5dA91708085fE0C3De8DBeC22b58A7",
-      "0xe7bBAbb802F51f5ce6750792E2B42630acbbe2d3"
+      "0xe7bBAbb802F51f5ce6750792E2B42630acbbe2d3",
+      "0x9E93672e3437C5d77e547DD3f5F604cA79eB69e2"
     ]
   },
   {
@@ -174,14 +179,17 @@
     "addresses": [
       "0x722Af818Dc84179795aEfeA83f23f1Fa9b1D148E",
       "0x769A7cd19944B02Cf2B1FE193ba69ddB51A1526B",
-      "0xD4C4C07ea09893ae9fe332A18923D5d2c82Df558"
+      "0xD4C4C07ea09893ae9fe332A18923D5d2c82Df558",
+      "0x1EF128E6D6fefc04dB3D84162b81388C78473C04"
     ]
   },
   {
     "name": "RedemptionHandshakeFacet",
     "contractName": "RedemptionHandshakeFacet.sol",
     "addresses": [
-      "0xb66D244256c75Ca794818b0d10A0a90eD4d518F4"
+      "0xb66D244256c75Ca794818b0d10A0a90eD4d518F4",
+      "0xE9cca5f6e70678E74860FdC238A6d865Fe24a332",
+      "0x1c59e81d3CBa35a342Bc25ec980D0D3737145Fef"
     ]
   },
   {
@@ -189,7 +197,8 @@
     "contractName": "LiquidationFacet.sol",
     "addresses": [
       "0xdf6446B037de041f5FF310E18D444da265C15902",
-      "0xad07eaE2ab1370F52C1209A372CBD57fE5a9F344"
+      "0xad07eaE2ab1370F52C1209A372CBD57fE5a9F344",
+      "0x2b92F2eCd021d2D0ee595761ebdD71b2C61aE65f"
     ]
   },
   {
@@ -198,7 +207,8 @@
     "addresses": [
       "0x8f679caE284FA5a7760c90eE55d10515f4B55FED",
       "0x84814d2860C0Ffc1B1C8B70B292e09e5c739d9B4",
-      "0xE803fc93EE3651CA347FCe7025217027820ADDB9"
+      "0xE803fc93EE3651CA347FCe7025217027820ADDB9",
+      "0xFc4a6C47CC69dE299bda055BE499553413CdA61F"
     ]
   },
   {
@@ -206,7 +216,8 @@
     "contractName": "UnderlyingBalanceFacet.sol",
     "addresses": [
       "0x3A09E2f4D39175Ff3158063C727e3c93FEe18666",
-      "0xF7d9CE6d4E021E6a92757fA13a4feC67f982506c"
+      "0xF7d9CE6d4E021E6a92757fA13a4feC67f982506c",
+      "0xF882F870Cc4D04af0ffE4390e9F0bdC27Edba2c1"
     ]
   },
   {

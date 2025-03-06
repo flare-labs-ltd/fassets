@@ -1,0 +1,22 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FBTC", "AssetManager_FDOGE", "AssetManager_FXRP"],
+    "facets": [
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionHandshakeFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

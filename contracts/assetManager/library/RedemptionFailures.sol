@@ -129,6 +129,8 @@ library RedemptionFailures {
         if (paidPoolWei > 0) {
             Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
         }
+        // should only be used for active redemptions
+        assert(_request.status == Redemption.Status.ACTIVE);
         // release remaining agent collateral
         Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
