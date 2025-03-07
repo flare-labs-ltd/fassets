@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "../interfaces/IICoreVaultManager.sol";
 import "../../utils/lib/MathUtils.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../userInterfaces/ICoreVault.sol";
@@ -17,9 +18,8 @@ library CoreVault {
 
     struct State {
         // settings
+        IICoreVaultManager coreVaultManager;
         address payable nativeAddress;
-        address payable executorAddress;
-        string underlyingAddressString;
         uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
         uint32 transferTimeExtensionSeconds;
@@ -31,11 +31,19 @@ library CoreVault {
         uint64 mintedAMG;
     }
 
+    // core vault may not be enabled on all chains
+    modifier onlyEnabled {
+        State storage state = getState();
+        require(address(state.coreVaultManager) != address(0), "core vault not enabled");
+        _;
+    }
+
     function transferToCoreVault(
         Agent.State storage _agent,
         uint64 _amountAMG
     )
         internal
+        onlyEnabled
     {
         State storage state = getState();
         address agentVault = _agent.vaultAddress();
@@ -51,11 +59,12 @@ library CoreVault {
         (uint256 maximumTransferAMG,) = getMaximumTransferAMG(_agent);
         require(_amountAMG <= maximumTransferAMG, "too little minting left after transfer");
         // create ordinary redemption request to core vault address
+        string memory underlyingAddress = state.coreVaultManager.coreVaultAddress();
         // NOTE: there will be no redemption fee, so the agent needs enough free underlying for the
         // underlying transaction fee, otherwise they will go into full liquidation
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
             RedemptionRequests.AgentRedemptionData(_agent.vaultAddress(), transferredAMG),
-            state.nativeAddress, state.underlyingAddressString, false, state.executorAddress, 0,
+            state.nativeAddress, underlyingAddress, false, payable(address(0)), 0,
             state.transferTimeExtensionSeconds, true);
         // set the active request
         _agent.activeCoreVaultTransfer = redemptionRequestId;
@@ -72,6 +81,7 @@ library CoreVault {
         Agent.State storage _agent
     )
         internal
+        onlyEnabled
     {
         uint64 requestId = _agent.activeCoreVaultTransfer;
         require(requestId != 0, "no active transfer");
@@ -86,6 +96,7 @@ library CoreVault {
         string memory _redeemerUnderlyingAddress
     )
         internal
+        onlyEnabled
         returns (uint64 _redeemedLots)
     {
         State storage state = getState();
@@ -99,6 +110,20 @@ library CoreVault {
         bytes32 paymentReference = PaymentReference.coreVaultRedemption(requestId);
         emit ICoreVault.CoreVaultRedemption(_redeemer, requestId, _redeemerUnderlyingAddress,
             redeemedUBA, feeUBA, paymentReference);
+    }
+
+    function confirmCoreVaultTransferPayment(
+        IPayment.Proof calldata _payment,
+        address _agentVault,
+        uint64 _redemptionRequestId
+    )
+        internal
+        onlyEnabled
+    {
+        State storage state = getState();
+        state.coreVaultManager.confirmPayment(_payment);
+        uint256 receivedAmount = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
+        emit ICoreVault.CoreVaultTransferSuccessful(_agentVault, _redemptionRequestId, receivedAmount);
     }
 
     function getTransferFee(uint64 _amountAMG)

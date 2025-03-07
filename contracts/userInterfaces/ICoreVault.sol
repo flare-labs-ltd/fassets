@@ -7,9 +7,8 @@ pragma solidity >=0.7.6 <0.9;
  */
 interface ICoreVault {
     struct CoreVaultSettings {
+        address coreVaultManager;
         address payable nativeAddress;
-        address payable executorAddress;
-        string underlyingAddressString;
         uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
         uint32 transferTimeExtensionSeconds;
@@ -102,13 +101,12 @@ interface ICoreVault {
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings
 
-    function setCoreVaultAddress(
-        address payable _nativeAddress,
-        string memory _underlyingAddressString
+    function setCoreVaultManager(
+        address _coreVaultManager
     ) external;
 
-    function setCoreVaultExecutorAddress(
-        address payable _executorAddress
+    function setCoreVaultNativeAddress(
+        address payable _nativeAddress
     ) external;
 
     function setCoreVaultTransferFeeBIPS(

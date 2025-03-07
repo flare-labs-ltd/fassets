@@ -250,8 +250,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // add CoreVault settings
             const cbSettings = await assetManager.getCoreVaultSettings();
             resInitSettings.coreVaultNativeAddress = cbSettings.nativeAddress;
-            resInitSettings.coreVaultExecutorAddress = cbSettings.executorAddress;
-            resInitSettings.coreVaultUnderlyingAddress = cbSettings.underlyingAddressString;
             resInitSettings.coreVaultTransferFeeBIPS = cbSettings.transferFeeBIPS;
             resInitSettings.coreVaultRedemptionFeeBIPS = cbSettings.redemptionFeeBIPS;
             resInitSettings.coreVaultTransferTimeExtensionSeconds = cbSettings.transferTimeExtensionSeconds;

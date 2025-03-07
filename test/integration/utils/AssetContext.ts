@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
-import { AgentOwnerRegistryEvents, AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
+import { AgentOwnerRegistryEvents, AssetManagerEvents, CoreVaultManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { Prices } from "../../../lib/state/Prices";
 import { TokenPriceReader } from "../../../lib/state/TokenPrice";
@@ -12,11 +12,11 @@ import { IFlareDataConnectorClient } from "../../../lib/underlying-chain/interfa
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AgentOwnerRegistryInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { createTestCollaterals, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
+import { assignCoreVaultManager, createTestCollaterals, createTestSettings, TEST_CORE_VAULT_CUSTODIAN, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -28,6 +28,7 @@ export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
     testSettings?: TestSettingOptions;
+    coreVaultUnderlyingAddress?: string;    // set address to enable core vault functionality
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
@@ -46,6 +47,7 @@ export class AssetContext implements IAssetContext {
         public attestationProvider: AttestationHelper,
         public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public agentOwnerRegistry: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>,
+        public coreVaultManager: ContractWithEvents<CoreVaultManagerInstance, CoreVaultManagerEvents> | undefined,
         public assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
@@ -278,9 +280,11 @@ export class AssetContext implements IAssetContext {
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol,
             { governanceSettings: common.governanceSettings.address });
+        // create and assign core vault
+        const coreVaultManager = options.coreVaultUnderlyingAddress ? await assignCoreVaultManager(assetManager, common.addressUpdater, options.coreVaultUnderlyingAddress) : undefined;
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, flareDataConnectorClient, attestationProvider,
-            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);
+            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, coreVaultManager, assetManager, fAsset, settings, collaterals);
     }
 }
 

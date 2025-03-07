@@ -123,25 +123,21 @@ library RedemptionFailures {
     )
         internal
     {
+        // should only be used for active redemptions and not for core vault transfers (should all be checked before)
+        assert(_request.status == Redemption.Status.ACTIVE);
+        assert(!_request.transferToCoreVault);
         // pay redeemer in one or both collaterals
         (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request);
         Agents.payoutFromVault(_agent, _request.redeemer, paidC1Wei);
         if (paidPoolWei > 0) {
             Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
         }
-        // should only be used for active redemptions
-        assert(_request.status == Redemption.Status.ACTIVE);
         // release remaining agent collateral
         Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
         emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
             _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
-            if (_request.transferToCoreVault) {
-                address vaultToken = address(Agents.getVaultCollateralToken(_agent));
-                emit ICoreVault.CoreVaultTransferDefault(_request.agentVault, _redemptionRequestId,
-                    _request.underlyingValueUBA, vaultToken, paidC1Wei, paidPoolWei);
-            }
     }
 
     // payment calculation: pay redemptionDefaultFactorVaultCollateralBIPS (>= 1) from agent vault collateral and

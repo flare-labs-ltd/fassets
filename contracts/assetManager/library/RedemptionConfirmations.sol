@@ -9,6 +9,7 @@ import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
 import "./Liquidation.sol";
 import "./UnderlyingBalance.sol";
+import "./CoreVault.sol";
 
 
 library RedemptionConfirmations {
@@ -51,8 +52,7 @@ library RedemptionConfirmations {
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
                 if (request.transferToCoreVault) {
-                    emit ICoreVault.CoreVaultTransferSuccessful(request.agentVault, _redemptionRequestId,
-                        SafeCast.toUint256(_payment.data.responseBody.receivedAmount));
+                    CoreVault.confirmCoreVaultTransferPayment(_payment, request.agentVault, _redemptionRequestId);
                 }
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,

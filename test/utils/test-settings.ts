@@ -3,7 +3,7 @@ import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../../lib/utils/helpers";
+import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance,
@@ -18,11 +18,12 @@ import {
     WNatInstance,
     IFdcVerificationInstance,
     RelayMockInstance,
-    FdcHubMockInstance
+    FdcHubMockInstance,
+    CoreVaultManagerInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
-import { AssetManagerInitSettings } from "./fasset/CreateAssetManager";
+import { AssetManagerInitSettings, waitForTimelock } from "./fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
 import { setDefaultVPContract } from "./token-test-helpers";
 
@@ -43,6 +44,10 @@ const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
+const CoreVaultManager = artifacts.require('CoreVaultManager');
+const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
+
+export const TEST_CORE_VAULT_CUSTODIAN = "CORE_VAULT_CUSTODIAN";
 
 export interface TestSettingsCommonContracts {
     governanceSettings: GovernanceSettingsInstance;
@@ -134,8 +139,6 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         transferFeeClaimEpochDurationSeconds: 1 * WEEKS,
         transferFeeClaimMaxUnexpiredEpochs: 12,
         coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts [9]
-        coreVaultExecutorAddress: "0x6c365935CA8710200C7595F0a72EB6023A7706Cd",   // one of test accounts [10]
-        coreVaultUnderlyingAddress: "CORE_VAULT_UNDERLYING",
         coreVaultTransferFeeBIPS: toBIPS("0.5%"),
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
@@ -246,8 +249,8 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const ftsoRegistry = await FtsoRegistryMock.new();
     // add some addresses to address updater
     await addressUpdater.addOrUpdateContractNamesAndAddresses(
-        ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FtsoRegistry", "WNat"],
-        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, ftsoRegistry.address, wNat.address],
+        ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FdcVerification", "FtsoRegistry", "WNat"],
+        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, ftsoRegistry.address, wNat.address],
         { from: governance });
     // create price reader
     const priceReader = await PriceReader.new(addressUpdater.address, ftsoRegistry.address);
@@ -267,6 +270,21 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
         priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
+}
+
+export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, coreVaultUnderlyingAddress: string, coreVaultCustodian?: string, initialNonce: BNish = 1)
+{
+    const coreVaultManagerImpl = await CoreVaultManager.new();
+    const settings = await assetManager.getSettings();
+    const governanceSettings = await assetManager.governanceSettings();
+    const governance = await assetManager.governance();
+    const coreVaultCustodianAddress = coreVaultCustodian ?? "TEST_CORE_VAULT_CUSTODIAN";
+    const coreVaultManagerProxy = await CoreVaultManagerProxy.new(coreVaultManagerImpl.address, governanceSettings, governance, addressUpdater.address,
+        assetManager.address, settings.chainId, coreVaultCustodianAddress, coreVaultUnderlyingAddress, initialNonce);
+    const coreVaultManager = await CoreVaultManager.at(coreVaultManagerProxy.address);
+    await addressUpdater.updateContractAddresses([coreVaultManager.address], { from: governance });
+    await waitForTimelock(assetManager.setCoreVaultManager(coreVaultManager.address, { from: governance }), assetManager, governance);
+    return coreVaultManager;
 }
 
 export interface CreateTestAgentDeps {
