@@ -40,12 +40,12 @@ interface IICoreVaultManager is ICoreVaultManager {
 
     /**
      * Cancels transfer request from core vault.
-     * @param _paymentReference payment reference
+     * @param _destinationAddress destination address
      * NOTE: if the request does not exist (anymore), the call will revert.
      * NOTE: may only be called by the asset manager.
      */
     function cancelTransferRequestFromCoreVault(
-        bytes32 _paymentReference
+        string memory _destinationAddress
     )
         external;
 }

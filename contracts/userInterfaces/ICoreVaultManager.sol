@@ -30,21 +30,30 @@ interface ICoreVaultManager {
     );
 
     event PaymentInstructions(
+        uint256 indexed sequence,
         string account,
         string destination,
         uint256 amount,
-        uint256 sequence,
         bytes32 paymentReference
     );
 
     event EscrowInstructions(
+        uint256 indexed sequence,
         bytes32 indexed preimageHash,
         string account,
         string destination,
         uint256 amount,
-        uint256 sequence,
         uint256 cancelAfterTs
     );
+
+    event EscrowFinished(
+        bytes32 indexed preimageHash,
+        uint256 amount
+    );
+
+    event Paused();
+
+    event Unpaused();
 
     /**
      * Confirms payment to core vault address (increases available funds).
@@ -53,10 +62,24 @@ interface ICoreVaultManager {
     function confirmPayment(IPayment.Proof calldata _proof) external;
 
     /**
+     * Pauses the contract. New requests and instructions cannot be triggered.
+     * NOTE: may only be called by the governance or emergency pause senders.
+     */
+    function pause() external;
+
+    /**
      * Triggers instructions - payment and escrow.
+     * @param _createEscrows flag indicating if escrows should be created.
+     * NOTE: cannot be called if the contract is paused.
      * NOTE: may only be called by the triggering accounts.
      */
-    function triggerInstructions() external;
+    function triggerInstructions(bool _createEscrows) external;
+
+    /**
+     * Indicates if the contract is paused. New transfer requests and instructions cannot be triggered.
+     * @return True if paused, false otherwise.
+     */
+    function paused() external view returns (bool);
 
     /**
      * Gets the triggering accounts.
@@ -88,6 +111,12 @@ interface ICoreVaultManager {
      */
     function custodianAddress() external view returns (string memory);
 
+
+    /**
+     * Returns next unprocessed escrow index.
+     */
+    function nextUnprocessedEscrowIndex() external view returns (uint256);
+
     /**
      * Gets unprocessed escrows.
      * @return List of unprocessed escrows.
@@ -113,6 +142,11 @@ interface ICoreVaultManager {
      * @return Escrow.
      */
     function getEscrowByPreimageHash(bytes32 _preimageHash) external view returns (Escrow memory);
+
+    /**
+     * Returns next unused preimage hash index.
+     */
+    function nextUnusedPreimageHashIndex() external view returns (uint256);
 
     /**
      * Gets unused preimage hashes.
@@ -144,4 +178,10 @@ interface ICoreVaultManager {
      * @return List of transfer cancelable requests.
      */
     function getCancelableTransferRequests() external view returns (TransferRequest[] memory);
+
+    /**
+     * Gets the list of emergency pause senders.
+     * @return List of emergency pause senders.
+     */
+    function getEmergencyPauseSenders() external view returns (address[] memory);
 }

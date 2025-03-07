@@ -1,32 +1,51 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../governance/implementation/Governed.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../interfaces/IICoreVaultManager.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 
 
 //solhint-disable-next-line max-states-count
-contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
+contract CoreVaultManager is
+    UUPSUpgradeable,
+    GovernedProxyImplementation,
+    AddressUpdatable,
+    IICoreVaultManager,
+    IERC165
+{
+    using EnumerableSet for EnumerableSet.AddressSet;
 
-    address public immutable assetManager;
-    bytes32 public immutable chainId;
-    bytes32 public immutable coreVaultAddressHash;
-
+    /// asset manager address
+    address public assetManager;
+    /// chain id
+    bytes32 public chainId;
+    /// custodian address
     string public custodianAddress;
+    /// core vault address hash
+    bytes32 public coreVaultAddressHash;
+    /// core vault address
     string public coreVaultAddress;
-    uint256 public sequenceNumber;
+    /// next sequence number for core vault instructions
+    uint256 public nextSequenceNumber;
 
+    /// FDC verification contract
     IFdcVerification public fdcVerification;
+    /// confirmed payments
     mapping(bytes32 transactionId => bool) public confirmedPayments;
 
     bytes32[] private preimageHashes;
     Escrow[] private escrows;
     mapping(bytes32 preimageHash => uint256 escrowIndex) private preimageHashToEscrowIndex;
 
-    uint256 public nextPreimageHashIndex;
-    uint256 public nextEscrowExpiryIndex;
+    /// index of a next preimage hash to be used for escrow
+    uint256 public nextUnusedPreimageHashIndex;
+    /// index of a next unprocessed escrow
+    uint256 public nextUnprocessedEscrowIndex;
 
     uint256 private nextTransferRequestId;
     uint256[] private nonCancelableTransferRequests;
@@ -34,16 +53,19 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
     mapping(uint256 transferRequestId => TransferRequest) private transferRequestById;
 
     string[] private allowedDestinationAddresses;
-    mapping(string allowedDestinationAddress => uint256) public allowedDestinationAddressIndex;
-    address[] private triggeringAccounts;
-    mapping(address triggeringAccount => uint256) private triggeringAccountIndex;
+    mapping(string allowedDestinationAddress => uint256) private allowedDestinationAddressIndex;
+    EnumerableSet.AddressSet private triggeringAccounts;
+    EnumerableSet.AddressSet private emergencyPauseSenders;
 
-    uint256 public escrowEndTimeSeconds; // h:m:s in a day (UTC)
+    /// escrow end time during a day in seconds (UTC time)
+    uint256 public escrowEndTimeSeconds;
+    /// amount to be escrowed
     uint128 public escrowAmount;
-    uint128 public nonEscrowingFunds;
-
+    /// minimal amount left in the core vault after escrowing
+    uint128 public minimalAmount;
+    /// available funds in the core vault
     uint256 public availableFunds;
-
+    /// paused state
     bool public paused;
 
     modifier onlyAssetManager() {
@@ -56,7 +78,17 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
         _;
     }
 
-    constructor(
+    constructor()
+        GovernedProxyImplementation()
+        AddressUpdatable(address(0))
+    {
+    }
+
+    /**
+     * Proxyable initialization method. Can be called only once, from the proxy constructor
+     * (single call is assured by GovernedBase.initialise).
+     */
+    function initialize(
         IGovernanceSettings _governanceSettings,
         address _initialGovernance,
         address _addressUpdater,
@@ -64,20 +96,24 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
         bytes32 _chainId,
         string memory _custodianAddress,
         string memory _coreVaultAddress,
-        uint256 _initialSequenceNumber
+        uint256 _nextSequenceNumber
     )
-        Governed(_governanceSettings, _initialGovernance) AddressUpdatable(_addressUpdater)
+        external
     {
         require(_assetManager != address(0), "asset manager cannot be zero");
         require(_chainId != bytes32(0), "chain id cannot be zero");
         require(bytes(_custodianAddress).length > 0, "custodian address cannot be empty");
         require(bytes(_coreVaultAddress).length > 0, "core vault address cannot be empty");
+
+        GovernedBase.initialise(_governanceSettings, _initialGovernance);
+        AddressUpdatable.setAddressUpdaterValue(_addressUpdater);
+
         assetManager = _assetManager;
         chainId = _chainId;
         custodianAddress = _custodianAddress;
         coreVaultAddressHash = keccak256(bytes(_coreVaultAddress));
         coreVaultAddress = _coreVaultAddress;
-        sequenceNumber = _initialSequenceNumber;
+        nextSequenceNumber = _nextSequenceNumber;
     }
 
     /**
@@ -143,60 +179,67 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
      * @inheritdoc IICoreVaultManager
      */
     function cancelTransferRequestFromCoreVault(
-        bytes32 _paymentReference
+        string memory _destinationAddress
     )
         external
         onlyAssetManager
     {
+        bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
         uint256 index = 0;
         while (index < cancelableTransferRequests.length) {
             TransferRequest storage req = transferRequestById[cancelableTransferRequests[index]];
-            if (req.paymentReference == _paymentReference) {
+            if (keccak256(bytes(req.destinationAddress)) == destinationAddressHash) {
                 break;
             }
             index++;
         }
         require (index < cancelableTransferRequests.length, "transfer request not found");
-        TransferRequest storage request = transferRequestById[cancelableTransferRequests[index]];
-        emit TransferRequestCanceled(_paymentReference, request.destinationAddress, request.amount);
+        uint256 transferRequestId = cancelableTransferRequests[index];
+        TransferRequest storage request = transferRequestById[transferRequestId];
+        emit TransferRequestCanceled(request.paymentReference, _destinationAddress, request.amount);
 
         // remove the transfer request - keep the order
         while (index < cancelableTransferRequests.length - 1) { // length > 0
             cancelableTransferRequests[index] = cancelableTransferRequests[++index]; // shift left
         }
         cancelableTransferRequests.pop(); // remove the last element
+        delete transferRequestById[transferRequestId];
     }
 
-    function triggerInstructions() external notPaused {
-        require(triggeringAccountIndex[msg.sender] != 0, "not a triggering account");
-        uint256 nextEscrowExpiryIndexTmp = nextEscrowExpiryIndex;
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function triggerInstructions(bool _createEscrows) external notPaused {
+        require(triggeringAccounts.contains(msg.sender), "not a triggering account");
+        uint256 nextUnprocessedEscrowIndexTmp = nextUnprocessedEscrowIndex;
         uint256 availableFundsTmp = availableFunds;
         // process all expired escrows
-        while (nextEscrowExpiryIndexTmp < escrows.length &&
-            escrows[nextEscrowExpiryIndexTmp].expiryTs <= block.timestamp)
+        while (nextUnprocessedEscrowIndexTmp < escrows.length &&
+            escrows[nextUnprocessedEscrowIndexTmp].expiryTs <= block.timestamp)
         {
-            if (!escrows[nextEscrowExpiryIndexTmp].finished) {
+            if (!escrows[nextUnprocessedEscrowIndexTmp].finished) {
                 // if the escrow is not finished, add the amount to the available funds
-                availableFundsTmp += escrows[nextEscrowExpiryIndexTmp].amount;
+                availableFundsTmp += escrows[nextUnprocessedEscrowIndexTmp].amount;
             }
-            nextEscrowExpiryIndexTmp++;
+            nextUnprocessedEscrowIndexTmp++;
         }
         // update the state
-        nextEscrowExpiryIndex = nextEscrowExpiryIndexTmp;
+        nextUnprocessedEscrowIndex = nextUnprocessedEscrowIndexTmp;
 
-        uint256 sequenceNumberTmp = sequenceNumber;
+        uint256 sequenceNumberTmp = nextSequenceNumber;
         // process cancelable transfer requests
         uint256 length = cancelableTransferRequests.length;
         uint256 index = 0;
         while (index < length) {
-            if (availableFundsTmp >= transferRequestById[cancelableTransferRequests[index]].amount) {
-                TransferRequest memory req = transferRequestById[cancelableTransferRequests[index]];
+            uint256 transferRequestId = cancelableTransferRequests[index];
+            if (availableFundsTmp >= transferRequestById[transferRequestId].amount) {
+                TransferRequest memory req = transferRequestById[transferRequestId];
                 availableFundsTmp -= req.amount;
                 emit PaymentInstructions(
+                    sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
                     req.amount,
-                    sequenceNumberTmp++,
                     req.paymentReference
                 );
                 // remove the transfer request - keep the order
@@ -204,6 +247,7 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
                     cancelableTransferRequests[i] = cancelableTransferRequests[i + 1]; // shift left
                 }
                 cancelableTransferRequests.pop(); // remove the last element
+                delete transferRequestById[transferRequestId];
                 length--;
             } else {
                 index++;
@@ -214,14 +258,15 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
         length = nonCancelableTransferRequests.length;
         index = 0;
         while (index < length) {
-            if (availableFundsTmp >= transferRequestById[nonCancelableTransferRequests[index]].amount) {
-                TransferRequest memory req = transferRequestById[nonCancelableTransferRequests[index]];
+            uint256 transferRequestId = nonCancelableTransferRequests[index];
+            if (availableFundsTmp >= transferRequestById[transferRequestId].amount) {
+                TransferRequest memory req = transferRequestById[transferRequestId];
                 availableFundsTmp -= req.amount;
                 emit PaymentInstructions(
+                    sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
                     req.amount,
-                    sequenceNumberTmp++,
                     req.paymentReference
                 );
                 // remove the transfer request - keep the order
@@ -229,21 +274,29 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
                     nonCancelableTransferRequests[i] = nonCancelableTransferRequests[i + 1]; // shift left
                 }
                 nonCancelableTransferRequests.pop(); // remove the last element
+                delete transferRequestById[transferRequestId];
                 length--;
             } else {
                 index++;
             }
         }
 
-        // create escrows
-        uint256 nextPreimageHashIndexTmp = nextPreimageHashIndex;
         uint128 escrowAmountTmp = escrowAmount;
-        uint256 minFundsToTriggerEscrow = nonEscrowingFunds + escrowAmountTmp;
-        if (availableFundsTmp >= minFundsToTriggerEscrow && nextPreimageHashIndexTmp < preimageHashes.length) {
+        if (!_createEscrows || escrowAmountTmp == 0) {
+            // update the state
+            availableFunds = availableFundsTmp;
+            nextSequenceNumber = sequenceNumberTmp;
+            return;
+        }
+
+        // create escrows
+        uint256 preimageHashIndexTmp = nextUnusedPreimageHashIndex;
+        uint256 minFundsToTriggerEscrow = minimalAmount + escrowAmountTmp;
+        if (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < preimageHashes.length) {
             uint64 escrowEndTimestamp = _getNextEscrowEndTimestamp();
-            while (availableFundsTmp >= minFundsToTriggerEscrow && nextPreimageHashIndexTmp < preimageHashes.length) {
+            while (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < preimageHashes.length) {
                 availableFundsTmp -= escrowAmountTmp;
-                bytes32 preimageHash = preimageHashes[nextPreimageHashIndexTmp++];
+                bytes32 preimageHash = preimageHashes[preimageHashIndexTmp++];
                 Escrow memory escrow = Escrow({
                     preimageHash: preimageHash,
                     amount: escrowAmountTmp,
@@ -253,92 +306,138 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
                 escrows.push(escrow);
                 preimageHashToEscrowIndex[preimageHash] = escrows.length;
                 emit EscrowInstructions(
+                    sequenceNumberTmp++,
                     preimageHash,
                     coreVaultAddress,
                     custodianAddress,
                     escrowAmountTmp,
-                    sequenceNumberTmp++,
                     escrowEndTimestamp
                 );
                 // next escrow end timestamp
                 escrowEndTimestamp += 1 days;
             }
-            nextPreimageHashIndex = nextPreimageHashIndexTmp;
+            nextUnusedPreimageHashIndex = preimageHashIndexTmp;
         }
 
         // update the state
         availableFunds = availableFundsTmp;
-        sequenceNumber = sequenceNumberTmp;
+        nextSequenceNumber = sequenceNumberTmp;
     }
 
     /**
-     * Sets the allowed destination addresses.
-     * @param _allowedDestinationAddresses List of allowed destination addresses.
+     * Adds allowed destination addresses.
+     * @param _allowedDestinationAddresses List of allowed destination addresses to add.
      * NOTE: may only be called by the governance.
      */
-    function setAllowedDestinationAddresses(
+    function addAllowedDestinationAddresses(
         string[] calldata _allowedDestinationAddresses
     )
         external
         onlyGovernance
     {
-        // clear the existing list
-        for (uint256 i = allowedDestinationAddresses.length; i > 0; i--) {
-            delete allowedDestinationAddressIndex[allowedDestinationAddresses[i - 1]];
-            allowedDestinationAddresses.pop();
-        }
-        // add the new list
         for (uint256 i = 0; i < _allowedDestinationAddresses.length; i++) {
             require(bytes(_allowedDestinationAddresses[i]).length > 0, "destination address cannot be empty");
+            if (allowedDestinationAddressIndex[_allowedDestinationAddresses[i]] != 0) {
+                continue;
+            }
             allowedDestinationAddresses.push(_allowedDestinationAddresses[i]);
-            allowedDestinationAddressIndex[_allowedDestinationAddresses[i]] = i + 1;
+            allowedDestinationAddressIndex[_allowedDestinationAddresses[i]] = allowedDestinationAddresses.length;
         }
     }
 
     /**
-     * Sets the triggering accounts.
-     * @param _triggeringAccounts List of triggering accounts.
+     * Removes allowed destination addresses.
+     * @param _allowedDestinationAddresses List of allowed destination addresses to remove.
      * NOTE: may only be called by the governance.
      */
-    function setTriggeringAccounts(
+    function removeAllowedDestinationAddresses(
+        string[] calldata _allowedDestinationAddresses
+    )
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _allowedDestinationAddresses.length; i++) {
+            uint256 index = allowedDestinationAddressIndex[_allowedDestinationAddresses[i]];
+            if (index == 0) {
+                continue;
+            }
+            uint256 length = allowedDestinationAddresses.length;
+            if (index < length) {
+                string memory addressToMove = allowedDestinationAddresses[length - 1];
+                allowedDestinationAddresses[index - 1] = addressToMove;
+                allowedDestinationAddressIndex[addressToMove] = index;
+            }
+            allowedDestinationAddresses.pop();
+            delete allowedDestinationAddressIndex[_allowedDestinationAddresses[i]];
+        }
+    }
+
+    /**
+     * Adds the triggering accounts.
+     * @param _triggeringAccounts List of triggering accounts to add.
+     * NOTE: may only be called by the governance.
+     */
+    function addTriggeringAccounts(
         address[] calldata _triggeringAccounts
     )
         external
         onlyGovernance
     {
-        // clear the existing list
-        for (uint256 i = triggeringAccounts.length; i > 0; i--) {
-            delete triggeringAccountIndex[triggeringAccounts[i - 1]];
-            triggeringAccounts.pop();
-        }
-        // add the new list
         for (uint256 i = 0; i < _triggeringAccounts.length; i++) {
-            require(_triggeringAccounts[i] != address(0), "triggering account cannot be zero");
-            triggeringAccounts.push(_triggeringAccounts[i]);
-            triggeringAccountIndex[_triggeringAccounts[i]] = i + 1;
+            triggeringAccounts.add(_triggeringAccounts[i]);
         }
+    }
+
+    /**
+     * Removes the triggering accounts.
+     * @param _triggeringAccounts List of triggering accounts to remove.
+     * NOTE: may only be called by the governance.
+     */
+    function removeTriggeringAccounts(
+        address[] calldata _triggeringAccounts
+    )
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _triggeringAccounts.length; i++) {
+            triggeringAccounts.remove(_triggeringAccounts[i]);
+        }
+    }
+
+    /**
+     * Updates the custodian address.
+     * @param _custodianAddress Custodian address.
+     * NOTE: may only be called by the governance.
+     */
+    function updateCustodianAddress(
+        string calldata _custodianAddress
+    )
+        external
+        onlyGovernance
+    {
+        require(bytes(_custodianAddress).length > 0, "custodian address cannot be empty");
+        custodianAddress = _custodianAddress;
     }
 
     /**
      * Updates the settings.
      * @param _escrowEndTimeSeconds Escrow end time in seconds.
-     * @param _escrowAmount Escrow amount.
-     * @param _nonEscrowingFunds Non-escrowing funds.
+     * @param _escrowAmount Escrow amount (setting to 0 will disable escrows).
+     * @param _minimalAmount Minimal amount left in the core vault after escrow.
      * NOTE: may only be called by the governance.
      */
     function updateSettings(
         uint256 _escrowEndTimeSeconds,
         uint128 _escrowAmount,
-        uint128 _nonEscrowingFunds
+        uint128 _minimalAmount
     )
         external
         onlyGovernance
     {
         require(_escrowEndTimeSeconds < 1 days, "escrow end time must be less than a day");
-        require(_escrowAmount > 0, "escrow amount cannot be zero");
         escrowEndTimeSeconds = _escrowEndTimeSeconds;
         escrowAmount = _escrowAmount;
-        nonEscrowingFunds = _nonEscrowingFunds;
+        minimalAmount = _minimalAmount;
     }
 
     /**
@@ -369,7 +468,7 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
         external
         onlyImmediateGovernance
     {
-        for (uint256 i = nextPreimageHashIndex; i < preimageHashes.length; i++) {
+        for (uint256 i = preimageHashes.length; i > nextUnusedPreimageHashIndex; i--) {
             preimageHashes.pop();
         }
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
@@ -394,23 +493,58 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
             require(escrowIndex != 0, "escrow not found");
             Escrow storage escrow = escrows[escrowIndex - 1];
             escrow.finished = true;
+            if (escrowIndex < nextUnprocessedEscrowIndex) {
+                availableFunds -= escrow.amount;
+            }
+            emit EscrowFinished(_preimageHashes[i], escrow.amount);
         }
     }
 
     /**
-     * Pauses the contract. New requests and instructions cannot be triggered.
+     * Adds emergency pause senders.
+     * @param _addresses List of emergency pause senders to add.
      * NOTE: may only be called by the governance.
      */
-    function pause() external onlyImmediateGovernance {
-        paused = true;
+    function addEmergencyPauseSenders(address[] calldata _addresses)
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            emergencyPauseSenders.add(_addresses[i]);
+        }
     }
 
     /**
-     * Unpauses the contract.
+     * Removes emergency pause senders.
+     * @param _addresses List of emergency pause senders to remove.
+     * NOTE: may only be called by the governance.
+     */
+    function removeEmergencyPauseSenders(address[] calldata _addresses)
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            emergencyPauseSenders.remove(_addresses[i]);
+        }
+    }
+
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function pause() external {
+        require(msg.sender == governance() || emergencyPauseSenders.contains(msg.sender),
+            "only governance or emergency pause senders");
+        paused = true;
+        emit Paused();
+    }
+
+    /**
+     * Unpauses the contract. New transfer requests and instructions can be triggered.
      * NOTE: may only be called by the governance.
      */
     function unpause() external onlyImmediateGovernance {
         paused = false;
+        emit Unpaused();
     }
 
     /**
@@ -424,17 +558,17 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
      * @inheritdoc ICoreVaultManager
      */
     function getTriggeringAccounts() external view returns (address[] memory) {
-        return triggeringAccounts;
+        return triggeringAccounts.values();
     }
 
     /**
      * @inheritdoc ICoreVaultManager
      */
     function getUnprocessedEscrows() external view returns (Escrow[] memory _unprocessedEscrows) {
-        uint256 length = escrows.length - nextEscrowExpiryIndex;
+        uint256 length = escrows.length - nextUnprocessedEscrowIndex;
         _unprocessedEscrows = new Escrow[](length);
         for (uint256 i = 0; i < length; i++) {
-            _unprocessedEscrows[i] = escrows[nextEscrowExpiryIndex + i];
+            _unprocessedEscrows[i] = escrows[nextUnprocessedEscrowIndex + i];
         }
     }
 
@@ -465,10 +599,10 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
      * @inheritdoc ICoreVaultManager
      */
     function getUnusedPreimageHashes() external view returns (bytes32[] memory) {
-        uint256 length = preimageHashes.length - nextPreimageHashIndex;
+        uint256 length = preimageHashes.length - nextUnusedPreimageHashIndex;
         bytes32[] memory unusedPreimageHashes = new bytes32[](length);
         for (uint256 i = 0; i < length; i++) {
-            unusedPreimageHashes[i] = preimageHashes[nextPreimageHashIndex + i];
+            unusedPreimageHashes[i] = preimageHashes[nextUnusedPreimageHashIndex + i];
         }
         return unusedPreimageHashes;
     }
@@ -508,6 +642,59 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
     }
 
     /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function getEmergencyPauseSenders() external view returns (address[] memory) {
+        return emergencyPauseSenders.values();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // ERC 165
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IIAddressUpdatable).interfaceId
+            || _interfaceId == type(IICoreVaultManager).interfaceId;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // UUPS Proxy
+
+    /**
+     * See UUPSUpgradeable.upgradeTo
+     */
+    function upgradeTo(address newImplementation)
+        public override
+        onlyGovernance
+        onlyProxy
+    {
+        _upgradeToAndCallUUPS(newImplementation, new bytes(0), false);
+    }
+
+    /**
+     * See UUPSUpgradeable.upgradeToAndCall
+     */
+    function upgradeToAndCall(address newImplementation, bytes memory data)
+        public payable override
+        onlyGovernance
+        onlyProxy
+    {
+        _upgradeToAndCallUUPS(newImplementation, data, true);
+    }
+
+    /**
+     * Unused. just to present to satisfy UUPSUpgradeable requirement.
+     * The real check is in onlyGovernance modifier on upgradeTo and upgradeToAndCall.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override {}
+
+    /**
      * @inheritdoc AddressUpdatable
      */
     function _updateContractAddresses(
@@ -520,10 +707,14 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
             _getContractAddress(_contractNameHashes, _contractAddresses, "FdcVerification"));
     }
 
+    /**
+     * Gets the next escrow end timestamp.
+     * @return Next escrow end timestamp.
+     */
     function _getNextEscrowEndTimestamp() internal view returns (uint64) {
         uint256 escrowEndTimestamp = 0;
         // find the last unfinished escrow
-        for (uint256 i = escrows.length; i > nextEscrowExpiryIndex; i--) {
+        for (uint256 i = escrows.length; i > nextUnprocessedEscrowIndex; i--) {
             if (!escrows[i - 1].finished) {
                 escrowEndTimestamp = escrows[i - 1].expiryTs;
                 break;
@@ -532,7 +723,7 @@ contract CoreVaultManager is Governed, AddressUpdatable, IICoreVaultManager {
         escrowEndTimestamp = Math.max(escrowEndTimestamp, block.timestamp);
         escrowEndTimestamp += 1 days;
         escrowEndTimestamp = escrowEndTimestamp - (escrowEndTimestamp % 1 days) + escrowEndTimeSeconds;
-        if (escrowEndTimestamp <= block.timestamp + 12 hours) { // less than 12 hours from now
+        if (escrowEndTimestamp <= block.timestamp + 12 hours) { // less than 12 hours from now, move to the next day
             escrowEndTimestamp += 1 days;
         }
         return uint64(escrowEndTimestamp);
