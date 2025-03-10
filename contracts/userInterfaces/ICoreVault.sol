@@ -31,18 +31,6 @@ interface ICoreVault {
         uint256 valueUBA);
 
     /**
-     * The transfer of underlying to the core vault defaulted. The core vault's native address
-     * received vault collateral (and possibly pool WNat).
-     */
-    event CoreVaultTransferDefault(
-        address indexed agentVault,
-        uint256 indexed transferRedemptionRequestId,
-        uint256 expectedValueUBA,
-        address paidVaultCollateralToken,
-        uint256 paidVaultCollateralAmount,
-        uint256 paidPoolWNatAmount);
-
-    /**
      * Redemption was requested from a core vault, because the redemption queue was empty.
      */
     event CoreVaultRedemption(

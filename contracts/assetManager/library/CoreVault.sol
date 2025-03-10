@@ -10,11 +10,14 @@ import "./data/PaymentReference.sol";
 import "./AgentCollateral.sol";
 import "./Redemptions.sol";
 import "./RedemptionRequests.sol";
+import "./UnderlyingBalance.sol";
 
 
 library CoreVault {
     using SafePct for *;
+    using SafeCast for *;
     using Agent for Agent.State;
+    using AgentCollateral for Collateral.CombinedData;
 
     struct State {
         // settings
@@ -23,11 +26,12 @@ library CoreVault {
         uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
         uint16 minimumAmountLeftBIPS;
+        uint64 minimumRedeemLots;
 
         // state
         bool initialized;
-        uint64 lastRedemptionRequestId;
-        uint64 mintedAMG;
+        uint64 newTransferFromCoreVaultId;
+        uint64 totalAmountOnCoreVaultAMG;   // TODO: replace with something in CV manager
     }
 
     // doesn't really matter in the contracts, but indicates to the bots that
@@ -51,7 +55,7 @@ library CoreVault {
         State storage state = getState();
         address agentVault = _agent.vaultAddress();
         // only one transfer can be active
-        require(_agent.activeCoreVaultTransfer == 0, "transfer already active");
+        require(_agent.activeTransferToCoreVault == 0, "transfer already active");
         // TODO: value (fee) gets paid to the core vault
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
@@ -70,9 +74,9 @@ library CoreVault {
             state.nativeAddress, underlyingAddress, false, payable(address(0)), 0,
             TRANSFER_TIME_EXTENSION_SECONDS, true);
         // set the active request
-        _agent.activeCoreVaultTransfer = redemptionRequestId;
+        _agent.activeTransferToCoreVault = redemptionRequestId;
         // immediately take over backing
-        state.mintedAMG += transferredAMG;
+        state.totalAmountOnCoreVaultAMG += transferredAMG;
         // pay the transfer fee
         Transfers.transferNAT(state.nativeAddress, msg.value);  // guarded by nonReentrant in the facet
         // send event
@@ -86,36 +90,14 @@ library CoreVault {
         internal
         onlyEnabled
     {
-        uint64 requestId = _agent.activeCoreVaultTransfer;
+        uint64 requestId = _agent.activeTransferToCoreVault;
         require(requestId != 0, "no active transfer");
         Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId);
         Redemptions.reCreateRedemptionTicket(_agent, request);
         Redemptions.deleteRedemptionRequest(requestId);
     }
 
-    function redeemFromCoreVault(
-        address _redeemer,
-        uint64 _lots,
-        string memory _redeemerUnderlyingAddress
-    )
-        internal
-        onlyEnabled
-        returns (uint64 _redeemedLots)
-    {
-        State storage state = getState();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        _redeemedLots = SafeMath64.min64(_lots, state.mintedAMG / settings.lotSizeAMG);
-        uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
-        state.mintedAMG -= redeemedAMG;
-        uint64 requestId = ++state.lastRedemptionRequestId;
-        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG);
-        uint256 feeUBA = redeemedUBA.mulBips(state.redemptionFeeBIPS);
-        bytes32 paymentReference = PaymentReference.coreVaultRedemption(requestId);
-        emit ICoreVault.CoreVaultRedemption(_redeemer, requestId, _redeemerUnderlyingAddress,
-            redeemedUBA, feeUBA, paymentReference);
-    }
-
-    function confirmCoreVaultTransferPayment(
+    function confirmTransferToCoreVault(
         IPayment.Proof calldata _payment,
         address _agentVault,
         uint64 _redemptionRequestId
@@ -125,8 +107,109 @@ library CoreVault {
     {
         State storage state = getState();
         state.coreVaultManager.confirmPayment(_payment);
-        uint256 receivedAmount = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
+        uint256 receivedAmount = _payment.data.responseBody.receivedAmount.toUint256();
         emit ICoreVault.CoreVaultTransferSuccessful(_agentVault, _redemptionRequestId, receivedAmount);
+    }
+
+    function requestReturnFromCoreVault(
+        Agent.State storage _agent,
+        uint64 _lots
+    )
+        internal
+        onlyEnabled
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        State storage state = getState();
+        require(state.coreVaultManager.isDestinationAddressAllowed(_agent.underlyingAddressString),
+            "agent's underlying address not supported by core vault");
+        require(_agent.transferFromCoreVaultReservedAMG == 0, "return from core vault already requested");
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_agent);
+        require(_lots > 0, "cannot return 0 lots");
+        require(_agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
+        require(collateralData.freeCollateralLots(_agent) >= _lots, "not enough free collateral");
+        uint64 returnedLots = SafeMath64.min64(_lots, state.totalAmountOnCoreVaultAMG / settings.lotSizeAMG);
+        uint64 amountAMG = returnedLots * Globals.getSettings().lotSizeAMG;
+        _agent.transferFromCoreVaultReservedAMG = amountAMG;
+        _agent.reservedAMG += amountAMG;
+        // create payment reference
+        state.newTransferFromCoreVaultId += PaymentReference.randomizedIdSkip();
+        uint64 requestId = state.newTransferFromCoreVaultId;
+        bytes32 paymentReference = PaymentReference.transferFromCoreVault(requestId);
+        // request
+        uint256 amountUBA = Conversion.convertAmgToUBA(amountAMG);
+        state.coreVaultManager.requestTransferFromCoreVault(_agent.underlyingAddressString, amountUBA,
+            paymentReference, true);
+    }
+
+    function cancelReturnFromCoreVault(
+        Agent.State storage _agent
+    )
+        internal
+        onlyEnabled
+    {
+        State storage state = getState();
+        state.coreVaultManager.cancelTransferRequestFromCoreVault(_agent.underlyingAddressString);
+        _agent.reservedAMG -= _agent.transferFromCoreVaultReservedAMG;
+        _agent.transferFromCoreVaultReservedAMG = 0;
+    }
+
+    function confirmReturnFromCoreVault(
+        IPayment.Proof calldata _payment,
+        Agent.State storage _agent
+    )
+        internal
+        onlyEnabled
+    {
+        State storage state = getState();
+        // require(Agents.isOwner(_agent, msg.sender), "only agent");
+        TransactionAttestation.verifyPaymentSuccess(_payment);
+        require(_payment.data.responseBody.sourceAddressHash == state.coreVaultManager.coreVaultAddressHash(),
+            "payment not from core vault");
+        require(_payment.data.responseBody.receivingAddressHash == _agent.underlyingAddressHash,
+            "payment not to agent's address");
+        assert(_payment.data.responseBody.oneToOne); // will only be used on xrp
+        // we account for the option that CV pays more or less than the reserved amount:
+        // - if less, only the amount received gets converted to redemption ticket
+        // - if more, the extra amount becomes the agent's free underlying
+        uint256 receivedAmountUBA = _payment.data.responseBody.receivedAmount.toUint256();
+        uint64 receivedAmountAMG = Conversion.convertUBAToAmg(receivedAmountUBA);
+        uint64 mintedAmountAMG = SafeMath64.min64(_agent.transferFromCoreVaultReservedAMG, receivedAmountAMG);
+        // create redemption ticket
+        Agents.createNewMinting(_agent, mintedAmountAMG);
+        // update underlying amount
+        UnderlyingBalance.increaseBalance(_agent, receivedAmountUBA);
+        // clear the reservation
+        _agent.reservedAMG -= _agent.transferFromCoreVaultReservedAMG;
+        _agent.transferFromCoreVaultReservedAMG = 0;
+        // remove from CV accounting
+        state.totalAmountOnCoreVaultAMG -= receivedAmountAMG;
+    }
+
+    function redeemFromCoreVault(
+        uint64 _lots,
+        string memory _redeemerUnderlyingAddress
+    )
+        internal
+        onlyEnabled
+        returns (uint64 _redeemedLots)
+    {
+        State storage state = getState();
+        require(state.coreVaultManager.isDestinationAddressAllowed(_redeemerUnderlyingAddress),
+            "underlying address not supported by core vault");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint64 maxRedeemableLots = state.totalAmountOnCoreVaultAMG / settings.lotSizeAMG;
+        // TODO: subtract already requested lots
+        require(_lots >= SafeMath64.min64(state.minimumRedeemLots, maxRedeemableLots),
+            "requested amount too small");
+        _redeemedLots = SafeMath64.min64(_lots, state.totalAmountOnCoreVaultAMG / settings.lotSizeAMG);
+        uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
+        state.totalAmountOnCoreVaultAMG -= redeemedAMG;
+        state.newTransferFromCoreVaultId += PaymentReference.randomizedIdSkip();
+        uint64 requestId = state.newTransferFromCoreVaultId;
+        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG);
+        bytes32 paymentReference = PaymentReference.transferFromCoreVault(requestId);
+        state.coreVaultManager.requestTransferFromCoreVault(_redeemerUnderlyingAddress, redeemedUBA,
+            paymentReference, false);
     }
 
     function getTransferFee(uint64 _amountAMG)

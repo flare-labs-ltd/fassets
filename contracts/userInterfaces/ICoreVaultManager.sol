@@ -94,6 +94,12 @@ interface ICoreVaultManager {
     function getAllowedDestinationAddresses() external view returns (string[] memory);
 
     /**
+     * Gets the allowed destination addresses.
+     * @return List of allowed destination addresses.
+     */
+    function isDestinationAddressAllowed(string memory _address) external view returns (bool);
+
+    /**
      * Gets the core vault address.
      * @return Core vault address.
      */

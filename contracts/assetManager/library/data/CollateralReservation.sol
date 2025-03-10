@@ -16,5 +16,6 @@ library CollateralReservation {
         uint64 executorFeeNatGWei;
         uint64 handshakeStartTimestamp;
         bytes32 sourceAddressesRoot;
+        bool returnFromCoreVault;
     }
 }

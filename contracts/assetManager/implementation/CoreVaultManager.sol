@@ -557,6 +557,13 @@ contract CoreVaultManager is
     /**
      * @inheritdoc ICoreVaultManager
      */
+    function isDestinationAddressAllowed(string memory _address) external view returns (bool) {
+        return allowedDestinationAddressIndex[_address] > 0;
+    }
+
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
     function getTriggeringAccounts() external view returns (address[] memory) {
         return triggeringAccounts.values();
     }

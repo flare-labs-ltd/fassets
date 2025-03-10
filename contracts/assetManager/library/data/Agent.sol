@@ -168,7 +168,10 @@ library Agent {
         uint32 handshakeType;
 
         // There can only be one transfer to core vault per agent active at any time.
-        uint64 activeCoreVaultTransfer;
+        uint64 activeTransferToCoreVault;
+
+        // part of the agent's reservedAMG for the core vault return
+        uint64 transferFromCoreVaultReservedAMG;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

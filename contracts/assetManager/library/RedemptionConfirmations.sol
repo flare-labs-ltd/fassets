@@ -52,7 +52,7 @@ library RedemptionConfirmations {
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
                 if (request.transferToCoreVault) {
-                    CoreVault.confirmCoreVaultTransferPayment(_payment, request.agentVault, _redemptionRequestId);
+                    CoreVault.confirmTransferToCoreVault(_payment, request.agentVault, _redemptionRequestId);
                 }
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,

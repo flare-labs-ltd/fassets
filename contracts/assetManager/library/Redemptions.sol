@@ -123,8 +123,8 @@ library Redemptions {
         Redemption.Request storage request = getRedemptionRequest(_redemptionRequestId);
         if (request.transferToCoreVault) {
             Agent.State storage agent = Agent.get(request.agentVault);
-            if (agent.activeCoreVaultTransfer == _redemptionRequestId) {
-                agent.activeCoreVaultTransfer = 0;
+            if (agent.activeTransferToCoreVault == _redemptionRequestId) {
+                agent.activeTransferToCoreVault = 0;
             }
         }
     }
