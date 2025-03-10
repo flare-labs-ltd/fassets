@@ -137,7 +137,8 @@ library RedemptionConfirmations {
             if (_payment.data.responseBody.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
             }
-        } else if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
+        } else if (!request.transferToCoreVault &&
+            _payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
             _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
             return (false, "redemption payment too late");
         } else if (request.status == Redemption.Status.DEFAULTED) {

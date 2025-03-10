@@ -22,7 +22,6 @@ library CoreVault {
         address payable nativeAddress;
         uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
-        uint32 transferTimeExtensionSeconds;
         uint16 minimumAmountLeftBIPS;
 
         // state
@@ -30,6 +29,10 @@ library CoreVault {
         uint64 lastRedemptionRequestId;
         uint64 mintedAMG;
     }
+
+    // doesn't really matter in the contracts, but indicates to the bots that
+    // the payment time practically never expires (> 3 years)
+    uint64 internal constant TRANSFER_TIME_EXTENSION_SECONDS = 1e8;
 
     // core vault may not be enabled on all chains
     modifier onlyEnabled {
@@ -65,7 +68,7 @@ library CoreVault {
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
             RedemptionRequests.AgentRedemptionData(_agent.vaultAddress(), transferredAMG),
             state.nativeAddress, underlyingAddress, false, payable(address(0)), 0,
-            state.transferTimeExtensionSeconds, true);
+            TRANSFER_TIME_EXTENSION_SECONDS, true);
         // set the active request
         _agent.activeCoreVaultTransfer = redemptionRequestId;
         // immediately take over backing

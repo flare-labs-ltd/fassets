@@ -21,7 +21,6 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         address payable _nativeAddress,
         uint256 _transferFeeBIPS,
         uint256 _redemptionFeeBIPS,
-        uint256 _transferTimeExtensionSeconds,
         uint256 _minimumAmountLeftBIPS
     )
         public
@@ -37,7 +36,6 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         state.nativeAddress = _nativeAddress;
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
-        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
     }
 
@@ -150,16 +148,6 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
     }
 
-    function setCoreVaultTransferTimeExtensionSeconds(
-        uint256 _transferTimeExtensionSeconds
-    )
-        external
-        onlyImmediateGovernance
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint32();
-    }
-
     function setCoreVaultMinimumAmountLeftBIPS(
         uint256 _minimumAmountLeftBIPS
     )
@@ -183,7 +171,6 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
             nativeAddress: state.nativeAddress,
             transferFeeBIPS: state.transferFeeBIPS,
             redemptionFeeBIPS: state.redemptionFeeBIPS,
-            transferTimeExtensionSeconds: state.transferTimeExtensionSeconds,
             minimumAmountLeftBIPS: state.minimumAmountLeftBIPS
         });
     }

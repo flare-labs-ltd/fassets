@@ -11,7 +11,6 @@ interface ICoreVault {
         address payable nativeAddress;
         uint16 transferFeeBIPS;
         uint32 redemptionFeeBIPS;
-        uint32 transferTimeExtensionSeconds;
         uint16 minimumAmountLeftBIPS;
     }
 
@@ -115,10 +114,6 @@ interface ICoreVault {
 
     function setCoreVaultRedemptionFeeBIPS(
         uint256 _redemptionFeeBIPS
-    ) external;
-
-    function setCoreVaultTransferTimeExtensionSeconds(
-        uint256 _transferTimeExtensionSeconds
     ) external;
 
     function setCoreVaultMinimumAmountLeftBIPS(

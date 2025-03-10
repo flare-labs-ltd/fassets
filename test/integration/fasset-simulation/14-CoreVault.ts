@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { filterEvents } from "../../../lib/utils/events/truffle";
-import { HOURS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { DAYS, HOURS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -84,6 +84,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, info.mintedUBA);
         assertWeb3Equal(rdreqs[0].feeUBA, 0);
+        assert.isAbove(Number(rdreqs[0].lastUnderlyingTimestamp), mockChain.currentTimestamp() + 365 * DAYS);   // payment time should be huge (> 1 year)
         // wait 20 blocks and 1 hour - transfer can be defaulted without time extension
         context.skipToExpiration(currentBlock.addn(20), currentTimestamp.addn(1 * HOURS));
         await expectRevert(cv.redemptionPaymentDefault(rdreqs[0]), "overflow block not found");
@@ -148,17 +149,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: context.governance });
         settings = await context.assetManager.getCoreVaultSettings();
         assertWeb3Equal(settings.redemptionFeeBIPS, 211);
-        // update transfer time extension
-        await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150, { from: context.governance });
-        settings = await context.assetManager.getCoreVaultSettings();
-        assertWeb3Equal(settings.transferTimeExtensionSeconds, 150);
     });
 
     it("core vault setting modification requires governance call", async () => {
         // await expectRevert(context.assetManager.setCoreVaultAddress(accounts[31], "SOME_NEW_ADDRESS"), "only governance");
         await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(123), "only governance");
         await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150), "only governance");
     });
 
     it("core vault address setting is timelocked, the others aren't", async () => {
@@ -175,10 +171,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: governance }));
-        assert.equal(timelocked, false);
-        //
-        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
-            (governance) => context.assetManager.setCoreVaultTransferTimeExtensionSeconds(150, { from: governance }));
         assert.equal(timelocked, false);
     });
 });

@@ -252,7 +252,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.coreVaultNativeAddress = cbSettings.nativeAddress;
             resInitSettings.coreVaultTransferFeeBIPS = cbSettings.transferFeeBIPS;
             resInitSettings.coreVaultRedemptionFeeBIPS = cbSettings.redemptionFeeBIPS;
-            resInitSettings.coreVaultTransferTimeExtensionSeconds = cbSettings.transferTimeExtensionSeconds;
             resInitSettings.coreVaultMinimumAmountLeftBIPS = cbSettings.minimumAmountLeftBIPS;
             //
             assertWeb3DeepEqual(resSettings, settings);
