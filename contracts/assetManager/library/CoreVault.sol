@@ -30,8 +30,6 @@ library CoreVault {
 
         // state
         bool initialized;
-        uint64 newTransferFromCoreVaultId;
-        uint64 totalAmountOnCoreVaultAMG;   // TODO: replace with something in CV manager
     }
 
     // doesn't really matter in the contracts, but indicates to the bots that
@@ -75,13 +73,11 @@ library CoreVault {
             TRANSFER_TIME_EXTENSION_SECONDS, true);
         // set the active request
         _agent.activeTransferToCoreVault = redemptionRequestId;
-        // immediately take over backing
-        state.totalAmountOnCoreVaultAMG += transferredAMG;
         // pay the transfer fee
         Transfers.transferNAT(state.nativeAddress, msg.value);  // guarded by nonReentrant in the facet
         // send event
-        emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId,
-            Conversion.convertAmgToUBA(_amountAMG));
+        uint256 amountUBA = Conversion.convertAmgToUBA(_amountAMG);
+        emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId, amountUBA);
     }
 
     function cancelTransferToCoreVault(
@@ -97,6 +93,7 @@ library CoreVault {
         Redemptions.deleteRedemptionRequest(requestId);
     }
 
+    // only called by RedemptionConfirmations.confirmRedemptionPayment, so all checks are done there
     function confirmTransferToCoreVault(
         IPayment.Proof calldata _payment,
         address _agentVault,
@@ -127,18 +124,14 @@ library CoreVault {
         require(_lots > 0, "cannot return 0 lots");
         require(_agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
         require(collateralData.freeCollateralLots(_agent) >= _lots, "not enough free collateral");
-        uint64 returnedLots = SafeMath64.min64(_lots, state.totalAmountOnCoreVaultAMG / settings.lotSizeAMG);
+        uint64 availableLots = Conversion.convertUBAToAmg(getFreeCoreVaultAmountWithEscrow()) / settings.lotSizeAMG;
+        uint64 returnedLots = SafeMath64.min64(_lots, availableLots);
         uint64 amountAMG = returnedLots * Globals.getSettings().lotSizeAMG;
         _agent.transferFromCoreVaultReservedAMG = amountAMG;
         _agent.reservedAMG += amountAMG;
-        // create payment reference
-        state.newTransferFromCoreVaultId += PaymentReference.randomizedIdSkip();
-        uint64 requestId = state.newTransferFromCoreVaultId;
-        bytes32 paymentReference = PaymentReference.transferFromCoreVault(requestId);
         // request
-        uint256 amountUBA = Conversion.convertAmgToUBA(amountAMG);
-        state.coreVaultManager.requestTransferFromCoreVault(_agent.underlyingAddressString, amountUBA,
-            paymentReference, true);
+        uint128 amountUBA = Conversion.convertAmgToUBA(amountAMG).toUint128();
+        state.coreVaultManager.requestTransferFromCoreVault(_agent.underlyingAddressString, amountUBA, true);
     }
 
     function cancelReturnFromCoreVault(
@@ -161,7 +154,6 @@ library CoreVault {
         onlyEnabled
     {
         State storage state = getState();
-        // require(Agents.isOwner(_agent, msg.sender), "only agent");
         TransactionAttestation.verifyPaymentSuccess(_payment);
         require(_payment.data.responseBody.sourceAddressHash == state.coreVaultManager.coreVaultAddressHash(),
             "payment not from core vault");
@@ -181,8 +173,6 @@ library CoreVault {
         // clear the reservation
         _agent.reservedAMG -= _agent.transferFromCoreVaultReservedAMG;
         _agent.transferFromCoreVaultReservedAMG = 0;
-        // remove from CV accounting
-        state.totalAmountOnCoreVaultAMG -= receivedAmountAMG;
     }
 
     function redeemFromCoreVault(
@@ -197,19 +187,15 @@ library CoreVault {
         require(state.coreVaultManager.isDestinationAddressAllowed(_redeemerUnderlyingAddress),
             "underlying address not supported by core vault");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint64 maxRedeemableLots = state.totalAmountOnCoreVaultAMG / settings.lotSizeAMG;
-        // TODO: subtract already requested lots
-        require(_lots >= SafeMath64.min64(state.minimumRedeemLots, maxRedeemableLots),
-            "requested amount too small");
-        _redeemedLots = SafeMath64.min64(_lots, state.totalAmountOnCoreVaultAMG / settings.lotSizeAMG);
+        uint64 availableLots = Conversion.convertUBAToAmg(getFreeCoreVaultAmountWithEscrow()) / settings.lotSizeAMG;
+        require(_lots >= SafeMath64.min64(state.minimumRedeemLots, availableLots), "requested amount too small");
+        _redeemedLots = SafeMath64.min64(_lots, availableLots);
+        // burn the senders fassets
         uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
-        state.totalAmountOnCoreVaultAMG -= redeemedAMG;
-        state.newTransferFromCoreVaultId += PaymentReference.randomizedIdSkip();
-        uint64 requestId = state.newTransferFromCoreVaultId;
-        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG);
-        bytes32 paymentReference = PaymentReference.transferFromCoreVault(requestId);
-        state.coreVaultManager.requestTransferFromCoreVault(_redeemerUnderlyingAddress, redeemedUBA,
-            paymentReference, false);
+        uint128 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG).toUint128();
+        Redemptions.burnFAssets(msg.sender, redeemedUBA);
+        // transfer from core vault
+        state.coreVaultManager.requestTransferFromCoreVault(_redeemerUnderlyingAddress, redeemedUBA, false);
     }
 
     function getTransferFee(uint64 _amountAMG)
@@ -230,6 +216,17 @@ library CoreVault {
     {
         _minimumLeftAmountAMG = _minimumRemainingAfterTransferAMG(_agent);
         _maximumTransferAMG = MathUtils.subOrZero(_agent.mintedAMG, _minimumLeftAmountAMG);
+    }
+
+    function getFreeCoreVaultAmountWithEscrow()
+        internal view
+        returns (uint256)
+    {
+        State storage state = getState();
+        return uint256(state.coreVaultManager.availableFunds())
+            + state.coreVaultManager.escrowedFunds()
+            - state.coreVaultManager.getCancelableTransferRequestsAmount()
+            - state.coreVaultManager.getNonCancelableTransferRequestsAmount();
     }
 
     function _minimumRemainingAfterTransferAMG(

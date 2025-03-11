@@ -74,7 +74,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const info = await agent.getAgentInfo();
         const transferAmount = info.mintedUBA;
         // calculate the transfer fee
-        const cbTransferFee = await context.assetManager.coreVaultTransferFee(transferAmount);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
         await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee.subn(1) }),
             "transfer fee payment too small");
         // transfer request
@@ -118,7 +118,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for all backing to core vault
         const transferAmount = context.lotSize().muln(5);
         const remainingTicketAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.coreVaultTransferFee(transferAmount);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
