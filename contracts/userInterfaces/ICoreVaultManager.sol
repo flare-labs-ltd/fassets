@@ -18,14 +18,12 @@ interface ICoreVaultManager {
 
     struct TransferRequest {
         string destinationAddress;
-        uint256 amount;
-        bytes32 paymentReference;
+        uint128 amount;
     }
 
     // Events
     event PaymentConfirmed(
         bytes32 indexed transactionId,
-        bytes32 indexed paymentReference,
         uint256 amount
     );
 
@@ -33,8 +31,7 @@ interface ICoreVaultManager {
         uint256 indexed sequence,
         string account,
         string destination,
-        uint256 amount,
-        bytes32 paymentReference
+        uint256 amount
     );
 
     event EscrowInstructions(
@@ -69,11 +66,22 @@ interface ICoreVaultManager {
 
     /**
      * Triggers instructions - payment and escrow.
-     * @param _createEscrows flag indicating if escrows should be created.
      * NOTE: cannot be called if the contract is paused.
      * NOTE: may only be called by the triggering accounts.
      */
-    function triggerInstructions(bool _createEscrows) external;
+    function triggerInstructions() external;
+
+    /**
+     * Returns the available funds.
+     * @return Available funds.
+     */
+    function availableFunds() external view returns (uint128);
+
+    /**
+     * Returns the escrowed funds.
+     * @return Escrowed funds.
+     */
+    function escrowedFunds() external view returns (uint128);
 
     /**
      * Indicates if the contract is paused. New transfer requests and instructions cannot be triggered.
@@ -110,7 +118,6 @@ interface ICoreVaultManager {
      * @return Custodian address.
      */
     function custodianAddress() external view returns (string memory);
-
 
     /**
      * Returns next unprocessed escrow index.
@@ -174,10 +181,22 @@ interface ICoreVaultManager {
     function getNonCancelableTransferRequests() external view returns (TransferRequest[] memory);
 
     /**
+     * Gets the non-cancelable transfer requests amount.
+     * @return Non-cancelable transfer requests amount.
+     */
+    function getNonCancelableTransferRequestsAmount() external view returns(uint128);
+
+    /**
      * Gets the cancelable transfer requests.
      * @return List of transfer cancelable requests.
      */
     function getCancelableTransferRequests() external view returns (TransferRequest[] memory);
+
+    /**
+     * Gets the cancelable transfer requests amount.
+     * @return Cancelable transfer requests amount.
+     */
+    function getCancelableTransferRequestsAmount() external view returns(uint128);
 
     /**
      * Gets the list of emergency pause senders.
