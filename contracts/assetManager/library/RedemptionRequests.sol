@@ -323,12 +323,13 @@ library RedemptionRequests {
         returns (uint64 _requestId)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_data.agentVault);
         // validate redemption address
         bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
         // so this comparison quarantees the redemption is not to the agent's address
-        require(underlyingAddressHash != Agent.get(_data.agentVault).underlyingAddressHash,
+        require(underlyingAddressHash != agent.underlyingAddressHash,
             "cannot redeem to agent's address");
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
@@ -352,10 +353,11 @@ library RedemptionRequests {
         request.executorFeeNatGWei = _executorFeeNatGWei;
         request.redeemerUnderlyingAddressString = _redeemerUnderlyingAddressString;
         request.transferToCoreVault = _transferToCoreVault;
+        request.poolFeeShareBIPS = agent.redemptionPoolFeeShareBIPS;
         state.redemptionRequests[_requestId] = request;
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
-        Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
+        Agents.startRedeemingAssets(agent, _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
         _emitRedemptionRequestedEvent(request, _requestId, _redeemerUnderlyingAddressString);
     }

@@ -3,7 +3,9 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
+import "../../utils/lib/SafePct.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
@@ -13,6 +15,7 @@ import "./CoreVault.sol";
 
 
 library RedemptionConfirmations {
+    using SafePct for *;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function confirmRedemptionPayment(
@@ -59,6 +62,8 @@ library RedemptionConfirmations {
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
             }
+            // charge the redemption pool fee share by re-minting some fassets
+            _mintPoolFee(agent, request);
         } else {
             // We only need failure reports from agent's underlying address, so disallow others to
             // lower the attack surface in case of report from other address.
@@ -95,6 +100,20 @@ library RedemptionConfirmations {
         Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+    }
+
+    function _mintPoolFee(
+        Agent.State storage _agent,
+        Redemption.Request storage _request
+    )
+        private
+    {
+        uint256 poolFeeUBA = _request.underlyingFeeUBA.mulBips(_request.poolFeeShareBIPS);
+        if (poolFeeUBA > 0) {
+            Agents.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
+            Globals.getFAsset().mint(address(_agent.collateralPool), poolFeeUBA);
+            _agent.collateralPool.fAssetFeeDeposited(poolFeeUBA);
+        }
     }
 
     function _othersCanConfirmPayment(

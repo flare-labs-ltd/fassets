@@ -27,5 +27,6 @@ library Redemption {
         uint64 takeOverTimestamp;
         string redeemerUnderlyingAddressString;
         bool transferToCoreVault;
+        uint16 poolFeeShareBIPS;
     }
 }

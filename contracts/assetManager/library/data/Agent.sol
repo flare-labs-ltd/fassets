@@ -173,6 +173,14 @@ library Agent {
         // part of the agent's reservedAMG for the core vault return
         uint64 transferFromCoreVaultReservedAMG;
 
+        // The redemption fee share paid to the pool (as FAssets).
+        // In redemption dominated situations (when agent requests return from core vault to earn
+        // from redemption fees), pool can get some share to make it sustainble for pool users.
+        // NOTE: the pool fee share is locked at the redemption request time, but is charged at the redemption
+        // confirmation time. If agent uses all the redemption fee for transaction fees, this could make the
+        // agent's free underlying balance negative.
+        uint16 redemptionPoolFeeShareBIPS;
+
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;
     }
