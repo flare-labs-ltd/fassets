@@ -30,6 +30,7 @@ export class TrackedAgentState {
         this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.creationData.poolWNatToken);
         this.feeBIPS = toBN(data.creationData.feeBIPS);
         this.poolFeeShareBIPS = toBN(data.creationData.poolFeeShareBIPS);
+        this.redemptionPoolFeeShareBIPS = BN_ZERO;  // always zero initially
         this.mintingVaultCollateralRatioBIPS = toBN(data.creationData.mintingVaultCollateralRatioBIPS);
         this.mintingPoolCollateralRatioBIPS = toBN(data.creationData.mintingPoolCollateralRatioBIPS);
         this.buyFAssetByAgentFactorBIPS = toBN(data.creationData.buyFAssetByAgentFactorBIPS);
@@ -51,6 +52,7 @@ export class TrackedAgentState {
     poolWNatCollateral: CollateralType;
     feeBIPS: BN;
     poolFeeShareBIPS: BN;
+    redemptionPoolFeeShareBIPS: BN;
     mintingVaultCollateralRatioBIPS: BN;
     mintingPoolCollateralRatioBIPS: BN;
     buyFAssetByAgentFactorBIPS: BN;
@@ -120,8 +122,9 @@ export class TrackedAgentState {
     // handlers: agent settings
 
     handleSettingChanged(name: string, value: BNish) {
-        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS", "buyFAssetByAgentFactorBIPS",
-            "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "handshakeType"].includes(name)) return;
+        const settings = ["feeBIPS", "poolFeeShareBIPS", "redemptionPoolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
+            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "handshakeType"];
+        if (!settings.includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }
 

@@ -286,6 +286,8 @@ interface IAssetManager is
      * Due to the effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     * @param _name setting name, same as for `getAgentSetting`
      * @return _updateAllowedAt the timestamp at which the update can be executed
      */
     function announceAgentSettingUpdate(
@@ -299,6 +301,8 @@ interface IAssetManager is
      * Due to the effect on the pool, all agent settings are timelocked.
      * This method executes a setting change after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     * @param _name setting name, same as for `getAgentSetting`
      */
     function executeAgentSettingUpdate(
         address _agentVault,
@@ -456,6 +460,19 @@ interface IAssetManager is
     function getAgentInfo(address _agentVault)
         external view
         returns (AgentInfo.Info memory);
+
+    /**
+     * Get agent's setting by name.
+     * This allows reading individual settings.
+     * @param _agentVault agent vault address
+     * @param _name setting name, one of: `feeBIPS`, `poolFeeShareBIPS`, `redemptionPoolFeeShareBIPS`,
+     *  `mintingVaultCollateralRatioBIPS`, `mintingPoolCollateralRatioBIPS`,`buyFAssetByAgentFactorBIPS`,
+     *  `poolExitCollateralRatioBIPS`, `poolTopupCollateralRatioBIPS`, `poolTopupTokenPriceFactorBIPS`,
+     *  `handshakeType`
+     */
+    function getAgentSetting(address _agentVault, string memory _name)
+        external view
+        returns (uint256);
 
     /**
      * Returns the collateral pool address of the agent identified by `_agentVault`.

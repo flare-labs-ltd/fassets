@@ -29,7 +29,7 @@ export interface AgentInfo extends _AgentInfo {}
 type _AvailableAgentInfo = Awaited<ReturnType<IIAssetManagerInstance['getAvailableAgentsDetailedList']>>[0][0];
 export interface AvailableAgentInfo extends _AvailableAgentInfo {}
 
-export type AgentSetting = "feeBIPS" | "poolFeeShareBIPS" | "mintingVaultCollateralRatioBIPS" | "mintingPoolCollateralRatioBIPS" |
+export type AgentSetting = "feeBIPS" | "poolFeeShareBIPS" | "redemptionPoolFeeShareBIPS" | "mintingVaultCollateralRatioBIPS" | "mintingPoolCollateralRatioBIPS" |
     "buyFAssetByAgentFactorBIPS" | "poolExitCollateralRatioBIPS" | "poolTopupCollateralRatioBIPS" | "poolTopupTokenPriceFactorBIPS" | "handshakeType";
 
 type _RedemptionTicketInfo = Awaited<ReturnType<IIAssetManagerInstance['redemptionQueue']>>[0][0];

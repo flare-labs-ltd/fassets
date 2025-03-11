@@ -64,6 +64,16 @@ library Agents {
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
+    function setRedemptionPoolFeeShareBIPS(
+        Agent.State storage _agent,
+        uint256 _redemptionPoolFeeShareBIPS
+    )
+        internal
+    {
+        require(_redemptionPoolFeeShareBIPS < SafePct.MAX_BIPS, "value too high");
+        _agent.redemptionPoolFeeShareBIPS = _redemptionPoolFeeShareBIPS.toUint16();
+    }
+
     function setBuyFAssetByAgentFactorBIPS(
         Agent.State storage _agent,
         uint256 _buyFAssetByAgentFactorBIPS
