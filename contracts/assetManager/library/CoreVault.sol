@@ -91,6 +91,7 @@ library CoreVault {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId);
         Redemptions.reCreateRedemptionTicket(_agent, request);
         Redemptions.deleteRedemptionRequest(requestId);
+        emit ICoreVault.CoreVaultTransferCancelled(_agent.vaultAddress(), requestId);
     }
 
     // only called by RedemptionConfirmations.confirmRedemptionPayment, so all checks are done there
@@ -131,6 +132,7 @@ library CoreVault {
         // request
         uint128 amountUBA = Conversion.convertAmgToUBA(amountAMG).toUint128();
         state.coreVaultManager.requestTransferFromCoreVault(_agent.underlyingAddressString, amountUBA, true);
+        emit ICoreVault.ReturnFromCoreVaultRequested(_agent.vaultAddress(), amountUBA);
     }
 
     function cancelReturnFromCoreVault(
@@ -143,6 +145,7 @@ library CoreVault {
         state.coreVaultManager.cancelTransferRequestFromCoreVault(_agent.underlyingAddressString);
         _agent.reservedAMG -= _agent.transferFromCoreVaultReservedAMG;
         _agent.transferFromCoreVaultReservedAMG = 0;
+        emit ICoreVault.ReturnFromCoreVaultCancelled(_agent.vaultAddress());
     }
 
     function confirmReturnFromCoreVault(
@@ -173,6 +176,8 @@ library CoreVault {
         // clear the reservation
         _agent.reservedAMG -= _agent.transferFromCoreVaultReservedAMG;
         _agent.transferFromCoreVaultReservedAMG = 0;
+        uint256 mintedAmountUBA = Conversion.convertAmgToUBA(mintedAmountAMG);
+        emit ICoreVault.ReturnFromCoreVaultConfirmed(_agent.vaultAddress(), receivedAmountUBA, mintedAmountUBA);
     }
 
     function redeemFromCoreVault(
@@ -196,6 +201,7 @@ library CoreVault {
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
         // transfer from core vault
         state.coreVaultManager.requestTransferFromCoreVault(_redeemerUnderlyingAddress, redeemedUBA, false);
+        emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, redeemedUBA);
     }
 
     function getTransferFee(uint64 _amountAMG)

@@ -17,6 +17,13 @@ interface ICoreVault {
         uint256 valueUBA);
 
     /**
+     * Agent has cancelled transfer to the core vault without paying.
+     */
+    event CoreVaultTransferCancelled(
+        address indexed agentVault,
+        uint256 indexed transferRedemptionRequestId);
+
+    /**
      * The transfer of underlying to the core vault was successfuly completed.
      */
     event CoreVaultTransferSuccessful(
@@ -25,15 +32,33 @@ interface ICoreVault {
         uint256 valueUBA);
 
     /**
+     * The agent has requested return of some of the underlying from the core vault to the agent's underlying address.
+     */
+    event ReturnFromCoreVaultRequested(
+        address indexed agentVault,
+        uint256 valueUBA);
+
+    /**
+     * The agent has cancelled the return request.
+     */
+    event ReturnFromCoreVaultCancelled(
+        address indexed agentVault);
+
+    /**
+     * The payment from core vault to the agent's underlying address has been confirmed.
+     */
+    event ReturnFromCoreVaultConfirmed(
+        address indexed agentVault,
+        uint256 receivedUnderlyingUBA,
+        uint256 reMintedUBA);
+
+    /**
      * Redemption was requested from a core vault, because the redemption queue was empty.
      */
-    event CoreVaultRedemption(
+    event CoreVaultRedemptionRequested(
         address indexed redeemer,
-        uint256 indexed requestId,
         string paymentAddress,
-        uint256 valueUBA,
-        uint256 feeUBA,
-        bytes32 paymentReference);
+        uint256 valueUBA);
 
     /**
      * Agent can transfer their backing to core vault.
