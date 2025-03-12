@@ -301,6 +301,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.feeBIPS.toString(), "2000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "feeBIPS"), agentInfo.feeBIPS);
         });
 
         it("should fail if the agent setting is executed too early or too late", async () => {
@@ -335,6 +336,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolFeeShareBIPS.toString(), "2000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolFeeShareBIPS"), agentInfo.poolFeeShareBIPS);
         });
 
         it("should not update agent setting pool fee share BIPS if value too high", async () => {
@@ -354,6 +356,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "mintingVaultCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.mintingVaultCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "mintingVaultCollateralRatioBIPS"), agentInfo.mintingVaultCollateralRatioBIPS);
         });
 
         it("should correctly update agent setting minting pool collateral ratio BIPS", async () => {
@@ -364,6 +367,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.mintingPoolCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "mintingPoolCollateralRatioBIPS"), agentInfo.mintingPoolCollateralRatioBIPS);
         });
 
         it("should not update agent setting minting pool collateral ratio BIPS if value too small", async () => {
@@ -383,6 +387,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.buyFAssetByAgentFactorBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "buyFAssetByAgentFactorBIPS"), agentInfo.buyFAssetByAgentFactorBIPS);
         });
 
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
@@ -393,6 +398,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolExitCollateralRatioBIPS"), agentInfo.poolExitCollateralRatioBIPS);
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
@@ -443,14 +449,26 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 25000, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolExitCollateralRatioBIPS"), agentInfo.poolExitCollateralRatioBIPS);
+        });
+
+        it("should correctly update agent setting pool topup collateral ratio BIPS", async () => {
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolTopupCollateralRatioBIPS"), agentInfo.poolTopupCollateralRatioBIPS);
         });
 
-        it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
+        it("should not update agent setting pool topup collateral ratio BIPS if value too low", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 2, { from: agentOwner1 });
@@ -467,6 +485,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolTopupTokenPriceFactorBIPS"), agentInfo.poolTopupTokenPriceFactorBIPS);
         });
 
         it("should correctly update agent setting handshake type", async () => {
@@ -477,6 +496,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "handshakeType", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.handshakeType.toString(), "1");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "handshakeType"), agentInfo.handshakeType);
+        });
+
+        it("should correctly update agent setting redemptionPoolFeeShareBIPS", async () => {
+            const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "redemptionPoolFeeShareBIPS"), 0);   // always 0 initially
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "redemptionPoolFeeShareBIPS", 2000, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentFeeChangeTimelockSeconds);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "redemptionPoolFeeShareBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "redemptionPoolFeeShareBIPS"), 2000);
         });
     });
 
