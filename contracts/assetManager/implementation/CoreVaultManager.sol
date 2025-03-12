@@ -231,7 +231,7 @@ contract CoreVaultManager is
         uint256 transferRequestId = cancelableTransferRequests[index];
         uint128 amount = transferRequestById[transferRequestId].amount;
         cancelableTransferRequestsAmount -= amount;
-        emit TransferRequestCanceled(_destinationAddress,  amount);
+        emit TransferRequestCanceled(_destinationAddress, amount);
 
         // remove the transfer request - keep the order
         while (index < cancelableTransferRequests.length - 1) { // length > 0
