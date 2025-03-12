@@ -20,6 +20,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     coreVaultTransferFeeBIPS: BNish;
     coreVaultRedemptionFeeBIPS: BNish;
     coreVaultMinimumAmountLeftBIPS: BNish;
+    coreVaultMinimumRedeemLots: BNish;
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -79,7 +80,7 @@ export async function newAssetManager(
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultSettingsFacet"), ["ICoreVaultSettings"],
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
             assetManagerSettings.coreVaultTransferFeeBIPS, assetManagerSettings.coreVaultRedemptionFeeBIPS,
-            assetManagerSettings.coreVaultMinimumAmountLeftBIPS));
+            assetManagerSettings.coreVaultMinimumAmountLeftBIPS, assetManagerSettings.coreVaultMinimumRedeemLots));
     // verify interface implementation
     await checkAllMethodsImplemented(assetManager, interfaceSelectors);
     // add to controller

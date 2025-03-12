@@ -502,6 +502,15 @@ export class Agent extends AssetContextClient {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
     }
 
+    async transferToCoreVault(transferAmount: BNish) {
+        const cbTransferFee = await this.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await this.assetManager.transferToCoreVault(this.vaultAddress, transferAmount, { from: this.ownerWorkAddress, value: cbTransferFee });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assert.isAtLeast(rdreqs.length, 1);
+        // perform transfer of underlying
+        await this.performRedemptions(rdreqs);
+    }
+
     async getCurrentVaultCollateralRatioBIPS() {
         const agentInfo = await this.getAgentInfo();
         const fullCollateral = agentInfo.totalVaultCollateralWei;

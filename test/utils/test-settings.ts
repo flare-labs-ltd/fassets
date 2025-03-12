@@ -142,6 +142,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         coreVaultTransferFeeBIPS: toBIPS("0.5%"),
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultMinimumAmountLeftBIPS: 0,
+        coreVaultMinimumRedeemLots: 10,
     };
     return Object.assign(result, options ?? {});
 }

@@ -20,6 +20,9 @@ interface ICoreVaultSettings {
     function setCoreVaultMinimumAmountLeftBIPS(uint256 _minimumAmountLeftBIPS)
         external;
 
+    function setCoreVaultMinimumRedeemLots(uint256 _minimumRedeemLots)
+        external;
+
     function getCoreVaultManager()
         external view
         returns (address);
@@ -37,6 +40,10 @@ interface ICoreVaultSettings {
         returns (uint256);
 
     function getCoreVaultMinimumAmountLeftBIPS()
+        external view
+        returns (uint256);
+
+    function getCoreVaultMinimumRedeemLots()
         external view
         returns (uint256);
 }

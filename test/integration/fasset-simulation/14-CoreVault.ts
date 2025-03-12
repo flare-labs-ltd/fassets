@@ -1,7 +1,7 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { filterEvents } from "../../../lib/utils/events/truffle";
 import { DAYS, HOURS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { MockChain } from "../../utils/fasset/MockChain";
+import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
@@ -12,6 +12,7 @@ import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { executeTimelockedGovernanceCall } from "../../utils/contract-test-helpers";
+import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -28,6 +29,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const challengerAddress2 = accounts[51];
     const liquidatorAddress1 = accounts[60];
     const liquidatorAddress2 = accounts[61];
+    const triggeringAccount = accounts[5];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingAgent2 = "Agent2";
@@ -47,6 +49,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp, { coreVaultUnderlyingAddress });
+        await context.coreVaultManager!.addTriggeringAccounts([triggeringAccount], { from: governance });
         return { commonContext, context };
     }
 
@@ -114,7 +117,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
-        // agent requests transfer for all backing to core vault
+        // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(5);
         const remainingTicketAmount = context.lotSize().muln(5);
         const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
@@ -132,6 +135,169 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redemptionRes = await context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: remainingTicketAmount });
         expectEvent(redemptionRes, "RedemptionRequestIncomplete");
+    });
+
+    it("request return from core vault", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        const remainingTicketAmount = context.lotSize().muln(5);
+        await agent.transferToCoreVault(transferAmount);
+        // second agent requests return from CV
+        const rres = await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
+        const transferRequested = requiredEventArgsFrom(rres, context.coreVaultManager!, "TransferRequested");
+        assert.equal(transferRequested.cancelable, true);
+        assert.equal(transferRequested.destinationAddress, agent2.underlyingAddress);
+        assertWeb3Equal(transferRequested.amount, context.lotSize().muln(5));
+        // trigger CV requests
+        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
+        assert.equal(paymentReqs.length, 1);
+        assertWeb3Equal(paymentReqs[0].args.account, coreVaultUnderlyingAddress);
+        assertWeb3Equal(paymentReqs[0].args.destination, agent2.underlyingAddress);
+        assertWeb3Equal(paymentReqs[0].args.amount, transferRequested.amount);
+        // simulate transfer from CV
+        const wallet = new MockChainWallet(mockChain);
+        for (const req of paymentReqs) {
+            const rtx = await wallet.addTransaction(req.args.account, req.args.destination, req.args.amount, null);
+            const proof = await context.attestationProvider.provePayment(rtx, req.args.account, req.args.destination);
+            await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress, { from: agent.ownerWorkAddress }),
+                "payment not to agent's address");
+            await context.assetManager.confirmReturnFromCoreVault(proof, agent2.vaultAddress, { from: agent2.ownerWorkAddress });
+        }
+        // agent now has approx half backing left
+        const expectRemainingMinted = remainingTicketAmount.add(toBN(minted.poolFeeUBA));
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: 0 }, "reset");
+        // second agent has approx the other half
+        await agent2.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: transferRequested.amount, redeemingUBA: 0 }, "reset");
+        // redemption requests are split over two agents
+        const redemptionRes = await context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
+        expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: remainingTicketAmount });
+        expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent2.vaultAddress, valueUBA: transferRequested.amount });
+        expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+    });
+
+    it("request return from core vault and then cancel", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        await agent.transferToCoreVault(transferAmount);
+        // second agent requests return from CV
+        const rres = await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
+        // now the second agent cancels the request
+        await context.assetManager.cancelReturnFromCoreVault(agent2.vaultAddress, { from: agent2.ownerWorkAddress });
+        // trigger CV requests
+        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
+        assert.equal(paymentReqs.length, 0);
+    });
+
+    it("test checks in request return from core vault", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(10);
+        await agent.transferToCoreVault(transferAmount);
+        // target underlying address must be allowed
+        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }),
+            "agent's underlying address not allowed by core vault");
+        // must request more than 0 lots
+        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 0, { from: agent2.ownerWorkAddress }),
+            "cannot return 0 lots");
+        // requested redeem amount cannot be more than total available amount on core vault
+        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 20, { from: agent2.ownerWorkAddress }),
+            "not enough available on core vault");
+    });
+
+    it("request direct redemption from core vault", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.convertLotsToUBA(10);
+        await agent.transferToCoreVault(transferAmount);
+        // redeemer requests direct redemption from CV
+        await context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address });
+        // trigger CV requests
+        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
+        assert.equal(paymentReqs.length, 1);
+        assertWeb3Equal(paymentReqs[0].args.account, coreVaultUnderlyingAddress);
+        assertWeb3Equal(paymentReqs[0].args.destination, redeemer.underlyingAddress);
+        assertWeb3Equal(paymentReqs[0].args.amount, context.convertLotsToUBA(10));
+        // simulate transfer from CV
+        const wallet = new MockChainWallet(mockChain);
+        for (const req of paymentReqs) {
+            await wallet.addTransaction(req.args.account, req.args.destination, req.args.amount, null);
+        }
+        assertWeb3Equal(await mockChain.getBalance(redeemer.underlyingAddress), context.convertLotsToUBA(10));
+    });
+
+    it("test checks in request direct redemption from core vault", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(10);
+        await agent.transferToCoreVault(transferAmount);
+        // target underlying address must be allowed
+        await expectRevert(context.assetManager.redeemFromCoreVault(10, minter.underlyingAddress, { from: minter.address }),
+            "underlying address not allowed by core vault");
+        // requesting address must have enough fassets
+        await expectRevert(context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: accounts[0] }),
+            "f-asset balance too low");
+        // requested redeem amount must be larger than `minimumRedeemLots` of lots
+        await expectRevert(context.assetManager.redeemFromCoreVault(5, redeemer.underlyingAddress, { from: redeemer.address }),
+            "requested amount too small");
+        // requested redeem amount cannot be more than total available amount on core vault
+        await expectRevert(context.assetManager.redeemFromCoreVault(11, redeemer.underlyingAddress, { from: redeemer.address }),
+            "not enough available on core vault");
     });
 
     it("modify core vault settings", async () => {

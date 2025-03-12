@@ -22,7 +22,8 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         address payable _nativeAddress,
         uint256 _transferFeeBIPS,
         uint256 _redemptionFeeBIPS,
-        uint256 _minimumAmountLeftBIPS
+        uint256 _minimumAmountLeftBIPS,
+        uint256 _minimumRedeemLots
     )
         external
     {
@@ -39,6 +40,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
+        state.minimumRedeemLots = _minimumRedeemLots.toUint64();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -94,6 +96,16 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
     }
 
+    function setCoreVaultMinimumRedeemLots(
+        uint256 _minimumRedeemLots
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.minimumRedeemLots = _minimumRedeemLots.toUint64();
+    }
+
     function getCoreVaultManager()
         external view
         returns (address)
@@ -132,5 +144,13 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         return state.minimumAmountLeftBIPS;
+    }
+
+    function getCoreVaultMinimumRedeemLots()
+        external view
+        returns (uint256)
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        return state.minimumRedeemLots;
     }
 }

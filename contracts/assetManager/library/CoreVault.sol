@@ -18,6 +18,7 @@ library CoreVault {
     using SafeCast for *;
     using Agent for Agent.State;
     using AgentCollateral for Collateral.CombinedData;
+    using PaymentConfirmations for PaymentConfirmations.State;
 
     struct State {
         // settings
@@ -116,15 +117,15 @@ library CoreVault {
     {
         State storage state = getState();
         require(state.coreVaultManager.isDestinationAddressAllowed(_agent.underlyingAddressString),
-            "agent's underlying address not supported by core vault");
+            "agent's underlying address not allowed by core vault");
         require(_agent.transferFromCoreVaultReservedAMG == 0, "return from core vault already requested");
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_agent);
         require(_lots > 0, "cannot return 0 lots");
-        require(_agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
+        require(_agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(collateralData.freeCollateralLots(_agent) >= _lots, "not enough free collateral");
         uint64 availableLots = getCoreVaultAmountLots();
-        uint64 returnedLots = SafeMath64.min64(_lots, availableLots);
-        uint64 amountAMG = returnedLots * Globals.getSettings().lotSizeAMG;
+        require(_lots <= availableLots, "not enough available on core vault");
+        uint64 amountAMG = _lots * Globals.getSettings().lotSizeAMG;
         _agent.transferFromCoreVaultReservedAMG = amountAMG;
         _agent.reservedAMG += amountAMG;
         // request
@@ -157,7 +158,8 @@ library CoreVault {
             "payment not from core vault");
         require(_payment.data.responseBody.receivingAddressHash == _agent.underlyingAddressHash,
             "payment not to agent's address");
-        assert(_payment.data.responseBody.oneToOne); // will only be used on xrp
+        // make sure payment isn't used again
+        AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // we account for the option that CV pays more or less than the reserved amount:
         // - if less, only the amount received gets converted to redemption ticket
         // - if more, the extra amount becomes the agent's free underlying
@@ -179,17 +181,17 @@ library CoreVault {
     )
         internal
         onlyEnabled
-        returns (uint64 _redeemedLots)
     {
         State storage state = getState();
         require(state.coreVaultManager.isDestinationAddressAllowed(_redeemerUnderlyingAddress),
-            "underlying address not supported by core vault");
+            "underlying address not allowed by core vault");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint64 availableLots = getCoreVaultAmountLots();
-        require(_lots >= SafeMath64.min64(state.minimumRedeemLots, availableLots), "requested amount too small");
-        _redeemedLots = SafeMath64.min64(_lots, availableLots);
+        require(_lots <= availableLots, "not enough available on core vault");
+        uint64 minimumRedeemLots = SafeMath64.min64(state.minimumRedeemLots, availableLots);
+        require(_lots >= minimumRedeemLots, "requested amount too small");
         // burn the senders fassets
-        uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
+        uint64 redeemedAMG = _lots * settings.lotSizeAMG;
         uint128 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG).toUint128();
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
         // transfer from core vault
