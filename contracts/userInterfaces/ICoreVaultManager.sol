@@ -34,6 +34,8 @@ interface ICoreVaultManager {
         uint256 amount
     );
 
+    event NotAllEscrowsProcessed();
+
     event EscrowInstructions(
         uint256 indexed sequence,
         bytes32 indexed preimageHash,
@@ -65,6 +67,13 @@ interface ICoreVaultManager {
     function pause() external;
 
     /**
+     * Trigger processing of escrows.
+     * @param _maxCount Maximum number of escrows to process.
+     * @return True if all escrows were processed, false otherwise.
+     */
+    function processEscrows(uint256 _maxCount) external returns (bool);
+
+    /**
      * Triggers instructions - payment and escrow.
      * NOTE: cannot be called if the contract is paused.
      * NOTE: may only be called by the triggering accounts.
@@ -82,6 +91,18 @@ interface ICoreVaultManager {
      * @return Escrowed funds.
      */
     function escrowedFunds() external view returns (uint128);
+
+    /**
+     * Returns the cancelable transfer requests amount.
+     * @return Cancelable transfer requests amount.
+     */
+    function cancelableTransferRequestsAmount() external view returns(uint128);
+
+    /**
+     * Returns the non-cancelable transfer requests amount.
+     * @return Non-cancelable transfer requests amount.
+     */
+    function nonCancelableTransferRequestsAmount() external view returns(uint128);
 
     /**
      * Indicates if the contract is paused. New transfer requests and instructions cannot be triggered.
@@ -102,8 +123,9 @@ interface ICoreVaultManager {
     function getAllowedDestinationAddresses() external view returns (string[] memory);
 
     /**
-     * Gets the allowed destination addresses.
-     * @return List of allowed destination addresses.
+     * Checks if the destination address is allowed.
+     * @param _address Destination address.
+     * @return True if allowed, false otherwise.
      */
     function isDestinationAddressAllowed(string memory _address) external view returns (bool);
 
@@ -181,28 +203,16 @@ interface ICoreVaultManager {
     function getPreimageHash(uint256 _index) external view returns (bytes32);
 
     /**
-     * Gets the non-cancelable transfer requests.
-     * @return List of transfer non-cancelable requests.
-     */
-    function getNonCancelableTransferRequests() external view returns (TransferRequest[] memory);
-
-    /**
-     * Gets the non-cancelable transfer requests amount.
-     * @return Non-cancelable transfer requests amount.
-     */
-    function getNonCancelableTransferRequestsAmount() external view returns(uint128);
-
-    /**
      * Gets the cancelable transfer requests.
      * @return List of transfer cancelable requests.
      */
     function getCancelableTransferRequests() external view returns (TransferRequest[] memory);
 
     /**
-     * Gets the cancelable transfer requests amount.
-     * @return Cancelable transfer requests amount.
+     * Gets the non-cancelable transfer requests.
+     * @return List of transfer non-cancelable requests.
      */
-    function getCancelableTransferRequestsAmount() external view returns(uint128);
+    function getNonCancelableTransferRequests() external view returns (TransferRequest[] memory);
 
     /**
      * Gets the list of emergency pause senders.

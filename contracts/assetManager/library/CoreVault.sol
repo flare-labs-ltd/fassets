@@ -223,10 +223,13 @@ library CoreVault {
         returns (uint256)
     {
         State storage state = getState();
-        return uint256(state.coreVaultManager.availableFunds())
-            + state.coreVaultManager.escrowedFunds()
-            - state.coreVaultManager.getCancelableTransferRequestsAmount()
-            - state.coreVaultManager.getNonCancelableTransferRequestsAmount();
+        uint256 allFunds = uint256(state.coreVaultManager.availableFunds() + state.coreVaultManager.escrowedFunds());
+        uint256 requestedAmount = uint256(state.coreVaultManager.cancelableTransferRequestsAmount() +
+            state.coreVaultManager.nonCancelableTransferRequestsAmount());
+        if (allFunds > requestedAmount) {
+            return allFunds - requestedAmount;
+        }
+        return 0;
     }
 
     function _minimumRemainingAfterTransferAMG(

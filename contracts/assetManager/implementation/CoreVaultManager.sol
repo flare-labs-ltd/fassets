@@ -19,6 +19,7 @@ contract CoreVaultManager is
     IERC165
 {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /// asset manager address
     address public assetManager;
@@ -38,7 +39,7 @@ contract CoreVaultManager is
     /// confirmed payments
     mapping(bytes32 transactionId => bool) public confirmedPayments;
 
-    bytes32[] private preimageHashes;
+    EnumerableSet.Bytes32Set private preimageHashes;
     Escrow[] private escrows;
     mapping(bytes32 preimageHash => uint256 escrowIndex) private preimageHashToEscrowIndex;
 
@@ -48,10 +49,11 @@ contract CoreVaultManager is
     uint256 public nextUnprocessedEscrowIndex;
 
     uint256 private nextTransferRequestId;
-    uint256[] private nonCancelableTransferRequests;
     uint256[] private cancelableTransferRequests;
+    uint256[] private nonCancelableTransferRequests;
     mapping(uint256 transferRequestId => TransferRequest) private transferRequestById;
 
+    // there will probably be no more than 10 destination addresses set in the system at any time
     string[] private allowedDestinationAddresses;
     mapping(string allowedDestinationAddress => uint256) private allowedDestinationAddressIndex;
     EnumerableSet.AddressSet private triggeringAccounts;
@@ -67,11 +69,20 @@ contract CoreVaultManager is
     uint128 public availableFunds;
     /// escrowed funds
     uint128 public escrowedFunds;
+    /// cancelable transfer requests amount
+    uint128 public cancelableTransferRequestsAmount;
+    /// non-cancelable transfer requests amount
+    uint128 public nonCancelableTransferRequestsAmount;
     /// paused state
     bool public paused;
 
     modifier onlyAssetManager() {
         require(msg.sender == assetManager, "only asset manager");
+        _;
+    }
+
+    modifier onlyTriggeringAccount() {
+        require(triggeringAccounts.contains(msg.sender), "only triggering account");
         _;
     }
 
@@ -153,7 +164,10 @@ contract CoreVaultManager is
         external
         onlyAssetManager notPaused
     {
+        require(_amount > 0, "amount must be greater than zero");
         require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination address not allowed");
+        uint128 requestsAmount = nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount;
+        require(_amount + requestsAmount <= availableFunds + escrowedFunds, "insufficient funds");
         bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
         bool newTransferRequest = false;
         if (_cancelable) {
@@ -165,6 +179,7 @@ contract CoreVaultManager is
                     "transfer request already exists"
                 );
             }
+            cancelableTransferRequestsAmount += _amount;
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
@@ -178,6 +193,7 @@ contract CoreVaultManager is
                 }
                 index++;
             }
+            nonCancelableTransferRequestsAmount += _amount;
             // if the request does not exist, add a new one
             if (index == nonCancelableTransferRequests.length) {
                 nonCancelableTransferRequests.push(nextTransferRequestId);
@@ -213,7 +229,9 @@ contract CoreVaultManager is
         }
         require (index < cancelableTransferRequests.length, "transfer request not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
-        emit TransferRequestCanceled(_destinationAddress,  transferRequestById[transferRequestId].amount);
+        uint128 amount = transferRequestById[transferRequestId].amount;
+        cancelableTransferRequestsAmount -= amount;
+        emit TransferRequestCanceled(_destinationAddress,  amount);
 
         // remove the transfer request - keep the order
         while (index < cancelableTransferRequests.length - 1) { // length > 0
@@ -226,35 +244,28 @@ contract CoreVaultManager is
     /**
      * @inheritdoc ICoreVaultManager
      */
-    function triggerInstructions() external notPaused {
-        require(triggeringAccounts.contains(msg.sender), "not a triggering account");
-        uint256 nextUnprocessedEscrowIndexTmp = nextUnprocessedEscrowIndex;
-        uint128 availableFundsTmp = availableFunds;
-        uint128 escrowedFundsTmp = escrowedFunds;
-        // process all expired escrows
-        while (nextUnprocessedEscrowIndexTmp < escrows.length &&
-            escrows[nextUnprocessedEscrowIndexTmp].expiryTs <= block.timestamp)
-        {
-            if (!escrows[nextUnprocessedEscrowIndexTmp].finished) {
-                // if the escrow is not finished, add the amount to the available funds
-                uint128 amount = escrows[nextUnprocessedEscrowIndexTmp].amount;
-                availableFundsTmp += amount;
-                escrowedFundsTmp -= amount;
-            }
-            nextUnprocessedEscrowIndexTmp++;
-        }
-        // update the state
-        nextUnprocessedEscrowIndex = nextUnprocessedEscrowIndexTmp;
+    function processEscrows(uint256 _maxCount) external returns(bool){
+        return _processEscrows(_maxCount);
+    }
 
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function triggerInstructions() external onlyTriggeringAccount notPaused {
+        _processEscrows(type(uint256).max); // process all escrows
+        uint128 availableFundsTmp = availableFunds;
         uint256 sequenceNumberTmp = nextSequenceNumber;
+
         // process cancelable transfer requests
-        uint256 length = cancelableTransferRequests.length;
         uint256 index = 0;
+        uint256 length = cancelableTransferRequests.length;
+        uint128 amountTmp = cancelableTransferRequestsAmount;
         while (index < length) {
             uint256 transferRequestId = cancelableTransferRequests[index];
             if (availableFundsTmp >= transferRequestById[transferRequestId].amount) {
                 TransferRequest memory req = transferRequestById[transferRequestId];
                 availableFundsTmp -= req.amount;
+                amountTmp -= req.amount;
                 emit PaymentInstructions(
                     sequenceNumberTmp++,
                     coreVaultAddress,
@@ -272,15 +283,18 @@ contract CoreVaultManager is
                 index++;
             }
         }
+        cancelableTransferRequestsAmount = amountTmp;
 
         // process non-cancelable transfer requests
-        length = nonCancelableTransferRequests.length;
         index = 0;
+        length = nonCancelableTransferRequests.length;
+        amountTmp = nonCancelableTransferRequestsAmount;
         while (index < length) {
             uint256 transferRequestId = nonCancelableTransferRequests[index];
             if (availableFundsTmp >= transferRequestById[transferRequestId].amount) {
                 TransferRequest memory req = transferRequestById[transferRequestId];
                 availableFundsTmp -= req.amount;
+                amountTmp -= req.amount;
                 emit PaymentInstructions(
                     sequenceNumberTmp++,
                     coreVaultAddress,
@@ -298,12 +312,12 @@ contract CoreVaultManager is
                 index++;
             }
         }
+        nonCancelableTransferRequestsAmount = amountTmp;
 
         uint128 escrowAmountTmp = escrowAmount;
         if (escrowAmountTmp == 0 || length > 0 || cancelableTransferRequests.length > 0) {
-            // update the state
+            // update the state but skip creating new escrows
             availableFunds = availableFundsTmp;
-            escrowedFunds = escrowedFundsTmp;
             nextSequenceNumber = sequenceNumberTmp;
             return;
         }
@@ -311,12 +325,14 @@ contract CoreVaultManager is
         // create escrows
         uint256 preimageHashIndexTmp = nextUnusedPreimageHashIndex;
         uint256 minFundsToTriggerEscrow = minimalAmount + escrowAmountTmp;
-        if (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < preimageHashes.length) {
+        length = preimageHashes.length();
+        amountTmp = escrowedFunds;
+        if (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < length) {
             uint64 escrowEndTimestamp = _getNextEscrowEndTimestamp();
-            while (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < preimageHashes.length) {
+            while (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < length) {
                 availableFundsTmp -= escrowAmountTmp;
-                escrowedFundsTmp += escrowAmountTmp;
-                bytes32 preimageHash = preimageHashes[preimageHashIndexTmp++];
+                amountTmp += escrowAmountTmp;
+                bytes32 preimageHash = preimageHashes.at(preimageHashIndexTmp++);
                 Escrow memory escrow = Escrow({
                     preimageHash: preimageHash,
                     amount: escrowAmountTmp,
@@ -341,8 +357,8 @@ contract CoreVaultManager is
 
         // update the state
         availableFunds = availableFundsTmp;
-        escrowedFunds = escrowedFundsTmp;
         nextSequenceNumber = sequenceNumberTmp;
+        escrowedFunds = amountTmp;
     }
 
     /**
@@ -474,27 +490,25 @@ contract CoreVaultManager is
     {
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             require(_preimageHashes[i] != bytes32(0), "preimage hash cannot be zero");
-            preimageHashes.push(_preimageHashes[i]);
+            require(preimageHashes.add(_preimageHashes[i]), "preimage hash already exists");
         }
     }
 
     /**
-     * Replaces unused preimage hashes.
-     * @param _preimageHashes List of preimage hashes.
+     * Remove last unused preimage hashes.
+     * @param _maxCount Maximum number of preimage hashes to remove.
      * NOTE: may only be called by the governance.
      */
-    function replaceUnusedPreimageHashes(
-        bytes32[] calldata _preimageHashes
+    function removeUnusedPreimageHashes(
+        uint256 _maxCount
     )
         external
         onlyImmediateGovernance
     {
-        for (uint256 i = preimageHashes.length; i > nextUnusedPreimageHashIndex; i--) {
-            preimageHashes.pop();
-        }
-        for (uint256 i = 0; i < _preimageHashes.length; i++) {
-            require(_preimageHashes[i] != bytes32(0), "preimage hash cannot be zero");
-            preimageHashes.push(_preimageHashes[i]);
+        uint256 index = preimageHashes.length();
+        while (_maxCount > 0 && index > nextUnusedPreimageHashIndex) {
+            preimageHashes.remove(preimageHashes.at(--index));
+            _maxCount--;
         }
     }
 
@@ -630,10 +644,10 @@ contract CoreVaultManager is
      * @inheritdoc ICoreVaultManager
      */
     function getUnusedPreimageHashes() external view returns (bytes32[] memory) {
-        uint256 length = preimageHashes.length - nextUnusedPreimageHashIndex;
+        uint256 length = preimageHashes.length() - nextUnusedPreimageHashIndex;
         bytes32[] memory unusedPreimageHashes = new bytes32[](length);
         for (uint256 i = 0; i < length; i++) {
-            unusedPreimageHashes[i] = preimageHashes[nextUnusedPreimageHashIndex + i];
+            unusedPreimageHashes[i] = preimageHashes.at(nextUnusedPreimageHashIndex + i);
         }
         return unusedPreimageHashes;
     }
@@ -642,33 +656,14 @@ contract CoreVaultManager is
      * @inheritdoc ICoreVaultManager
      */
     function getPreimageHashesCount() external view returns (uint256) {
-        return preimageHashes.length;
+        return preimageHashes.length();
     }
 
     /**
      * @inheritdoc ICoreVaultManager
      */
     function getPreimageHash(uint256 _index) external view returns (bytes32) {
-        return preimageHashes[_index];
-    }
-
-    /**
-     * @inheritdoc ICoreVaultManager
-     */
-    function getNonCancelableTransferRequests() external view returns (TransferRequest[] memory _transferRequests) {
-        _transferRequests = new TransferRequest[](nonCancelableTransferRequests.length);
-        for (uint256 i = 0; i < nonCancelableTransferRequests.length; i++) {
-            _transferRequests[i] = transferRequestById[nonCancelableTransferRequests[i]];
-        }
-    }
-
-    /**
-     * @inheritdoc ICoreVaultManager
-     */
-    function getNonCancelableTransferRequestsAmount() external view returns(uint128 _amount) {
-        for (uint256 i = 0; i < nonCancelableTransferRequests.length; i++) {
-            _amount += transferRequestById[nonCancelableTransferRequests[i]].amount;
-        }
+        return preimageHashes.at(_index);
     }
 
     /**
@@ -684,9 +679,10 @@ contract CoreVaultManager is
     /**
      * @inheritdoc ICoreVaultManager
      */
-    function getCancelableTransferRequestsAmount() external view returns(uint128 _amount) {
-        for (uint256 i = 0; i < cancelableTransferRequests.length; i++) {
-            _amount += transferRequestById[cancelableTransferRequests[i]].amount;
+    function getNonCancelableTransferRequests() external view returns (TransferRequest[] memory _transferRequests) {
+        _transferRequests = new TransferRequest[](nonCancelableTransferRequests.length);
+        for (uint256 i = 0; i < nonCancelableTransferRequests.length; i++) {
+            _transferRequests[i] = transferRequestById[nonCancelableTransferRequests[i]];
         }
     }
 
@@ -754,6 +750,39 @@ contract CoreVaultManager is
     {
         fdcVerification = IFdcVerification(
             _getContractAddress(_contractNameHashes, _contractAddresses, "FdcVerification"));
+    }
+
+    /**
+     * Processes the escrows.
+     * @param _maxCount Maximum number of escrows to process.
+     * @return True if all escrows were processed, false otherwise.
+     */
+    function _processEscrows(uint256 _maxCount) internal returns(bool) {
+        uint128 availableFundsTmp = availableFunds;
+        uint128 escrowedFundsTmp = escrowedFunds;
+        // process all expired or finished escrows
+        uint256 index = nextUnprocessedEscrowIndex;
+        while (_maxCount > 0 && index < escrows.length &&
+            (escrows[index].expiryTs <= block.timestamp || escrows[index].finished))
+        {
+            if (!escrows[index].finished) {
+                // if the escrow is not finished, add the amount to the available funds
+                uint128 amount = escrows[index].amount;
+                availableFundsTmp += amount;
+                escrowedFundsTmp -= amount;
+            }
+            index++;
+            _maxCount--;
+        }
+        // update the state
+        nextUnprocessedEscrowIndex = index;
+        availableFunds = availableFundsTmp;
+        escrowedFunds = escrowedFundsTmp;
+
+        if (_maxCount == 0) {
+            emit NotAllEscrowsProcessed();
+        }
+        return _maxCount > 0;
     }
 
     /**
