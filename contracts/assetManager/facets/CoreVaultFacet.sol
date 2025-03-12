@@ -127,6 +127,7 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
     )
         external
         nonReentrant
+        onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         CoreVault.confirmReturnFromCoreVault(_payment, agent);
@@ -173,7 +174,8 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
         returns (uint256 _maximumTransferUBA, uint256 _minimumLeftAmountUBA)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        (uint256 _maximumTransferAMG, uint256 _minimumLeftAmountAMG) = CoreVault.getMaximumTransferAMG(agent);
+        (uint256 _maximumTransferAMG, uint256 _minimumLeftAmountAMG) =
+             CoreVault.getMaximumTransferToCoreVaultAMG(agent);
         _maximumTransferUBA = Conversion.convertAmgToUBA(_maximumTransferAMG.toUint64());
         _minimumLeftAmountUBA = Conversion.convertAmgToUBA(_minimumLeftAmountAMG.toUint64());
     }

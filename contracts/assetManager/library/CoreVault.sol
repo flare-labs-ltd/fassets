@@ -38,8 +38,7 @@ library CoreVault {
 
     // core vault may not be enabled on all chains
     modifier onlyEnabled {
-        State storage state = getState();
-        require(address(state.coreVaultManager) != address(0), "core vault not enabled");
+        _checkEnabled();
         _;
     }
 
@@ -61,7 +60,7 @@ library CoreVault {
         uint256 transferFeeWei = getTransferFee(_amountAMG);
         require(msg.value >= transferFeeWei, "transfer fee payment too small");
         // check the remaining amount
-        (uint256 maximumTransferAMG,) = getMaximumTransferAMG(_agent);
+        (uint256 maximumTransferAMG,) = getMaximumTransferToCoreVaultAMG(_agent);
         require(_amountAMG <= maximumTransferAMG, "too little minting left after transfer");
         // create ordinary redemption request to core vault address
         string memory underlyingAddress = state.coreVaultManager.coreVaultAddress();
@@ -115,7 +114,6 @@ library CoreVault {
         internal
         onlyEnabled
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         State storage state = getState();
         require(state.coreVaultManager.isDestinationAddressAllowed(_agent.underlyingAddressString),
             "agent's underlying address not supported by core vault");
@@ -124,7 +122,7 @@ library CoreVault {
         require(_lots > 0, "cannot return 0 lots");
         require(_agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
         require(collateralData.freeCollateralLots(_agent) >= _lots, "not enough free collateral");
-        uint64 availableLots = Conversion.convertUBAToAmg(getFreeCoreVaultAmountWithEscrow()) / settings.lotSizeAMG;
+        uint64 availableLots = getCoreVaultAmountLots();
         uint64 returnedLots = SafeMath64.min64(_lots, availableLots);
         uint64 amountAMG = returnedLots * Globals.getSettings().lotSizeAMG;
         _agent.transferFromCoreVaultReservedAMG = amountAMG;
@@ -187,7 +185,7 @@ library CoreVault {
         require(state.coreVaultManager.isDestinationAddressAllowed(_redeemerUnderlyingAddress),
             "underlying address not supported by core vault");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint64 availableLots = Conversion.convertUBAToAmg(getFreeCoreVaultAmountWithEscrow()) / settings.lotSizeAMG;
+        uint64 availableLots = getCoreVaultAmountLots();
         require(_lots >= SafeMath64.min64(state.minimumRedeemLots, availableLots), "requested amount too small");
         _redeemedLots = SafeMath64.min64(_lots, availableLots);
         // burn the senders fassets
@@ -208,7 +206,7 @@ library CoreVault {
         return transferAmountWei.mulBips(state.transferFeeBIPS);
     }
 
-    function getMaximumTransferAMG(
+    function getMaximumTransferToCoreVaultAMG(
         Agent.State storage _agent
     )
         internal view
@@ -218,7 +216,7 @@ library CoreVault {
         _maximumTransferAMG = MathUtils.subOrZero(_agent.mintedAMG, _minimumLeftAmountAMG);
     }
 
-    function getFreeCoreVaultAmountWithEscrow()
+    function getTotalCoreVaultAmountWithEscrow()
         internal view
         returns (uint256)
     {
@@ -230,6 +228,15 @@ library CoreVault {
             return allFunds - requestedAmount;
         }
         return 0;
+    }
+
+    function getCoreVaultAmountLots()
+        internal view
+        returns (uint64)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint64 totalAmountAMG = Conversion.convertUBAToAmg(getTotalCoreVaultAmountWithEscrow());
+        return totalAmountAMG / settings.lotSizeAMG;
     }
 
     function _minimumRemainingAfterTransferAMG(
@@ -257,6 +264,11 @@ library CoreVault {
         uint256 collateralEquivAMG = Conversion.convertTokenWeiToAMG(_data.fullCollateral, _data.amgToTokenWeiPrice);
         uint256 maxSupportedAMG = collateralEquivAMG.mulDiv(SafePct.MAX_BIPS, systemMinCrBIPS);
         return maxSupportedAMG.mulBips(state.minimumAmountLeftBIPS);
+    }
+
+    function _checkEnabled() private view {
+        State storage state = getState();
+        require(address(state.coreVaultManager) != address(0), "core vault not enabled");
     }
 
     bytes32 internal constant STATE_POSITION = keccak256("fasset.CoreVault.State");
