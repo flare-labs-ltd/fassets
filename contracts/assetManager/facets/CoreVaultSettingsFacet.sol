@@ -29,6 +29,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
         ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
+        ds.supportedInterfaces[type(ICoreVaultSettings).interfaceId] = true;
         // init settings
         CoreVault.State storage state = CoreVault.getState();
         require(!state.initialized, "already initialized");
