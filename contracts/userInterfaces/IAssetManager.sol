@@ -15,6 +15,7 @@ import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
 import "./ITransferFees.sol";
 import "./ICoreVault.sol";
+import "./ICoreVaultSettings.sol";
 
 
 /**
@@ -27,7 +28,8 @@ interface IAssetManager is
     IAgentPing,
     IRedemptionTimeExtension,
     ITransferFees,
-    ICoreVault
+    ICoreVault,
+    ICoreVaultSettings
 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information

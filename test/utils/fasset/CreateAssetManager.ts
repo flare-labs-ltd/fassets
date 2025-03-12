@@ -75,7 +75,8 @@ export async function newAssetManager(
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("TransferFeeFacet"), ["ITransferFees"],
         (c) => c.initTransferFeeFacet(assetManagerSettings.transferFeeMillionths, assetManagerSettings.transferFeeClaimFirstEpochStartTs,
             assetManagerSettings.transferFeeClaimEpochDurationSeconds, assetManagerSettings.transferFeeClaimMaxUnexpiredEpochs));
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"],
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"]);
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultSettingsFacet"), ["ICoreVaultSettings"],
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
             assetManagerSettings.coreVaultTransferFeeBIPS, assetManagerSettings.coreVaultRedemptionFeeBIPS,
             assetManagerSettings.coreVaultMinimumAmountLeftBIPS));
@@ -103,13 +104,17 @@ export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetMan
     return await IIAssetManager.at(assetManagerDiamond.address);
 }
 
-async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init: (c: T) => Promise<any>) {
+async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init?: (c: T) => Promise<any>) {
     const interfaceAbis: AbiItem[] = interfaces.flatMap(it => contractMetadata(artifacts.require(it as any)).abi);
     const interfaceSelectors = getInterfaceSelectorMap(interfaceAbis);
     const facetCut = await deployFacet(facetContract, interfaceSelectors);
-    const initFacet = await facetContract.at(facetCut.facetAddress);
-    const initParameters = abiEncodeCall(initFacet, init);
-    await assetManager.diamondCut([facetCut], initFacet.address, initParameters, { from: governanceAddress });
+    if (init) {
+        const initFacet = await facetContract.at(facetCut.facetAddress);
+        const initParameters = abiEncodeCall(initFacet, init);
+        await assetManager.diamondCut([facetCut], initFacet.address, initParameters, { from: governanceAddress });
+    } else {
+        await assetManager.diamondCut([facetCut], ZERO_ADDRESS, "0x00000000", { from: governanceAddress });
+    }
 }
 
 // simulate waiting for governance timelock

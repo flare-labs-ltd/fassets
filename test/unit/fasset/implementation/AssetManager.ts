@@ -248,11 +248,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.transferFeeClaimEpochDurationSeconds = tfSettings.epochDuration;
             resInitSettings.transferFeeClaimMaxUnexpiredEpochs = tfSettings.maxUnexpiredEpochs;
             // add CoreVault settings
-            const cbSettings = await assetManager.getCoreVaultSettings();
-            resInitSettings.coreVaultNativeAddress = cbSettings.nativeAddress;
-            resInitSettings.coreVaultTransferFeeBIPS = cbSettings.transferFeeBIPS;
-            resInitSettings.coreVaultRedemptionFeeBIPS = cbSettings.redemptionFeeBIPS;
-            resInitSettings.coreVaultMinimumAmountLeftBIPS = cbSettings.minimumAmountLeftBIPS;
+            resInitSettings.coreVaultNativeAddress = await assetManager.getCoreVaultNativeAddress();
+            resInitSettings.coreVaultTransferFeeBIPS = await assetManager.getCoreVaultTransferFeeBIPS();
+            resInitSettings.coreVaultRedemptionFeeBIPS = await assetManager.getCoreVaultRedemptionFeeBIPS();
+            resInitSettings.coreVaultMinimumAmountLeftBIPS = await assetManager.getCoreVaultMinimumAmountLeftBIPS();
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);

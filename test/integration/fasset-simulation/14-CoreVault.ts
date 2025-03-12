@@ -94,8 +94,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const transferRes = resps[String(rdreqs[0].requestId)];
         assert(transferRes != null);
         expectEvent(transferRes, "CoreVaultTransferSuccessful");
-        await expectEvent.inTransaction(transferRes.tx, context.coreVaultManager!, "PaymentConfirmed",
-            { paymentReference: rdreqs[0].paymentReference, amount: transferAmount });
+        await expectEvent.inTransaction(transferRes.tx, context.coreVaultManager!, "PaymentConfirmed", { amount: transferAmount });
         // agent now has 0 backing
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: 0, redeemingUBA: 0, dustUBA: 0, requiredUnderlyingBalanceUBA: 0 }, "reset");
         // all backing has been transferred from agent's underlying address
@@ -138,17 +137,15 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     it("modify core vault settings", async () => {
         // // update address
         // await context.assetManager.setCoreVaultAddress(accounts[31], "SOME_NEW_ADDRESS", { from: context.governance });
-        let settings = await context.assetManager.getCoreVaultSettings();
+        // let settings = await context.assetManager.getCoreVaultSettings();
         // assertWeb3Equal(settings.nativeAddress, accounts[31]);
         // assertWeb3Equal(settings.underlyingAddressString, "SOME_NEW_ADDRESS");
         // update transfer fee
         await context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: context.governance });
-        settings = await context.assetManager.getCoreVaultSettings();
-        assertWeb3Equal(settings.transferFeeBIPS, 123);
+        assertWeb3Equal(await context.assetManager.getCoreVaultTransferFeeBIPS(), 123);
         // update redemption fee
         await context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: context.governance });
-        settings = await context.assetManager.getCoreVaultSettings();
-        assertWeb3Equal(settings.redemptionFeeBIPS, 211);
+        assertWeb3Equal(await context.assetManager.getCoreVaultRedemptionFeeBIPS(), 211);
     });
 
     it("core vault setting modification requires governance call", async () => {

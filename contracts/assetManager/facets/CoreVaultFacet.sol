@@ -9,34 +9,12 @@ import "../library/CoreVault.sol";
 import "./AssetManagerBase.sol";
 
 
-contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, ReentrancyGuard, ICoreVault {
+contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
     using SafeCast for uint256;
 
+    // prevent initialization of implementation contract
     constructor() {
         CoreVault.getState().initialized = true;
-    }
-
-    function initCoreVaultFacet(
-        IICoreVaultManager _coreVaultManager,
-        address payable _nativeAddress,
-        uint256 _transferFeeBIPS,
-        uint256 _redemptionFeeBIPS,
-        uint256 _minimumAmountLeftBIPS
-    )
-        public
-    {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
-        ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
-        // init settings
-        CoreVault.State storage state = CoreVault.getState();
-        require(!state.initialized, "already initialized");
-        state.initialized = true;
-        state.coreVaultManager = _coreVaultManager;
-        state.nativeAddress = _nativeAddress;
-        state.transferFeeBIPS = _transferFeeBIPS.toUint16();
-        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
-        state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
     }
 
     /**
@@ -178,75 +156,5 @@ contract CoreVaultFacet is AssetManagerBase, GovernedProxyImplementation, Reentr
              CoreVault.getMaximumTransferToCoreVaultAMG(agent);
         _maximumTransferUBA = Conversion.convertAmgToUBA(_maximumTransferAMG.toUint64());
         _minimumLeftAmountUBA = Conversion.convertAmgToUBA(_minimumLeftAmountAMG.toUint64());
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////
-    // Settings
-
-    function setCoreVaultManager(
-        address _coreVaultManager
-    )
-        external
-        onlyGovernance
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        state.coreVaultManager = IICoreVaultManager(_coreVaultManager);
-    }
-
-    function setCoreVaultNativeAddress(
-        address payable _nativeAddress
-    )
-        external
-        onlyImmediateGovernance
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        state.nativeAddress = _nativeAddress;
-    }
-
-    function setCoreVaultTransferFeeBIPS(
-        uint256 _transferFeeBIPS
-    )
-        external
-        onlyImmediateGovernance
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        state.transferFeeBIPS = _transferFeeBIPS.toUint16();
-    }
-
-    function setCoreVaultRedemptionFeeBIPS(
-        uint256 _redemptionFeeBIPS
-    )
-        external
-        onlyImmediateGovernance
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
-    }
-
-    function setCoreVaultMinimumAmountLeftBIPS(
-        uint256 _minimumAmountLeftBIPS
-    )
-        external
-        onlyImmediateGovernance
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
-    }
-
-    /**
-     * Return the core vault settings.
-     */
-    function getCoreVaultSettings()
-        external view
-        returns (CoreVaultSettings memory)
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        return CoreVaultSettings({
-            coreVaultManager: address(state.coreVaultManager),
-            nativeAddress: state.nativeAddress,
-            transferFeeBIPS: state.transferFeeBIPS,
-            redemptionFeeBIPS: state.redemptionFeeBIPS,
-            minimumAmountLeftBIPS: state.minimumAmountLeftBIPS
-        });
     }
 }

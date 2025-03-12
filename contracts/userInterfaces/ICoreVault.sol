@@ -8,14 +8,6 @@ import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
  * Core vault
  */
 interface ICoreVault {
-    struct CoreVaultSettings {
-        address coreVaultManager;
-        address payable nativeAddress;
-        uint16 transferFeeBIPS;
-        uint32 redemptionFeeBIPS;
-        uint16 minimumAmountLeftBIPS;
-    }
-
     /**
      * Agent has requested transfer of (some of) their backing to the core vault.
      */
@@ -127,34 +119,4 @@ interface ICoreVault {
         address _agentVault
     ) external view
         returns (uint256 _maximumTransferUBA, uint256 _minimumLeftAmountUBA);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Settings
-
-    function setCoreVaultManager(
-        address _coreVaultManager
-    ) external;
-
-    function setCoreVaultNativeAddress(
-        address payable _nativeAddress
-    ) external;
-
-    function setCoreVaultTransferFeeBIPS(
-        uint256 _transferFeeBIPS
-    ) external;
-
-    function setCoreVaultRedemptionFeeBIPS(
-        uint256 _redemptionFeeBIPS
-    ) external;
-
-    function setCoreVaultMinimumAmountLeftBIPS(
-        uint256 _minimumAmountLeftBIPS
-    ) external;
-
-    /**
-     * Return the core vault settings.
-     */
-    function getCoreVaultSettings()
-        external view
-        returns (CoreVaultSettings memory);
 }
