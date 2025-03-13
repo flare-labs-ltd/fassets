@@ -3,7 +3,8 @@ import { AddressUpdaterInstance, CoreVaultManagerInstance, CoreVaultManagerProxy
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { Payment } from "@flarenetwork/state-connector-protocol/dist/generated/types/typescript/Payment";
-import { ZERO_BYTES32 } from "../../../../lib/utils/helpers";
+import { abiEncodeCall, erc165InterfaceId, ZERO_BYTES32 } from "../../../../lib/utils/helpers";
+import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../utils/web3assertions";
 
 const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
@@ -11,7 +12,11 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const MockContract = artifacts.require('MockContract');
 
-contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async accounts => {
+contract(
+  `CoreVaultManager.sol; ${getTestFile(
+    __filename
+  )}; CoreVaultManager basic tests`,
+  async (accounts) => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
@@ -23,16 +28,480 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     const custodianAddress = "custodianAddress";
     const coreVaultAddress = "coreVaultAddress";
 
-   async function initialize() {
-        // create governance settings
+    async function initialize() {
+      // create governance settings
+      const governanceSettings = await GovernanceSettings.new();
+      await governanceSettings.initialise(governance, 60, [governance], {
+        from: GENESIS_GOVERNANCE_ADDRESS,
+      });
+      // create address updater
+      addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+      // create core vault manager
+      coreVaultManagerImplementation = await CoreVaultManager.new();
+      coreVaultManagerProxy = await CoreVaultManagerProxy.new(
+        coreVaultManagerImplementation.address,
+        governanceSettings.address,
+        governance,
+        addressUpdater.address,
+        assetManager,
+        web3.utils.keccak256("123"),
+        custodianAddress,
+        coreVaultAddress,
+        0
+      );
+      coreVaultManager = await CoreVaultManager.at(coreVaultManagerProxy.address);
+      fdcVerification = await MockContract.new();
+      await fdcVerification.givenAnyReturnBool(true);
+      await addressUpdater.update(["AddressUpdater", "FdcVerification"], [addressUpdater.address, fdcVerification.address], [coreVaultManager.address], { from: governance });
+
+      // await coreVaultManager.switchToProductionMode({ from: governance });
+      return { coreVaultManager };
+    }
+
+    beforeEach(async () => {
+      ({ coreVaultManager } = await loadFixtureCopyVars(initialize));
+    });
+
+    it("should add destination addresses", async () => {
+      const tx = await coreVaultManager.addAllowedDestinationAddresses(
+        ["addr1", "addr2"],
+        { from: governance }
+      );
+      expectEvent(tx, "AllowedDestinationAddressAdded", {
+        destinationAddress: "addr1",
+      });
+      const allowedDestinationAddresses =
+        await coreVaultManager.getAllowedDestinationAddresses();
+      expectEvent(tx, "AllowedDestinationAddressAdded", {
+        destinationAddress: "addr2",
+      });
+      expect(allowedDestinationAddresses.length).to.equal(2);
+      expect(allowedDestinationAddresses[0]).to.equal("addr1");
+      expect(allowedDestinationAddresses[1]).to.equal("addr2");
+
+      assertWeb3Equal(
+        await coreVaultManager.isDestinationAddressAllowed("addr1"),
+        true
+      );
+      assertWeb3Equal(
+        await coreVaultManager.isDestinationAddressAllowed("addr2"),
+        true
+      );
+      assertWeb3Equal(
+        await coreVaultManager.isDestinationAddressAllowed("addr3"),
+        false
+      );
+
+      // if address already exists, it should not be added again
+      await coreVaultManager.addAllowedDestinationAddresses(
+        ["addr3", "addr1"],
+        { from: governance }
+      );
+      const allowedDestinationAddresses2 =
+        await coreVaultManager.getAllowedDestinationAddresses();
+      expect(allowedDestinationAddresses2.length).to.equal(3);
+      expect(allowedDestinationAddresses2[0]).to.equal("addr1");
+      expect(allowedDestinationAddresses2[1]).to.equal("addr2");
+      expect(allowedDestinationAddresses2[2]).to.equal("addr3");
+    });
+
+    it("should revert adding allowed destination address if not from governance", async () => {
+      const tx = coreVaultManager.addAllowedDestinationAddresses(
+        [accounts[1]],
+        { from: accounts[2] }
+      );
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should revert adding empty destination address", async () => {
+      const tx = coreVaultManager.addAllowedDestinationAddresses([""], {
+        from: governance,
+      });
+      await expectRevert(tx, "destination address cannot be empty");
+    });
+
+    it("should remove allowed destination addresses", async () => {
+      await coreVaultManager.addAllowedDestinationAddresses(
+        ["addr1", "addr2"],
+        { from: governance }
+      );
+
+      const tx = await coreVaultManager.removeAllowedDestinationAddresses(
+        ["addr1", "addr2", "addr3"],
+        { from: governance }
+      );
+      expectEvent(tx, "AllowedDestinationAddressRemoved", {
+        destinationAddress: "addr1",
+      });
+      expectEvent(tx, "AllowedDestinationAddressRemoved", {
+        destinationAddress: "addr2",
+      });
+
+      const allowedDestinationAddresses =
+        await coreVaultManager.getAllowedDestinationAddresses();
+      expect(allowedDestinationAddresses.length).to.equal(0);
+
+      // if address is not on the list of allowed destination addresses, it shouldn't be removed
+      const tx1 = await coreVaultManager.removeAllowedDestinationAddresses(
+        ["addr1"],
+        { from: governance }
+      );
+      expectEvent.notEmitted(tx1, "AllowedDestinationAddressRemoved");
+    });
+
+    it("should revert removing allowed destination address if not from governance", async () => {
+      const tx = coreVaultManager.removeAllowedDestinationAddresses(
+        [accounts[1]],
+        { from: accounts[2] }
+      );
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should add triggering accounts", async () => {
+      const tx = await coreVaultManager.addTriggeringAccounts(
+        [accounts[1], accounts[2]],
+        { from: governance }
+      );
+      expectEvent(tx, "TriggeringAccountAdded", {
+        triggeringAccount: accounts[1],
+      });
+      expectEvent(tx, "TriggeringAccountAdded", {
+        triggeringAccount: accounts[2],
+      });
+
+      const triggeringAccounts = await coreVaultManager.getTriggeringAccounts();
+      expect(triggeringAccounts.length).to.equal(2);
+      expect(triggeringAccounts[0]).to.equal(accounts[1]);
+      expect(triggeringAccounts[1]).to.equal(accounts[2]);
+
+      // if triggering account already exists, it should not be added again
+      const tx1 = await coreVaultManager.addTriggeringAccounts([accounts[1]], {
+        from: governance,
+      });
+      expectEvent.notEmitted(tx1, "TriggeringAccountAdded");
+    });
+
+    it("should revert adding triggering account if not from governance", async () => {
+      const tx = coreVaultManager.addTriggeringAccounts([accounts[1]], {
+        from: accounts[2],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should remove triggering accounts", async () => {
+      // add triggering accounts
+      await coreVaultManager.addTriggeringAccounts(
+        [accounts[1], accounts[2], accounts[3]],
+        { from: governance }
+      );
+
+      const tx = await coreVaultManager.removeTriggeringAccounts(
+        [accounts[1], accounts[2]],
+        { from: governance }
+      );
+      expectEvent(tx, "TriggeringAccountRemoved", {
+        triggeringAccount: accounts[1],
+      });
+      expectEvent(tx, "TriggeringAccountRemoved", {
+        triggeringAccount: accounts[2],
+      });
+      expect((await coreVaultManager.getTriggeringAccounts()).length).to.equal(
+        1
+      );
+
+      // if triggering account is not in the list, it shouldn't be removed
+      const tx1 = await coreVaultManager.removeTriggeringAccounts(
+        [accounts[1]],
+        { from: governance }
+      );
+      expectEvent.notEmitted(tx1, "TriggeringAccountRemoved");
+    });
+
+    it("should revert removing triggering account if not from governance", async () => {
+      const tx = coreVaultManager.removeTriggeringAccounts([accounts[1]], {
+        from: accounts[2],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should update custodian address", async () => {
+      const tx = await coreVaultManager.updateCustodianAddress(
+        "newCustodianAddress",
+        { from: governance }
+      );
+      expectEvent(tx, "CustodianAddressUpdated", {
+        custodianAddress: "newCustodianAddress",
+      });
+      expect(await coreVaultManager.custodianAddress()).to.equal(
+        "newCustodianAddress"
+      );
+    });
+
+    it("should not update custodian address if not from governance", async () => {
+      const tx = coreVaultManager.updateCustodianAddress("custodianAddress", {
+        from: accounts[1],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should not update custodian address if new address is empty", async () => {
+      const tx = coreVaultManager.updateCustodianAddress("", {
+        from: governance,
+      });
+      await expectRevert(tx, "custodian address cannot be empty");
+    });
+
+    it("should update settings", async () => {
+      const tx = await coreVaultManager.updateSettings(12345, 800, 900, {
+        from: governance,
+      });
+      expectEvent(tx, "SettingsUpdated", {
+        escrowEndTimeSeconds: "12345",
+        escrowAmount: "800",
+        minimalAmount: "900",
+      });
+      assertWeb3Equal(await coreVaultManager.escrowEndTimeSeconds(), "12345");
+      assertWeb3Equal(await coreVaultManager.escrowAmount(), "800");
+      assertWeb3Equal(await coreVaultManager.minimalAmount(), "900");
+    });
+
+    it("should not update settings if not from governance", async () => {
+      const tx = coreVaultManager.updateSettings(12345, 800, 900, {
+        from: accounts[1],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should not update settings if escrow end time is more than a day", async () => {
+      const tx = coreVaultManager.updateSettings(24 * 3600, 800, 900, {
+        from: governance,
+      });
+      await expectRevert(tx, "escrow end time must be less than a day");
+    });
+
+    it("should add preimage hashes", async () => {
+      const hash1 = web3.utils.keccak256("hash1");
+      const hash2 = web3.utils.keccak256("hash2");
+      const tx = await coreVaultManager.addPreimageHashes([hash1, hash2], {
+        from: governance,
+      });
+      expectEvent(tx, "PreimageHashAdded", { preimageHash: hash1 });
+      expectEvent(tx, "PreimageHashAdded", { preimageHash: hash2 });
+
+      assertWeb3Equal(await coreVaultManager.getPreimageHashesCount(), 2);
+      assertWeb3Equal(await coreVaultManager.getPreimageHash(0), hash1);
+      assertWeb3Equal(await coreVaultManager.getPreimageHash(1), hash2);
+      // only two hashes were added
+      await expectRevert.unspecified(coreVaultManager.getPreimageHash(2));
+    });
+
+    it("should not add preimage hashes if not from governance", async () => {
+      const tx = coreVaultManager.addPreimageHashes(
+        [web3.utils.keccak256("hash1")],
+        { from: accounts[1] }
+      );
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should revert adding preimage hashes if zero hash", async () => {
+      const tx = coreVaultManager.addPreimageHashes([ZERO_BYTES32], {
+        from: governance,
+      });
+      await expectRevert(tx, "preimage hash cannot be zero");
+    });
+
+    it("should revert adding preimage hashes if hash already exists", async () => {
+      const hash = web3.utils.keccak256("hash1");
+      const tx = coreVaultManager.addPreimageHashes([hash, hash], {
+        from: governance,
+      });
+      await expectRevert(tx, "preimage hash already exists");
+    });
+
+    it("should remove unused preimage hashes", async () => {
+      // add preimage hashes
+      await coreVaultManager.addPreimageHashes(
+        [
+          web3.utils.keccak256("hash1"),
+          web3.utils.keccak256("hash2"),
+          web3.utils.keccak256("hash3"),
+          web3.utils.keccak256("hash4"),
+        ],
+        { from: governance }
+      );
+
+      let unusedHashes = await coreVaultManager.getUnusedPreimageHashes();
+      assertWeb3Equal(unusedHashes.length, 4);
+      assertWeb3DeepEqual(unusedHashes, [
+        web3.utils.keccak256("hash1"),
+        web3.utils.keccak256("hash2"),
+        web3.utils.keccak256("hash3"),
+        web3.utils.keccak256("hash4"),
+      ]);
+
+      // remove 3 unused preimage hashes
+      const tx = await coreVaultManager.removeUnusedPreimageHashes(3, {
+        from: governance,
+      });
+      expectEvent(tx, "UnusedPreimageHashRemoved", {
+        preimageHash: web3.utils.keccak256("hash4"),
+      });
+      expectEvent(tx, "UnusedPreimageHashRemoved", {
+        preimageHash: web3.utils.keccak256("hash3"),
+      });
+      expectEvent(tx, "UnusedPreimageHashRemoved", {
+        preimageHash: web3.utils.keccak256("hash2"),
+      });
+      assertWeb3Equal(await coreVaultManager.getPreimageHashesCount(), 1);
+      assertWeb3DeepEqual(await coreVaultManager.getUnusedPreimageHashes(), [
+        web3.utils.keccak256("hash1"),
+      ]);
+    });
+
+    it("should not remove unused preimage hashes if not from governance", async () => {
+        const tx = coreVaultManager.removeUnusedPreimageHashes(1);
+        await expectRevert(tx, "only governance");
+    });
+
+
+    it("should add emergency pause senders", async () => {
+      await coreVaultManager.switchToProductionMode({ from: governance });
+      const tx = await coreVaultManager.addEmergencyPauseSenders(
+        [accounts[1], accounts[2]],
+        { from: governance }
+      );
+      expectEvent(tx, "EmergencyPauseSenderAdded", { sender: accounts[1] });
+      expectEvent(tx, "EmergencyPauseSenderAdded", { sender: accounts[2] });
+
+      assertWeb3DeepEqual(await coreVaultManager.getEmergencyPauseSenders(), [
+        accounts[1],
+        accounts[2],
+      ]);
+
+      // if sender already exists, it should not be added again
+      const tx1 = await coreVaultManager.addEmergencyPauseSenders(
+        [accounts[1]],
+        { from: governance }
+      );
+      expectEvent.notEmitted(tx1, "EmergencyPauseSenderAdded");
+    });
+
+    it("should revert adding emergency pause senders if not from governance", async () => {
+      const tx = coreVaultManager.addEmergencyPauseSenders([accounts[1]], {
+        from: accounts[2],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should remove emergency pause senders", async () => {
+      await coreVaultManager.switchToProductionMode({ from: governance });
+      await coreVaultManager.addEmergencyPauseSenders(
+        [accounts[1], accounts[2], accounts[3]],
+        { from: governance }
+      );
+
+      // remove two senders
+      const tx = await coreVaultManager.removeEmergencyPauseSenders(
+        [accounts[1], accounts[3]],
+        { from: governance }
+      );
+      expectEvent(tx, "EmergencyPauseSenderRemoved", { sender: accounts[1] });
+      expectEvent(tx, "EmergencyPauseSenderRemoved", { sender: accounts[3] });
+      assertWeb3DeepEqual(await coreVaultManager.getEmergencyPauseSenders(), [
+        accounts[2],
+      ]);
+
+      // if sender is not in the list, it shouldn't be removed
+      const tx1 = await coreVaultManager.removeEmergencyPauseSenders(
+        [accounts[1]],
+        { from: governance }
+      );
+      expectEvent.notEmitted(tx1, "EmergencyPauseSenderRemoved");
+    });
+
+    it("should revert removing emergency pause sender if not from governance", async () => {
+      const tx = coreVaultManager.removeEmergencyPauseSenders([accounts[1]], {
+        from: accounts[2],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
+    it("should pause the contract", async () => {
+      const tx = await coreVaultManager.pause({ from: governance });
+      expectEvent(tx, "Paused");
+      assertWeb3Equal(await coreVaultManager.paused(), true);
+    });
+
+    it("should not pause the contract if not called by emergency pause senders", async () => {
+      const tx = coreVaultManager.pause({ from: accounts[1] });
+      await expectRevert(tx, "only governance or emergency pause senders");
+
+      // add accounts[1] as emergency pause sender
+      await coreVaultManager.addEmergencyPauseSenders([accounts[1]], {
+        from: governance,
+      });
+      const tx1 = await coreVaultManager.pause({ from: accounts[1] });
+      expectEvent(tx1, "Paused");
+      assertWeb3Equal(await coreVaultManager.paused(), true);
+    });
+
+    it("should unpause the contract", async () => {
+      await coreVaultManager.switchToProductionMode({ from: governance });
+      await coreVaultManager.pause({ from: governance });
+      const tx = await coreVaultManager.unpause({ from: governance });
+      expectEvent(tx, "Unpaused");
+      assertWeb3Equal(await coreVaultManager.paused(), false);
+    });
+
+    describe("proxy upgrade", async () => {
+      it("should upgrade via upgradeTo", async () => {
+        // pause the contract
+        await coreVaultManager.pause({ from: governance });
+        const proxyAddress = coreVaultManager.address;
+        const coreVaultManagerProxy = await CoreVaultManager.at(proxyAddress);
+        assertWeb3Equal(await coreVaultManager.paused(), true);
+        // upgrade
+        const newImpl = await CoreVaultManager.new();
+        await coreVaultManagerProxy.upgradeTo(newImpl.address, {
+          from: governance,
+        });
+        // check
+        assertWeb3Equal(coreVaultManager.address, proxyAddress);
+        assertWeb3Equal(await coreVaultManager.paused(), true);
+      });
+
+      it("should upgrade via upgradeToAndCall", async () => {
+        // pause the contract
+        const proxyAddress = coreVaultManager.address;
+        const coreVaultManagerProxy = await CoreVaultManager.at(proxyAddress);
+        assertWeb3Equal(await coreVaultManager.paused(), false);
+        // upgrade
+        const newImpl = await CoreVaultManager.new();
+        const callData = abiEncodeCall(coreVaultManager, (c) => c.pause());
+        await coreVaultManagerProxy.upgradeTo(newImpl.address, {
+          from: governance,
+        });
+        await coreVaultManagerProxy.upgradeToAndCall(
+          newImpl.address,
+          callData,
+          { from: governance }
+        );
+        // check
+        assertWeb3Equal(coreVaultManager.address, proxyAddress);
+        assertWeb3Equal(await coreVaultManager.paused(), true);
+      });
+
+      it("calling initialize in upgradeToAndCall should revert in GovernedBase", async () => {
         const governanceSettings = await GovernanceSettings.new();
-        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-        // create address updater
-        addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
-        // create core vault manager
-        coreVaultManagerImplementation = await CoreVaultManager.new();
-        coreVaultManagerProxy = await CoreVaultManagerProxy.new(
-            coreVaultManagerImplementation.address,
+        await governanceSettings.initialise(governance, 60, [governance], {
+          from: GENESIS_GOVERNANCE_ADDRESS,
+        });
+        const proxyAddress = coreVaultManager.address;
+        const coreVaultManagerProxy = await CoreVaultManager.at(proxyAddress);
+        // upgrade
+        const newImpl = await CoreVaultManager.new();
+        const callData = abiEncodeCall(coreVaultManager, (c) =>
+          c.initialize(
             governanceSettings.address,
             governance,
             addressUpdater.address,
@@ -40,36 +509,66 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
             chainId,
             custodianAddress,
             coreVaultAddress,
-            0
+            3
+          )
         );
-        coreVaultManager = await CoreVaultManager.at(coreVaultManagerProxy.address);
 
-        fdcVerification = await MockContract.new();
-        await fdcVerification.givenAnyReturnBool(true);
-        await addressUpdater.update(["AddressUpdater", "FdcVerification"], [addressUpdater.address, fdcVerification.address], [coreVaultManager.address], { from: governance });
+        await expectRevert(
+          coreVaultManagerProxy.upgradeToAndCall(newImpl.address, callData, {
+            from: governance,
+          }),
+          "initialised != false"
+        );
+      });
 
-        // await coreVaultManager.switchToProductionMode({ from: governance });
-        return { coreVaultManager };
-    }
-
-    beforeEach(async () => {
-        ({ coreVaultManager } = await loadFixtureCopyVars(initialize));
+      it("should revert if not upgrading from governance", async () => {
+        const proxyAddress = coreVaultManager.address;
+        const coreVaultManagerProxy = await CoreVaultManager.at(proxyAddress);
+        // upgrade
+        const newImpl = await CoreVaultManager.new();
+        await expectRevert(
+          coreVaultManagerProxy.upgradeTo(newImpl.address),
+          "only governance"
+        );
+        const callData = abiEncodeCall(coreVaultManager, (c) => c.pause());
+        await expectRevert(
+          coreVaultManagerProxy.upgradeToAndCall(newImpl.address, callData),
+          "only governance"
+        );
+      });
     });
 
-    it("should add and get allowed destination addresses", async () => {
-        await coreVaultManager.addAllowedDestinationAddresses(["addr1", "addr2"], { from: governance });
-        const allowedDestinationAddresses = await coreVaultManager.getAllowedDestinationAddresses();
-        expect(allowedDestinationAddresses.length).to.equal(2);
-        expect(allowedDestinationAddresses[0]).to.equal("addr1");
-        expect(allowedDestinationAddresses[1]).to.equal("addr2");
-
-        // if address already exists, it should not be added again
-        await coreVaultManager.addAllowedDestinationAddresses(["addr3", "addr1"], { from: governance });
-        const allowedDestinationAddresses2 = await coreVaultManager.getAllowedDestinationAddresses();
-        expect(allowedDestinationAddresses2.length).to.equal(3);
-        expect(allowedDestinationAddresses2[0]).to.equal("addr1");
-        expect(allowedDestinationAddresses2[1]).to.equal("addr2");
-        expect(allowedDestinationAddresses2[2]).to.equal("addr3");
+    describe("ERC-165 interface identification", () => {
+      it("should properly respond to supportsInterface", async () => {
+        const IERC165 = artifacts.require(
+          "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165"
+        );
+        const IIAddressUpdatable = artifacts.require(
+          "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdatable.sol:IIAddressUpdatable" as "IIAddressUpdatable"
+        );
+        const IICoreVaultManager = artifacts.require("IICoreVaultManager");
+        const ICoreVaultManager = artifacts.require("ICoreVaultManager");
+        //
+        const iERC165 = await IERC165.at(coreVaultManager.address);
+        const iiAddressUpdatable = await IIAddressUpdatable.at(coreVaultManager.address);
+        const iiCoreVaultManager = await IICoreVaultManager.at(coreVaultManager.address);
+        const iCoreVaultManager = await ICoreVaultManager.at(coreVaultManager.address);
+        //
+        assert.isTrue(
+          await coreVaultManager.supportsInterface(erc165InterfaceId(iERC165.abi))
+        );
+        assert.isTrue(
+          await coreVaultManager.supportsInterface(erc165InterfaceId(iiAddressUpdatable.abi))
+        );
+        assert.isTrue(
+          await coreVaultManager.supportsInterface(
+            erc165InterfaceId(iiCoreVaultManager.abi, [
+              iCoreVaultManager.abi,
+            ])
+          )
+        );
+        assert.isFalse(await coreVaultManager.supportsInterface("0xFFFFFFFF")); // shouldn't support invalid interface
+      });
     });
 
     it("should revert adding allowed destination address if not from governance", async () => {

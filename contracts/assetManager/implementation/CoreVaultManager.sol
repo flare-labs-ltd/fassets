@@ -380,6 +380,7 @@ contract CoreVaultManager is
             }
             allowedDestinationAddresses.push(_allowedDestinationAddresses[i]);
             allowedDestinationAddressIndex[_allowedDestinationAddresses[i]] = allowedDestinationAddresses.length;
+            emit AllowedDestinationAddressAdded(_allowedDestinationAddresses[i]);
         }
     }
 
@@ -407,6 +408,7 @@ contract CoreVaultManager is
             }
             allowedDestinationAddresses.pop();
             delete allowedDestinationAddressIndex[_allowedDestinationAddresses[i]];
+            emit AllowedDestinationAddressRemoved(_allowedDestinationAddresses[i]);
         }
     }
 
@@ -422,7 +424,9 @@ contract CoreVaultManager is
         onlyGovernance
     {
         for (uint256 i = 0; i < _triggeringAccounts.length; i++) {
-            triggeringAccounts.add(_triggeringAccounts[i]);
+            if (triggeringAccounts.add(_triggeringAccounts[i])) {
+                emit TriggeringAccountAdded(_triggeringAccounts[i]);
+            }
         }
     }
 
@@ -438,7 +442,9 @@ contract CoreVaultManager is
         onlyGovernance
     {
         for (uint256 i = 0; i < _triggeringAccounts.length; i++) {
-            triggeringAccounts.remove(_triggeringAccounts[i]);
+            if (triggeringAccounts.remove(_triggeringAccounts[i])) {
+                emit TriggeringAccountRemoved(_triggeringAccounts[i]);
+            }
         }
     }
 
@@ -455,6 +461,7 @@ contract CoreVaultManager is
     {
         require(bytes(_custodianAddress).length > 0, "custodian address cannot be empty");
         custodianAddress = _custodianAddress;
+        emit CustodianAddressUpdated(_custodianAddress);
     }
 
     /**
@@ -476,6 +483,7 @@ contract CoreVaultManager is
         escrowEndTimeSeconds = _escrowEndTimeSeconds;
         escrowAmount = _escrowAmount;
         minimalAmount = _minimalAmount;
+        emit SettingsUpdated(_escrowEndTimeSeconds, _escrowAmount, _minimalAmount);
     }
 
     /**
@@ -492,6 +500,7 @@ contract CoreVaultManager is
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             require(_preimageHashes[i] != bytes32(0), "preimage hash cannot be zero");
             require(preimageHashes.add(_preimageHashes[i]), "preimage hash already exists");
+            emit PreimageHashAdded(_preimageHashes[i]);
         }
     }
 
@@ -508,8 +517,10 @@ contract CoreVaultManager is
     {
         uint256 index = preimageHashes.length();
         while (_maxCount > 0 && index > nextUnusedPreimageHashIndex) {
-            preimageHashes.remove(preimageHashes.at(--index));
+            bytes32 preimageHash = preimageHashes.at(--index);
+            preimageHashes.remove(preimageHash);
             _maxCount--;
+            emit UnusedPreimageHashRemoved(preimageHash);
         }
     }
 
@@ -553,7 +564,9 @@ contract CoreVaultManager is
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _addresses.length; i++) {
-            emergencyPauseSenders.add(_addresses[i]);
+            if(emergencyPauseSenders.add(_addresses[i])) {
+                emit EmergencyPauseSenderAdded(_addresses[i]);
+            }
         }
     }
 
@@ -567,7 +580,9 @@ contract CoreVaultManager is
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _addresses.length; i++) {
-            emergencyPauseSenders.remove(_addresses[i]);
+            if (emergencyPauseSenders.remove(_addresses[i])) {
+                emit EmergencyPauseSenderRemoved(_addresses[i]);
+            }
         }
     }
 

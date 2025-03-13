@@ -19,6 +19,48 @@ interface IICoreVaultManager is ICoreVaultManager {
         uint256 amount
     );
 
+    event TriggeringAccountAdded(
+        address triggeringAccount
+    );
+
+    event TriggeringAccountRemoved(
+        address triggeringAccount
+    );
+
+    event AllowedDestinationAddressAdded(
+        string destinationAddress
+    );
+
+    event AllowedDestinationAddressRemoved(
+        string destinationAddress
+    );
+
+    event CustodianAddressUpdated(
+        string custodianAddress
+    );
+
+    event SettingsUpdated(
+        uint256 escrowEndTimeSeconds,
+        uint128 escrowAmount,
+        uint128 minimalAmount
+    );
+
+    event PreimageHashAdded(
+        bytes32 preimageHash
+    );
+
+    event UnusedPreimageHashRemoved(
+        bytes32 preimageHash
+    );
+
+    event EmergencyPauseSenderAdded(
+        address sender
+    );
+
+    event EmergencyPauseSenderRemoved(
+        address sender
+    );
+
     /**
      * Requests transfer from core vault to destination address.
      * @param _destinationAddress destination address
