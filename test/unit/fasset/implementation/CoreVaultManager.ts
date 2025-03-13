@@ -11,7 +11,7 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const MockContract = artifacts.require('MockContract');
 
-contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async accounts => {
+contract.only(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async accounts => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
@@ -28,7 +28,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         const governanceSettings = await GovernanceSettings.new();
         await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
         // create address updater
-        const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+        addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
         // create core vault manager
         coreVaultManagerImplementation = await CoreVaultManager.new();
         coreVaultManagerProxy = await CoreVaultManagerProxy.new(
@@ -102,6 +102,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         const tx = await coreVaultManager.confirmPayment(proof);
         expectEvent(tx, "PaymentConfirmed", { transactionId, amount: amount.toString() });
         expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(amount);
+        expect(await coreVaultManager.confirmedPayments(transactionId)).to.equal(true);
     });
 
     it("should not confirm payment twice", async () => {
@@ -155,6 +156,216 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         const proof2 = createPaymentProof(transactionId, -100);
         await expectRevert(coreVaultManager.confirmPayment(proof2), "no amount received");
         expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(0);
+    });
+
+    it("should request transfer from core vault (cancelable)", async () => {
+        const destinationAddress = "destinationAddress";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, "addr2"], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, true, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: true });
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(100);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(1);
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        expect(cancelableTransferRequests[0].amount.toString()).to.equal("100");
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(0);
+    });
+
+    it("should request multiple transfers from core vault - different destination addresses (cancelable)", async () => {
+        const destinationAddress = "destinationAddress";
+        const destinationAddress2 = "destinationAddress2";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, destinationAddress2], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, true, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: true });
+        const tx2 = await coreVaultManager.requestTransferFromCoreVault(destinationAddress2, 300, true, { from: assetManager });
+        expectEvent(tx2, "TransferRequested", { destinationAddress: destinationAddress2, amount: "300", cancelable: true });
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(400);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(2);
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        expect(cancelableTransferRequests[0].amount.toString()).to.equal("100");
+        expect(cancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress2);
+        expect(cancelableTransferRequests[1].amount.toString()).to.equal("300");
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(0);
+    });
+
+    it("should revert requesting multiple transfers from core vault - same destination address (cancelable)", async () => {
+        const destinationAddress = "destinationAddress";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, true, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: true });
+        await expectRevert(coreVaultManager.requestTransferFromCoreVault(destinationAddress, 300, true, { from: assetManager }), "transfer request already exists");
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(100);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(1);
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        expect(cancelableTransferRequests[0].amount.toString()).to.equal("100");
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(0);
+    });
+
+    it("should request transfer from core vault (non-cancelable)", async () => {
+        const destinationAddress = "destinationAddress";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, "addr2"], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, false, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: false });
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(100);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(0);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(1);
+        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        expect(nonCancelableTransferRequests[0].amount.toString()).to.equal("100");
+    });
+
+    it("should request multiple transfers from core vault - different destination addresses (non-cancelable)", async () => {
+        const destinationAddress = "destinationAddress";
+        const destinationAddress2 = "destinationAddress2";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, destinationAddress2], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, false, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: false });
+        const tx2 = await coreVaultManager.requestTransferFromCoreVault(destinationAddress2, 300, false, { from: assetManager });
+        expectEvent(tx2, "TransferRequested", { destinationAddress: destinationAddress2, amount: "300", cancelable: false });
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(400);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(0);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(2);
+        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        expect(nonCancelableTransferRequests[0].amount.toString()).to.equal("100");
+        expect(nonCancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress2);
+        expect(nonCancelableTransferRequests[1].amount.toString()).to.equal("300");
+    });
+
+    it("should request multiple transfers from core vault - same destination addresses (non-cancelable)", async () => {
+        const destinationAddress = "destinationAddress";
+        const destinationAddress2 = "destinationAddress2";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, destinationAddress2], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, false, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: false });
+        const tx2 = await coreVaultManager.requestTransferFromCoreVault(destinationAddress2, 300, false, { from: assetManager });
+        expectEvent(tx2, "TransferRequested", { destinationAddress: destinationAddress2, amount: "300", cancelable: false });
+        const tx3 = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, false, { from: assetManager });
+        expectEvent(tx3, "TransferRequested", { destinationAddress: destinationAddress, amount: "100", cancelable: false });
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(500);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(0);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(2);
+        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        expect(nonCancelableTransferRequests[0].amount.toString()).to.equal("200");
+        expect(nonCancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress2);
+        expect(nonCancelableTransferRequests[1].amount.toString()).to.equal("300");
+    });
+
+    it("should revert requesting transfer if not from asset manager", async () => {
+        assert.notEqual(assetManager, accounts[1]);
+        await expectRevert(coreVaultManager.requestTransferFromCoreVault("addr1", 10, false, { from: accounts[1]}), "only asset manager");
+    });
+
+    it("should revert requesting transfer if paused", async () => {
+        await coreVaultManager.pause({ from: governance });
+        await expectRevert(coreVaultManager.requestTransferFromCoreVault("addr1", 10, false, { from: assetManager}), "paused");
+    });
+
+    it("should revert requesting transfer if amount is 0", async () => {
+        await expectRevert(coreVaultManager.requestTransferFromCoreVault("addr1", 0, false, { from: assetManager}), "amount must be greater than zero");
+    });
+
+    it("should revert requesting transfer if destination address is not allowed", async () => {
+        await expectRevert(coreVaultManager.requestTransferFromCoreVault("addr1", 10, false, { from: assetManager}), "destination address not allowed");
+    });
+
+    it("should revert requesting transfer if there are insufficient funds", async () => {
+        const destinationAddress = "destinationAddress";
+        const destinationAddress2 = "destinationAddress2";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, destinationAddress2], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, true, { from: assetManager})
+        await coreVaultManager.requestTransferFromCoreVault(destinationAddress2, 300, false, { from: assetManager})
+
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1"], { from: governance });
+        await expectRevert(coreVaultManager.requestTransferFromCoreVault("addr1", 700, false, { from: assetManager}), "insufficient funds");
+    });
+
+    it("should cancel request transfer from core vault and keep the order", async () => {
+        const destinationAddress = "destinationAddress";
+        const destinationAddress2 = "destinationAddress2";
+        const destinationAddress3 = "destinationAddress3";
+        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, destinationAddress2, destinationAddress3], { from: governance });
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        const tx = await coreVaultManager.requestTransferFromCoreVault(destinationAddress, 100, true, { from: assetManager });
+        expectEvent(tx, "TransferRequested", { destinationAddress, amount: "100", cancelable: true });
+        const tx2 = await coreVaultManager.requestTransferFromCoreVault(destinationAddress2, 300, true, { from: assetManager });
+        expectEvent(tx2, "TransferRequested", { destinationAddress: destinationAddress2, amount: "300", cancelable: true });
+        const tx3 = await coreVaultManager.requestTransferFromCoreVault(destinationAddress3, 600, true, { from: assetManager });
+        expectEvent(tx3, "TransferRequested", { destinationAddress: destinationAddress3, amount: "600", cancelable: true });
+
+        const tx4 = await coreVaultManager.cancelTransferRequestFromCoreVault(destinationAddress, { from: assetManager });
+        expectEvent(tx4, "TransferRequestCanceled", { destinationAddress, amount: "100" });
+
+        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(1000);
+        expect((await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()).to.equal(900);
+        expect((await coreVaultManager.nonCancelableTransferRequestsAmount()).toNumber()).to.equal(0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        expect(cancelableTransferRequests.length).to.equal(2);
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress2);
+        expect(cancelableTransferRequests[0].amount.toString()).to.equal("300");
+        expect(cancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress3);
+        expect(cancelableTransferRequests[1].amount.toString()).to.equal("600");
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        expect(nonCancelableTransferRequests.length).to.equal(0);
+    });
+
+    it("should revert canceling request transfer if not from asset manager", async () => {
+        assert.notEqual(assetManager, accounts[1]);
+        await expectRevert(coreVaultManager.cancelTransferRequestFromCoreVault("addr1", { from: accounts[1]}), "only asset manager");
+    });
+
+    it("should revert canceling request transfer if request not found", async () => {
+        await expectRevert(coreVaultManager.cancelTransferRequestFromCoreVault("addr1", { from: assetManager}), "transfer request not found");
     });
 
     function createPaymentProof(_transactionId: string, _amount: number, _status = "0", _chainId = chainId, _receivingAddressHash = web3.utils.keccak256(coreVaultAddress)): Payment.Proof {

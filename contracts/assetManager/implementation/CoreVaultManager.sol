@@ -235,7 +235,8 @@ contract CoreVaultManager is
 
         // remove the transfer request - keep the order
         while (index < cancelableTransferRequests.length - 1) { // length > 0
-            cancelableTransferRequests[index] = cancelableTransferRequests[++index]; // shift left
+            cancelableTransferRequests[index] = cancelableTransferRequests[index + 1]; // shift left
+            index++;
         }
         cancelableTransferRequests.pop(); // remove the last element
         delete transferRequestById[transferRequestId];
@@ -523,6 +524,8 @@ contract CoreVaultManager is
         external
         onlyImmediateGovernance
     {
+        uint128 availableFundsTmp = availableFunds;
+        uint128 escrowedFundsTmp = escrowedFunds;
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             uint256 escrowIndex = preimageHashToEscrowIndex[_preimageHashes[i]];
             require(escrowIndex != 0, "escrow not found");
@@ -530,12 +533,14 @@ contract CoreVaultManager is
             require(!escrow.finished, "escrow already finished");
             escrow.finished = true;
             if (escrowIndex <= nextUnprocessedEscrowIndex) {
-                availableFunds -= escrow.amount;
+                availableFundsTmp -= escrow.amount;
             } else {
-                escrowedFunds -= escrow.amount;
+                escrowedFundsTmp -= escrow.amount;
             }
             emit EscrowFinished(_preimageHashes[i], escrow.amount);
         }
+        availableFunds = availableFundsTmp;
+        escrowedFunds = escrowedFundsTmp;
     }
 
     /**
