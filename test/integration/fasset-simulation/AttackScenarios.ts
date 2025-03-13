@@ -11,6 +11,7 @@ import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 import { filterEvents } from "../../../lib/utils/events/truffle";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -493,6 +494,71 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // This will revert due to assertion failure while calculating maxRedemptionCollateral in `executeDefaultPayment`
         // because agent.redeemingAMG is less than request.valueAMG
         await context.assetManager.redemptionPaymentDefault(proof2, request2.requestId, { from: innocentBystander });
+
+    });
+
+    it("nnez-negative-spent-amount-from-another-source", async() => {
+
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+
+        // prepare an agent with collateral
+        console.log(">> Prepare an agent with collateral");
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        mockChain.mine(5);
+
+        console.log(">> Minting 3 lots of FAsset");
+        await context.updateUnderlyingBlock();
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+
+        console.log(">> Make a redemption request on self");
+        const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
+        const request = redemptionRequests[0];
+
+        console.log(">> Perform payment that results in negative spentAmont of source");
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        /**
+        inUTXO
+        underlyingMinter1 : 1
+        underlyingMinter2: 1000+redemptionAmount
+
+        outUTXO
+        underlyingMinter1: 1000
+        redeemer: redemptionAmount
+        */
+        let redeemPaymentTxHash = await agent.wallet.addMultiTransaction(
+            {
+                [underlyingMinter1]: context.underlyingAmount(1),
+                [underlyingMinter2]: context.underlyingAmount(1000).add(paymentAmount)
+            },
+            {
+                [redeemer.underlyingAddress]: paymentAmount,
+                [underlyingMinter1]: context.underlyingAmount(1000)
+            },
+            PaymentReference.redemption(request.requestId)
+        );
+
+        let underlyingBalanceBefore = (await agent.getAgentInfo()).underlyingBalanceUBA;
+
+        console.log(">> Request proof, specifying underlyingMinter1 as source");
+        const proof = await context.attestationProvider.provePayment(redeemPaymentTxHash, underlyingMinter1, request.paymentAddress);
+        console.log(">> spentAmount: ", proof.data.responseBody.spentAmount);
+
+        console.log(">> Confirm redemption payment");
+        const res = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
+
+        let underlyingBalanceAfter = (await agent.getAgentInfo()).underlyingBalanceUBA;
+        console.log(">> underlyingBalance before: ", underlyingBalanceBefore);
+        console.log(">> underlyingBalance after: ", underlyingBalanceAfter);
+        console.log(">> underlyingBalance on underlying chain: ", (await context.chain.getBalance(agent.underlyingAddress)).toString());
 
     });
 });
