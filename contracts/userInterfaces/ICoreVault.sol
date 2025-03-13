@@ -24,7 +24,7 @@ interface ICoreVault {
         uint256 indexed transferRedemptionRequestId);
 
     /**
-     * The transfer of underlying to the core vault was successfuly completed.
+     * The transfer of underlying to the core vault was successfully completed.
      */
     event CoreVaultTransferSuccessful(
         address indexed agentVault,
@@ -53,7 +53,8 @@ interface ICoreVault {
         uint256 reMintedUBA);
 
     /**
-     * Redemption was requested from a core vault, because the redemption queue was empty.
+     * Redemption was requested from a core vault.
+     * Can only be redeemed to a payment address from to the `allowedDestinations` list in the core vault manager.
      */
     event CoreVaultRedemptionRequested(
         address indexed redeemer,
@@ -113,7 +114,7 @@ interface ICoreVault {
     /**
      * Directly redeem from core vault by a user holding FAssets.
      * This is like ordinary redemption, but the redemption time is much longer (a day or more)
-     * and there is no possibility of redemption.
+     * and there is no possibility of redemption default.
      * @param _lots the number of lots, must be larger than `coreVaultMinimumRedeemLots` setting
      * @param _redeemerUnderlyingAddress the underlying address to which the assets will be redeemed;
      *      must have been added to the `allowedDestinations` list in the core vault manager by
@@ -133,7 +134,7 @@ interface ICoreVault {
         returns (uint256 _transferFeeNatWei);
 
     /**
-     * Return the maximum amount that can be transfered and the minimum amount that
+     * Return the maximum amount that can be transferred and the minimum amount that
      * has to remain on the agent vault's underlying address.
      * @param _agentVault the agent vault address
      * @return _maximumTransferUBA maximum amount that can be transferred

@@ -25,7 +25,7 @@ library CoreVault {
         IICoreVaultManager coreVaultManager;
         address payable nativeAddress;
         uint16 transferFeeBIPS;
-        uint32 redemptionFeeBIPS;
+        uint16 redemptionFeeBIPS;
         uint16 minimumAmountLeftBIPS;
         uint64 minimumRedeemLots;
 

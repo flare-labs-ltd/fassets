@@ -32,13 +32,16 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
         ds.supportedInterfaces[type(ICoreVaultSettings).interfaceId] = true;
         // init settings
+        require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
+        require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
+        require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         require(!state.initialized, "already initialized");
         state.initialized = true;
         state.coreVaultManager = _coreVaultManager;
         state.nativeAddress = _nativeAddress;
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
-        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
+        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
         state.minimumRedeemLots = _minimumRedeemLots.toUint64();
     }
@@ -72,6 +75,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyImmediateGovernance
     {
+        require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
     }
@@ -82,8 +86,9 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyImmediateGovernance
     {
+        require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
-        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint32();
+        state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
     }
 
     function setCoreVaultMinimumAmountLeftBIPS(
@@ -92,6 +97,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyImmediateGovernance
     {
+        require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
     }
