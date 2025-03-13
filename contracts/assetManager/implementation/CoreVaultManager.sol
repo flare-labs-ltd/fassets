@@ -805,6 +805,7 @@ contract CoreVaultManager is
         }
         escrowEndTimestamp = Math.max(escrowEndTimestamp, block.timestamp);
         escrowEndTimestamp += 1 days;
+        // slither-disable-next-line weak-prng
         escrowEndTimestamp = escrowEndTimestamp - (escrowEndTimestamp % 1 days) + escrowEndTimeSeconds;
         if (escrowEndTimestamp <= block.timestamp + 12 hours) { // less than 12 hours from now, move to the next day
             escrowEndTimestamp += 1 days;
