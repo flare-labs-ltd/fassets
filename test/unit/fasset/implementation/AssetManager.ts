@@ -252,6 +252,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.coreVaultTransferFeeBIPS = await assetManager.getCoreVaultTransferFeeBIPS();
             resInitSettings.coreVaultRedemptionFeeBIPS = await assetManager.getCoreVaultRedemptionFeeBIPS();
             resInitSettings.coreVaultMinimumAmountLeftBIPS = await assetManager.getCoreVaultMinimumAmountLeftBIPS();
+            resInitSettings.coreVaultMinimumRedeemLots = await assetManager.getCoreVaultMinimumRedeemLots();
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
