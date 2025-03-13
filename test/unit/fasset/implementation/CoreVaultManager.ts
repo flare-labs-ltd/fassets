@@ -11,7 +11,7 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const MockContract = artifacts.require('MockContract');
 
-contract.only(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async accounts => {
+contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async accounts => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
