@@ -54,15 +54,14 @@ library CoreVault {
         address agentVault = _agent.vaultAddress();
         // only one transfer can be active
         require(_agent.activeTransferToCoreVault == 0, "transfer already active");
-        // TODO: value (fee) gets paid to the core vault
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
         // check the transfer fee
-        uint256 transferFeeWei = getTransferFee(_amountAMG);
+        uint256 transferFeeWei = getTransferFee(transferredAMG);
         require(msg.value >= transferFeeWei, "transfer fee payment too small");
         // check the remaining amount
         (uint256 maximumTransferAMG,) = getMaximumTransferToCoreVaultAMG(_agent);
-        require(_amountAMG <= maximumTransferAMG, "too little minting left after transfer");
+        require(transferredAMG <= maximumTransferAMG, "too little minting left after transfer");
         // create ordinary redemption request to core vault address
         string memory underlyingAddress = state.coreVaultManager.coreVaultAddress();
         // NOTE: there will be no redemption fee, so the agent needs enough free underlying for the
@@ -76,8 +75,8 @@ library CoreVault {
         // pay the transfer fee
         Transfers.transferNAT(state.nativeAddress, msg.value);  // guarded by nonReentrant in the facet
         // send event
-        uint256 amountUBA = Conversion.convertAmgToUBA(_amountAMG);
-        emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId, amountUBA);
+        uint256 transferredUBA = Conversion.convertAmgToUBA(transferredAMG);
+        emit ICoreVault.CoreVaultTransferStarted(agentVault, redemptionRequestId, transferredUBA);
     }
 
     function cancelTransferToCoreVault(
