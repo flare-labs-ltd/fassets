@@ -233,15 +233,15 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         assert.equal(vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter).toString(), vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore).toString())
     });
 
-    it("should finish redemption payment - payment not from agent's address", async () => {
+    it("should finish redemption payment - payment partially not from agent's address", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         chain.mint(underlyingAgent2, paymentAmt);
-        const tx1Hash = await wallet.addTransaction(underlyingAgent2, request.paymentAddress, paymentAmt, request.paymentReference);
-        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent2, request.paymentAddress);
+        const tx1Hash = await wallet.addMultiTransaction({ [underlyingAgent2]: paymentAmt.subn(1), [underlyingAgent1]: 1 }, { [request.paymentAddress]: paymentAmt }, request.paymentReference);
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
     });

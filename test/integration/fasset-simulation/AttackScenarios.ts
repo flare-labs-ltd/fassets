@@ -497,7 +497,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("nnez-negative-spent-amount-from-another-source", async() => {
+    it("nnez-negative-spent-amount-from-another-source - must fail", async() => {
 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -553,7 +553,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log(">> spentAmount: ", proof.data.responseBody.spentAmount);
 
         console.log(">> Confirm redemption payment");
-        const res = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
+        // this was successfull before fix
+        await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
+            "source not agent's underlying address");
 
         let underlyingBalanceAfter = (await agent.getAgentInfo()).underlyingBalanceUBA;
         console.log(">> underlyingBalance before: ", underlyingBalanceBefore);

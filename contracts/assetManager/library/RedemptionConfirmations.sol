@@ -25,8 +25,7 @@ library RedemptionConfirmations {
         // But if the agent doesn't respond for long enough,
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = Agents.isOwner(agent, msg.sender);
-        require(isAgent || _othersCanConfirmPayment(agent, request, _payment),
-            "only agent vault owner");
+        require(isAgent || _othersCanConfirmPayment(request), "only agent vault owner");
         require(request.rejectionTimestamp == 0, "rejected redemption cannot be confirmed");
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
@@ -38,6 +37,10 @@ library RedemptionConfirmations {
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.data.responseBody.blockNumber >= request.firstUnderlyingBlock,
             "redemption payment too old");
+        // Agent's underlying address must be the selected source address. On utxo chains other addresses can also
+        // be used for payment, but the spentAmount must be for agent's underlying address.
+        require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
+            "source not agent's underlying address");
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
         if (paymentValid) {
@@ -57,8 +60,6 @@ library RedemptionConfirmations {
         } else {
             // We only need failure reports from agent's underlying address, so disallow others to
             // lower the attack surface in case of report from other address.
-            require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-                "confirm failed payment only from agent's address");
             // We do not allow retrying failed payments, so just default here if not defaulted already.
             // This will also release the remaining agent's collateral.
             if (request.status == Redemption.Status.ACTIVE) {
@@ -89,24 +90,14 @@ library RedemptionConfirmations {
     }
 
     function _othersCanConfirmPayment(
-        Agent.State storage _agent,
-        Redemption.Request storage _request,
-        IPayment.Proof calldata _payment
+        Redemption.Request storage _request
     )
         private view
         returns (bool)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // others can confirm payments only after several hours
-        if (block.timestamp <= _request.timestamp + settings.confirmationByOthersAfterSeconds) return false;
-        // others can confirm only payments arriving from agent's underlying address
-        // - on utxo chains for multi-source payment, 3rd party might lie about payment not coming from agent's
-        //   source, which would delete redemption request but not mark source decreasing transaction as used;
-        //   so afterwards there can be an illegal payment challenge for this transaction
-        // - we really only need 3rd party confirmations for payments from agent's underlying address,
-        //   to properly account for underlying free balance (unless payment is failed, the collateral also gets
-        //   unlocked, but that only benefits the agent, so the agent should take care of that)
-        return _payment.data.responseBody.sourceAddressHash == _agent.underlyingAddressHash;
+        return block.timestamp > _request.timestamp + settings.confirmationByOthersAfterSeconds;
     }
 
     function _validatePayment(
