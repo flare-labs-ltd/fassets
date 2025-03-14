@@ -235,6 +235,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -340,6 +341,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
