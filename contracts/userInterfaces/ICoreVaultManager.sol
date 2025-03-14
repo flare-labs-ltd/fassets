@@ -155,16 +155,9 @@ interface ICoreVaultManager {
     function escrowedFunds() external view returns (uint128);
 
     /**
-     * Returns the cancelable transfer requests amount.
-     * @return Cancelable transfer requests amount.
+     * Returns the total amount requested, together with payment fee.
      */
-    function cancelableTransferRequestsAmount() external view returns(uint128);
-
-    /**
-     * Returns the non-cancelable transfer requests amount.
-     * @return Non-cancelable transfer requests amount.
-     */
-    function nonCancelableTransferRequestsAmount() external view returns(uint128);
+    function totalRequestAmountWithFee() external view returns (uint256);
 
     /**
      * Indicates if the contract is paused. New transfer requests and instructions cannot be triggered.

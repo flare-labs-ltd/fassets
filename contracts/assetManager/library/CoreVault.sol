@@ -238,18 +238,14 @@ library CoreVault {
         _maximumTransferAMG = MathUtils.subOrZero(_agent.mintedAMG, _minimumLeftAmountAMG);
     }
 
-    function getTotalCoreVaultAmountWithEscrow()
+    function getTotalCoreVaultAmount()
         internal view
         returns (uint256)
     {
         State storage state = getState();
         uint256 allFunds = uint256(state.coreVaultManager.availableFunds() + state.coreVaultManager.escrowedFunds());
-        uint256 requestedAmount = uint256(state.coreVaultManager.cancelableTransferRequestsAmount() +
-            state.coreVaultManager.nonCancelableTransferRequestsAmount());
-        if (allFunds > requestedAmount) {
-            return allFunds - requestedAmount;
-        }
-        return 0;
+        uint256 requestedAmount = uint256(state.coreVaultManager.totalRequestAmountWithFee());
+        return MathUtils.subOrZero(allFunds, requestedAmount);
     }
 
     function getCoreVaultAmountLots()
@@ -257,7 +253,7 @@ library CoreVault {
         returns (uint64)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint64 totalAmountAMG = Conversion.convertUBAToAmg(getTotalCoreVaultAmountWithEscrow());
+        uint64 totalAmountAMG = Conversion.convertUBAToAmg(getTotalCoreVaultAmount());
         return totalAmountAMG / settings.lotSizeAMG;
     }
 

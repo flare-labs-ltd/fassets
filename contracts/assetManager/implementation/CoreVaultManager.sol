@@ -74,9 +74,9 @@ contract CoreVaultManager is
     /// escrowed funds
     uint128 public escrowedFunds;
     /// cancelable transfer requests amount
-    uint128 public cancelableTransferRequestsAmount;
+    uint128 private cancelableTransferRequestsAmount;
     /// non-cancelable transfer requests amount
-    uint128 public nonCancelableTransferRequestsAmount;
+    uint128 private nonCancelableTransferRequestsAmount;
     /// paused state
     bool public paused;
 
@@ -199,8 +199,7 @@ contract CoreVaultManager is
             }
         }
 
-        uint256 requestsAmount = nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount +
-            (cancelableTransferRequests.length + nonCancelableTransferRequests.length) * paymentFee;
+        uint256 requestsAmount = totalRequestAmountWithFee();
         require(requestsAmount <= availableFunds + escrowedFunds, "insufficient funds");
 
         if (newTransferRequest) {
@@ -738,6 +737,14 @@ contract CoreVaultManager is
         for (uint256 i = 0; i < nonCancelableTransferRequests.length; i++) {
             _transferRequests[i] = transferRequestById[nonCancelableTransferRequests[i]];
         }
+    }
+
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function totalRequestAmountWithFee() public view returns (uint256) {
+        return nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount +
+            (cancelableTransferRequests.length + nonCancelableTransferRequests.length) * paymentFee;
     }
 
     /**
