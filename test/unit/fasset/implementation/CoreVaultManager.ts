@@ -639,8 +639,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 100);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 100);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(1);
         expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
@@ -692,8 +691,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 400);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 400);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(2);
         expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
@@ -742,8 +740,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         );
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 100);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 100);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(1);
         expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
@@ -779,8 +776,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 0);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 100);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 100);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(0);
         const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
@@ -830,8 +826,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 0);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 400);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 400);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(0);
         const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
@@ -896,8 +891,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 0);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 500);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 500);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(0);
         const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
@@ -1083,8 +1077,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 900);
-        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 900);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(2);
         expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress2);
