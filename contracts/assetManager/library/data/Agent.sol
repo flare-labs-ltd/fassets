@@ -170,8 +170,11 @@ library Agent {
         // There can only be one transfer to core vault per agent active at any time.
         uint64 activeTransferToCoreVault;
 
+        // the request id of the active return from core vault
+        uint64 activeReturnFromCoreVaultId;
+
         // part of the agent's reservedAMG for the core vault return
-        uint64 transferFromCoreVaultReservedAMG;
+        uint64 returnFromCoreVaultReservedAMG;
 
         // The redemption fee share paid to the pool (as FAssets).
         // In redemption dominated situations (when agent requests return from core vault to earn

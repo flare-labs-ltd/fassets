@@ -13,6 +13,7 @@ library PaymentReference {
     uint256 internal constant MINTING = 0x4642505266410001 << TYPE_SHIFT;
     uint256 internal constant REDEMPTION = 0x4642505266410002 << TYPE_SHIFT;
     uint256 internal constant ANNOUNCED_WITHDRAWAL = 0x4642505266410003 << TYPE_SHIFT;
+    uint256 internal constant RETURN_FROM_CORE_VAULT = 0x4642505266410004 << TYPE_SHIFT;
     uint256 internal constant TOPUP = 0x4642505266410011 << TYPE_SHIFT;
     uint256 internal constant SELF_MINT = 0x4642505266410012 << TYPE_SHIFT;
     uint256 internal constant ADDRESS_OWNERSHIP = 0x4642505266410013 << TYPE_SHIFT;
@@ -29,6 +30,10 @@ library PaymentReference {
 
     function announcedWithdrawal(uint64 _id) internal pure returns (bytes32) {
         return bytes32(uint256(_id) | ANNOUNCED_WITHDRAWAL);
+    }
+
+    function returnFromCoreVault(uint64 _id) internal pure returns (bytes32) {
+        return bytes32(uint256(_id) | RETURN_FROM_CORE_VAULT);
     }
 
     function topup(address _agentVault) internal pure returns (bytes32) {

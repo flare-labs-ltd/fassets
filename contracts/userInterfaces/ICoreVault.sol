@@ -11,7 +11,7 @@ interface ICoreVault {
     /**
      * Agent has requested transfer of (some of) their backing to the core vault.
      */
-    event CoreVaultTransferStarted(
+    event TransferToCoreVaultStarted(
         address indexed agentVault,
         uint256 indexed transferRedemptionRequestId,
         uint256 valueUBA);
@@ -19,14 +19,14 @@ interface ICoreVault {
     /**
      * Agent has cancelled transfer to the core vault without paying.
      */
-    event CoreVaultTransferCancelled(
+    event TransferToCoreVaultCancelled(
         address indexed agentVault,
         uint256 indexed transferRedemptionRequestId);
 
     /**
      * The transfer of underlying to the core vault was successfully completed.
      */
-    event CoreVaultTransferSuccessful(
+    event TransferToCoreVaultSuccessful(
         address indexed agentVault,
         uint256 indexed transferRedemptionRequestId,
         uint256 valueUBA);
@@ -36,21 +36,25 @@ interface ICoreVault {
      */
     event ReturnFromCoreVaultRequested(
         address indexed agentVault,
+        uint256 indexed requestId,
+        bytes32 paymentReference,
         uint256 valueUBA);
 
     /**
      * The agent has cancelled the return request.
      */
     event ReturnFromCoreVaultCancelled(
-        address indexed agentVault);
+        address indexed agentVault,
+        uint256 indexed requestId);
 
     /**
      * The payment from core vault to the agent's underlying address has been confirmed.
      */
     event ReturnFromCoreVaultConfirmed(
         address indexed agentVault,
+        uint256 indexed requestId,
         uint256 receivedUnderlyingUBA,
-        uint256 reMintedUBA);
+        uint256 remintedUBA);
 
     /**
      * Redemption was requested from a core vault.

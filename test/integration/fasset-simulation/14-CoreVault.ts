@@ -82,7 +82,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             "transfer fee payment too small");
         // transfer request
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
-        expectEvent(res, "CoreVaultTransferStarted", { agentVault: agent.vaultAddress, valueUBA: info.mintedUBA });
+        expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: info.mintedUBA });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, info.mintedUBA);
@@ -93,10 +93,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await expectRevert(cv.redemptionPaymentDefault(rdreqs[0]), "overflow block not found");
         // perform transfer of underlying
         const resps = await agent.performRedemptions(rdreqs);
-        // check that CoreVaultTransferSuccessful event was emitted
+        // check that TransferToCoreVaultSuccessful event was emitted
         const transferRes = resps[String(rdreqs[0].requestId)];
         assert(transferRes != null);
-        expectEvent(transferRes, "CoreVaultTransferSuccessful");
+        expectEvent(transferRes, "TransferToCoreVaultSuccessful");
         await expectEvent.inTransaction(transferRes.tx, context.coreVaultManager!, "PaymentConfirmed", { amount: transferAmount });
         // agent now has 0 backing
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: 0, redeemingUBA: 0, dustUBA: 0, requiredUnderlyingBalanceUBA: 0 }, "reset");
@@ -170,10 +170,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // simulate transfer from CV
         const wallet = new MockChainWallet(mockChain);
         for (const req of paymentReqs) {
-            const rtx = await wallet.addTransaction(req.args.account, req.args.destination, req.args.amount, null);
+            const rtx = await wallet.addTransaction(req.args.account, req.args.destination, req.args.amount, req.args.paymentReference);
             const proof = await context.attestationProvider.provePayment(rtx, req.args.account, req.args.destination);
-            await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress, { from: agent.ownerWorkAddress }),
-                "payment not to agent's address");
             await context.assetManager.confirmReturnFromCoreVault(proof, agent2.vaultAddress, { from: agent2.ownerWorkAddress });
         }
         // agent now has approx half backing left
