@@ -18,6 +18,7 @@ interface ICoreVaultManager {
 
     struct TransferRequest {
         string destinationAddress;
+        bytes32 paymentReference;
         uint128 amount;
     }
 
@@ -31,10 +32,9 @@ interface ICoreVaultManager {
         uint256 indexed sequence,
         string account,
         string destination,
-        uint256 amount
+        uint256 amount,
+        bytes32 paymentReference
     );
-
-    event NotAllEscrowsProcessed();
 
     event EscrowInstructions(
         uint256 indexed sequence,
@@ -44,6 +44,8 @@ interface ICoreVaultManager {
         uint256 amount,
         uint256 cancelAfterTs
     );
+
+    event NotAllEscrowsProcessed();
 
     event EscrowFinished(
         bytes32 indexed preimageHash,

@@ -64,6 +64,7 @@ interface IICoreVaultManager is ICoreVaultManager {
     /**
      * Requests transfer from core vault to destination address.
      * @param _destinationAddress destination address
+     * @param _paymentReference payment reference
      * @param _amount amount
      * @param _cancelable cancelable flag (if true, the request can be canceled)
      * NOTE: destination address must be allowed otherwise the request will revert.
@@ -71,6 +72,7 @@ interface IICoreVaultManager is ICoreVaultManager {
      */
     function requestTransferFromCoreVault(
         string memory _destinationAddress,
+        bytes32 _paymentReference,
         uint128 _amount,
         bool _cancelable
     )

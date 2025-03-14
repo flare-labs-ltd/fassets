@@ -158,6 +158,7 @@ contract CoreVaultManager is
      */
     function requestTransferFromCoreVault(
         string memory _destinationAddress,
+        bytes32 _paymentReference,
         uint128 _amount,
         bool _cancelable
     )
@@ -183,6 +184,7 @@ contract CoreVaultManager is
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
+            require(_paymentReference == bytes32(0), "non-cancelable request cannot have a payment reference");
             uint256 index = 0;
             while (index < nonCancelableTransferRequests.length) {
                 TransferRequest storage req = transferRequestById[nonCancelableTransferRequests[index]];
@@ -203,6 +205,7 @@ contract CoreVaultManager is
         if (newTransferRequest) {
             transferRequestById[nextTransferRequestId++] = TransferRequest({
                 destinationAddress: _destinationAddress,
+                paymentReference: _paymentReference,
                 amount: _amount
             });
         }
@@ -271,7 +274,8 @@ contract CoreVaultManager is
                     sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
-                    req.amount
+                    req.amount,
+                    req.paymentReference
                 );
                 // remove the transfer request - keep the order
                 for (uint256 i = index; i < length - 1; i++) { // length > 0
@@ -300,7 +304,8 @@ contract CoreVaultManager is
                     sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
-                    req.amount
+                    req.amount,
+                    req.paymentReference
                 );
                 // remove the transfer request - keep the order
                 for (uint256 i = index; i < length - 1; i++) { // length > 0
