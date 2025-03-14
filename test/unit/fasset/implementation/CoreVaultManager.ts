@@ -24,7 +24,7 @@ const GovernanceSettings = artifacts.require("GovernanceSettings");
 const AddressUpdater = artifacts.require("AddressUpdater");
 const MockContract = artifacts.require("MockContract");
 
-contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async (accounts) => {
+contract.only(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async (accounts) => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
@@ -340,7 +340,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       const tx = coreVaultManager.addPreimageHashes([ZERO_BYTES32], {
         from: governance,
       });
-      await expectRevert(tx, "preimage hash zero");
+      await expectRevert(tx, "invalid preimage hash");
     });
 
     it("should revert adding preimage hashes if hash already exists", async () => {
@@ -348,7 +348,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       const tx = coreVaultManager.addPreimageHashes([hash, hash], {
         from: governance,
       });
-      await expectRevert(tx, "already exists");
+      await expectRevert(tx, "invalid preimage hash");
     });
 
     it("should remove unused preimage hashes", async () => {

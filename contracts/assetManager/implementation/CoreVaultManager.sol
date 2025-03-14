@@ -168,8 +168,6 @@ contract CoreVaultManager is
     {
         require(_amount > 0, "amount zero");
         require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination not allowed");
-        uint128 requestsAmount = nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount;
-        require(_amount + requestsAmount <= availableFunds + escrowedFunds, "insufficient funds");
         bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
         bool newTransferRequest = false;
         if (_cancelable) {
@@ -200,6 +198,11 @@ contract CoreVaultManager is
                 newTransferRequest = true;
             }
         }
+
+        uint256 requestsAmount = nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount +
+            (cancelableTransferRequests.length + nonCancelableTransferRequests.length) * paymentFee;
+        require(requestsAmount <= availableFunds + escrowedFunds, "insufficient funds");
+
         if (newTransferRequest) {
             transferRequestById[nextTransferRequestId++] = TransferRequest({
                 destinationAddress: _destinationAddress,
@@ -228,7 +231,7 @@ contract CoreVaultManager is
             }
             index++;
         }
-        require (index < cancelableTransferRequests.length, "transfer not found");
+        require (index < cancelableTransferRequests.length, "request not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
         TransferRequest storage req = transferRequestById[transferRequestId];
         uint128 amount = req.amount;
@@ -516,8 +519,8 @@ contract CoreVaultManager is
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
-            require(_preimageHashes[i] != bytes32(0), "preimage hash zero");
-            require(preimageHashes.add(_preimageHashes[i]), "preimage hash already exists");
+            require(_preimageHashes[i] != bytes32(0) && preimageHashes.add(_preimageHashes[i]),
+                "invalid preimage hash");
             emit PreimageHashAdded(_preimageHashes[i]);
         }
     }
