@@ -24,11 +24,7 @@ const GovernanceSettings = artifacts.require("GovernanceSettings");
 const AddressUpdater = artifacts.require("AddressUpdater");
 const MockContract = artifacts.require("MockContract");
 
-contract(
-  `CoreVaultManager.sol; ${getTestFile(
-    __filename
-  )}; CoreVaultManager basic tests`,
-  async (accounts) => {
+contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager basic tests`, async (accounts) => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
@@ -57,7 +53,7 @@ contract(
         governance,
         addressUpdater.address,
         assetManager,
-        web3.utils.keccak256("123"),
+        chainId,
         custodianAddress,
         coreVaultAddress,
         0
@@ -81,6 +77,7 @@ contract(
     beforeEach(async () => {
       ({ coreVaultManager } = await loadFixtureCopyVars(initialize));
     });
+
     it("should add destination addresses", async () => {
       const tx = await coreVaultManager.addAllowedDestinationAddresses(
         ["addr1", "addr2"],
@@ -136,7 +133,7 @@ contract(
       const tx = coreVaultManager.addAllowedDestinationAddresses([""], {
         from: governance,
       });
-      await expectRevert(tx, "destination address cannot be empty");
+      await expectRevert(tx, "invalid address");
     });
 
     it("should remove allowed destination addresses", async () => {
@@ -263,39 +260,56 @@ contract(
       await expectRevert(tx, "only governance");
     });
 
-    it("should not update custodian address if new address is empty", async () => {
+    it("should not update custodian address if new address is zero", async () => {
       const tx = coreVaultManager.updateCustodianAddress("", {
         from: governance,
       });
-      await expectRevert(tx, "custodian address cannot be empty");
+      await expectRevert(tx, "invalid address");
     });
 
     it("should update settings", async () => {
-      const tx = await coreVaultManager.updateSettings(12345, 800, 900, {
+      const tx = await coreVaultManager.updateSettings(12345, 800, 20, 900, 10, {
         from: governance,
       });
       expectEvent(tx, "SettingsUpdated", {
         escrowEndTimeSeconds: "12345",
         escrowAmount: "800",
+        escrowFee: "20",
         minimalAmount: "900",
+        paymentFee: "10",
       });
-      assertWeb3Equal(await coreVaultManager.escrowEndTimeSeconds(), "12345");
-      assertWeb3Equal(await coreVaultManager.escrowAmount(), "800");
-      assertWeb3Equal(await coreVaultManager.minimalAmount(), "900");
+      const settings = await coreVaultManager.getSettings();
+      assertWeb3Equal(settings[0], "12345"); // escrowEndTimeSeconds
+      assertWeb3Equal(settings[1], "800"); // escrowAmount
+      assertWeb3Equal(settings[2], "20"); // escrowFee
+      assertWeb3Equal(settings[3], "900"); // minimalAmount
+      assertWeb3Equal(settings[4], "10"); // paymentFee
     });
 
     it("should not update settings if not from governance", async () => {
-      const tx = coreVaultManager.updateSettings(12345, 800, 900, {
+      const tx = coreVaultManager.updateSettings(12345, 800, 20, 900, 10, {
         from: accounts[1],
       });
       await expectRevert(tx, "only governance");
     });
 
     it("should not update settings if escrow end time is more than a day", async () => {
-      const tx = coreVaultManager.updateSettings(24 * 3600, 800, 900, {
+      const tx = coreVaultManager.updateSettings(24 * 3600, 800, 20, 900, 10, {
         from: governance,
       });
-      await expectRevert(tx, "escrow end time must be less than a day");
+      await expectRevert(tx, "invalid end time");
+    });
+
+    it("should not update settings if fee is zero", async () => {
+      const tx = coreVaultManager.updateSettings(12345, 800, 0, 900, 10, {
+        from: governance,
+      });
+      await expectRevert(tx, "fee zero");
+
+      const tx2 = coreVaultManager.updateSettings(12345, 800, 20, 900, 0, {
+        from: governance,
+      });
+      await expectRevert(tx2, "fee zero");
     });
 
     it("should add preimage hashes", async () => {
@@ -326,7 +340,7 @@ contract(
       const tx = coreVaultManager.addPreimageHashes([ZERO_BYTES32], {
         from: governance,
       });
-      await expectRevert(tx, "preimage hash cannot be zero");
+      await expectRevert(tx, "preimage hash zero");
     });
 
     it("should revert adding preimage hashes if hash already exists", async () => {
@@ -334,7 +348,7 @@ contract(
       const tx = coreVaultManager.addPreimageHashes([hash, hash], {
         from: governance,
       });
-      await expectRevert(tx, "preimage hash already exists");
+      await expectRevert(tx, "already exists");
     });
 
     it("should remove unused preimage hashes", async () => {
@@ -452,7 +466,7 @@ contract(
 
     it("should not pause the contract if not called by emergency pause senders", async () => {
       const tx = coreVaultManager.pause({ from: accounts[1] });
-      await expectRevert(tx, "only governance or emergency pause senders");
+      await expectRevert(tx, "not authorized");
 
       // add accounts[1] as emergency pause sender
       await coreVaultManager.addEmergencyPauseSenders([accounts[1]], {
@@ -483,7 +497,7 @@ contract(
       const tx = coreVaultManager.addAllowedDestinationAddresses([""], {
         from: governance,
       });
-      await expectRevert(tx, "destination address cannot be empty");
+      await expectRevert(tx, "invalid address");
     });
 
     it("should revert adding triggering account if not from governance", async () => {
@@ -504,12 +518,8 @@ contract(
           paymentReference: standardPaymentReference,
           amount: amount.toString(),
         });
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          amount
-        );
-        expect(
-          await coreVaultManager.confirmedPayments(transactionId)
-        ).to.equal(true);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), amount);
+        assertWeb3Equal(await coreVaultManager.confirmedPayments(transactionId), true);
       });
 
       it("should not confirm payment twice", async () => {
@@ -524,9 +534,7 @@ contract(
         });
         const tx2 = await coreVaultManager.confirmPayment(proof);
         expectEvent.notEmitted(tx2, "PaymentConfirmed");
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          amount
-        );
+        assertWeb3Equal(await coreVaultManager.availableFunds(), amount);
       });
 
       it("should revert confirming payment with failed status", async () => {
@@ -537,9 +545,7 @@ contract(
           coreVaultManager.confirmPayment(proof),
           "payment failed"
         );
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          0
-        );
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
       });
 
       it("should revert confirming payment with invalid chain", async () => {
@@ -555,9 +561,7 @@ contract(
           coreVaultManager.confirmPayment(proof),
           "invalid chain"
         );
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          0
-        );
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
       });
 
       it("should revert confirming payment if payment is not proved", async () => {
@@ -567,11 +571,9 @@ contract(
         const proof = createPaymentProof(transactionId, amount);
         await expectRevert(
           coreVaultManager.confirmPayment(proof),
-          "legal payment not proved"
+          "payment not proved"
         );
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          0
-        );
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
       });
 
       it("should revert confirming payment sent to different address", async () => {
@@ -586,11 +588,9 @@ contract(
         );
         await expectRevert(
           coreVaultManager.confirmPayment(proof),
-          "not core vault's address"
+          "not core vault"
         );
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          0
-        );
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
       });
 
       it("should revert confirming payment with zero or negative amount", async () => {
@@ -598,16 +598,14 @@ contract(
         const proof = createPaymentProof(transactionId, 0);
         await expectRevert(
           coreVaultManager.confirmPayment(proof),
-          "no amount received"
+          "invalid amount"
         );
         const proof2 = createPaymentProof(transactionId, -100);
         await expectRevert(
           coreVaultManager.confirmPayment(proof2),
-          "no amount received"
+          "invalid amount"
         );
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          0
-        );
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
       });
 
     });
@@ -640,26 +638,14 @@ contract(
           cancelable: true,
         });
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(100);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(0);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 100);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(1);
-        expect(cancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress
-        );
-        expect(cancelableTransferRequests[0].amount.toString()).to.equal("100");
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(cancelableTransferRequests[0].amount, 100);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(0);
       });
 
@@ -705,30 +691,16 @@ contract(
           cancelable: true,
         });
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(400);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(0);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 400);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(2);
-        expect(cancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress
-        );
-        expect(cancelableTransferRequests[0].amount.toString()).to.equal("100");
-        expect(cancelableTransferRequests[1].destinationAddress).to.equal(
-          destinationAddress2
-        );
-        expect(cancelableTransferRequests[1].amount.toString()).to.equal("300");
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(cancelableTransferRequests[0].amount, 100);
+        expect(cancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress2);
+        assertWeb3Equal(cancelableTransferRequests[1].amount, 300);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(0);
       });
 
@@ -766,29 +738,17 @@ contract(
             true,
             { from: assetManager }
           ),
-          "transfer request already exists"
+          "already exists"
         );
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(100);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(0);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 100);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(1);
-        expect(cancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress
-        );
-        expect(cancelableTransferRequests[0].amount.toString()).to.equal("100");
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(cancelableTransferRequests[0].amount, 100);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(0);
       });
 
@@ -818,29 +778,15 @@ contract(
           cancelable: false,
         });
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(0);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(100);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 100);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(0);
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(1);
-        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress
-        );
-        expect(nonCancelableTransferRequests[0].amount.toString()).to.equal(
-          "100"
-        );
+        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(nonCancelableTransferRequests[0].amount, 100);
       });
 
       it("should request multiple transfers from core vault - different destination addresses (non-cancelable)", async () => {
@@ -883,35 +829,17 @@ contract(
           cancelable: false,
         });
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(0);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(400);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 400);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(0);
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(2);
-        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress
-        );
-        expect(nonCancelableTransferRequests[0].amount.toString()).to.equal(
-          "100"
-        );
-        expect(nonCancelableTransferRequests[1].destinationAddress).to.equal(
-          destinationAddress2
-        );
-        expect(nonCancelableTransferRequests[1].amount.toString()).to.equal(
-          "300"
-        );
+        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(nonCancelableTransferRequests[0].amount, 100);
+        expect(nonCancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress2);
+        assertWeb3Equal(nonCancelableTransferRequests[1].amount, 300);
       });
 
       it("should request multiple transfers from core vault - same destination addresses (non-cancelable)", async () => {
@@ -967,35 +895,17 @@ contract(
           cancelable: false,
         });
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(0);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(500);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 0);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 500);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(0);
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(2);
-        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress
-        );
-        expect(nonCancelableTransferRequests[0].amount.toString()).to.equal(
-          "200"
-        );
-        expect(nonCancelableTransferRequests[1].destinationAddress).to.equal(
-          destinationAddress2
-        );
-        expect(nonCancelableTransferRequests[1].amount.toString()).to.equal(
-          "300"
-        );
+        expect(nonCancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(nonCancelableTransferRequests[0].amount, 200);
+        expect(nonCancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress2);
+        assertWeb3Equal(nonCancelableTransferRequests[1].amount, 300);
       });
 
       it("should revert requesting transfer if not from asset manager", async () => {
@@ -1018,12 +928,12 @@ contract(
         );
       });
 
-      it("should revert requesting transfer if amount is 0", async () => {
+      it("should revert requesting transfer if amount is zero", async () => {
         await expectRevert(
           coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 0, false, {
             from: assetManager,
           }),
-          "amount must be greater than zero"
+          "amount zero"
         );
       });
 
@@ -1032,7 +942,7 @@ contract(
           coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 10, false, {
             from: assetManager,
           }),
-          "destination address not allowed"
+          "destination not allowed"
         );
       });
 
@@ -1056,7 +966,7 @@ contract(
             100,
             false,
             { from: assetManager }),
-            "payment reference not empty"
+            "invalid payment reference"
           );
       });
 
@@ -1172,30 +1082,16 @@ contract(
           amount: "100",
         });
 
-        expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
-          1000
-        );
-        expect(
-          (await coreVaultManager.cancelableTransferRequestsAmount()).toNumber()
-        ).to.equal(900);
-        expect(
-          (
-            await coreVaultManager.nonCancelableTransferRequestsAmount()
-          ).toNumber()
-        ).to.equal(0);
-        const cancelableTransferRequests =
-          await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
+        assertWeb3Equal(await coreVaultManager.cancelableTransferRequestsAmount(), 900);
+        assertWeb3Equal(await coreVaultManager.nonCancelableTransferRequestsAmount(), 0);
+        const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(2);
-        expect(cancelableTransferRequests[0].destinationAddress).to.equal(
-          destinationAddress2
-        );
-        expect(cancelableTransferRequests[0].amount.toString()).to.equal("300");
-        expect(cancelableTransferRequests[1].destinationAddress).to.equal(
-          destinationAddress3
-        );
-        expect(cancelableTransferRequests[1].amount.toString()).to.equal("600");
-        const nonCancelableTransferRequests =
-          await coreVaultManager.getNonCancelableTransferRequests();
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress2);
+        assertWeb3Equal(cancelableTransferRequests[0].amount, 300);
+        expect(cancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress3);
+        assertWeb3Equal(cancelableTransferRequests[1].amount, 600);
+        const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(0);
       });
 
@@ -1214,7 +1110,7 @@ contract(
           coreVaultManager.cancelTransferRequestFromCoreVault("addr1", {
             from: assetManager,
           }),
-          "transfer request not found"
+          "not found"
         );
       });
     });

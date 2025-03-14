@@ -34,6 +34,7 @@ interface ICoreVaultManager {
         string account,
         string destination,
         uint256 amount,
+        uint256 fee,
         bytes32 paymentReference
     );
 
@@ -43,7 +44,21 @@ interface ICoreVaultManager {
         string account,
         string destination,
         uint256 amount,
+        uint256 fee,
         uint256 cancelAfterTs
+    );
+
+    event TransferRequested(
+        string destinationAddress,
+        bytes32 paymentReference,
+        uint256 amount,
+        bool cancelable
+    );
+
+    event TransferRequestCanceled(
+        string destinationAddress,
+        bytes32 paymentReference,
+        uint256 amount
     );
 
     event NotAllEscrowsProcessed();
@@ -56,6 +71,50 @@ interface ICoreVaultManager {
     event Paused();
 
     event Unpaused();
+
+    event TriggeringAccountAdded(
+        address triggeringAccount
+    );
+
+    event TriggeringAccountRemoved(
+        address triggeringAccount
+    );
+
+    event AllowedDestinationAddressAdded(
+        string destinationAddress
+    );
+
+    event AllowedDestinationAddressRemoved(
+        string destinationAddress
+    );
+
+    event CustodianAddressUpdated(
+        string custodianAddress
+    );
+
+    event SettingsUpdated(
+        uint256 escrowEndTimeSeconds,
+        uint256 escrowAmount,
+        uint256 escrowFee,
+        uint256 minimalAmount,
+        uint256 paymentFee
+    );
+
+    event PreimageHashAdded(
+        bytes32 preimageHash
+    );
+
+    event UnusedPreimageHashRemoved(
+        bytes32 preimageHash
+    );
+
+    event EmergencyPauseSenderAdded(
+        address sender
+    );
+
+    event EmergencyPauseSenderRemoved(
+        address sender
+    );
 
     /**
      * Confirms payment to core vault address (increases available funds).
@@ -118,6 +177,25 @@ interface ICoreVaultManager {
      * @return List of triggering accounts.
      */
     function getTriggeringAccounts() external view returns (address[] memory);
+
+
+    /**
+     * Returns settings.
+     * @return _escrowEndTimeSeconds Escrow end time in seconds.
+     * @return _escrowAmount Escrow amount.
+     * @return _escrowFee Escrow fee.
+     * @return _minimalAmount Minimal amount.
+     * @return _paymentFee Payment fee.
+     */
+    function getSettings()
+        external view
+        returns (
+            uint128 _escrowEndTimeSeconds,
+            uint128 _escrowAmount,
+            uint64 _escrowFee,
+            uint128 _minimalAmount,
+            uint64 _paymentFee
+        );
 
     /**
      * Gets the allowed destination addresses.

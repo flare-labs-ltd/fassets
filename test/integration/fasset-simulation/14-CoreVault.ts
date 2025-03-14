@@ -50,6 +50,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp, { coreVaultUnderlyingAddress });
         await context.coreVaultManager!.addTriggeringAccounts([triggeringAccount], { from: governance });
+        await context.coreVaultManager!.updateSettings(0, 0, 100, 0, 50, { from: governance });
         return { commonContext, context };
     }
 

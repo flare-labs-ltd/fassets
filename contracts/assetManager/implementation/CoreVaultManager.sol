@@ -41,7 +41,7 @@ contract CoreVaultManager is
 
     EnumerableSet.Bytes32Set private preimageHashes;
     Escrow[] private escrows;
-    mapping(bytes32 preimageHash => uint256 escrowIndex) private preimageHashToEscrowIndex;
+    mapping(bytes32 preimageHash => uint256 escrowIndex) private preimageHashToEscrowIndex; // 1-based index
 
     /// index of a next preimage hash to be used for escrow
     uint256 public nextUnusedPreimageHashIndex;
@@ -55,16 +55,20 @@ contract CoreVaultManager is
 
     // there will probably be no more than 10 destination addresses set in the system at any time
     string[] private allowedDestinationAddresses;
-    mapping(string allowedDestinationAddress => uint256) private allowedDestinationAddressIndex;
+    mapping(string allowedDestinationAddress => uint256) private allowedDestinationAddressIndex; // 1-based index
     EnumerableSet.AddressSet private triggeringAccounts;
     EnumerableSet.AddressSet private emergencyPauseSenders;
 
     /// escrow end time during a day in seconds (UTC time)
-    uint256 public escrowEndTimeSeconds;
+    uint128 private escrowEndTimeSeconds;
+    /// escrow fee
+    uint64 private escrowFee;
+    /// payment fee
+    uint64 private paymentFee;
     /// amount to be escrowed
-    uint128 public escrowAmount;
+    uint128 private escrowAmount;
     /// minimal amount left in the core vault after escrowing
-    uint128 public minimalAmount;
+    uint128 private minimalAmount;
     /// available funds in the core vault
     uint128 public availableFunds;
     /// escrowed funds
@@ -77,17 +81,12 @@ contract CoreVaultManager is
     bool public paused;
 
     modifier onlyAssetManager() {
-        require(msg.sender == assetManager, "only asset manager");
-        _;
-    }
-
-    modifier onlyTriggeringAccount() {
-        require(triggeringAccounts.contains(msg.sender), "only triggering account");
+        _checkOnlyAssetManager();
         _;
     }
 
     modifier notPaused() {
-        require(!paused, "paused");
+        _checkNotPaused();
         _;
     }
 
@@ -113,10 +112,10 @@ contract CoreVaultManager is
     )
         external
     {
-        require(_assetManager != address(0), "asset manager cannot be zero");
-        require(_chainId != bytes32(0), "chain id cannot be zero");
-        require(bytes(_custodianAddress).length > 0, "custodian address cannot be empty");
-        require(bytes(_coreVaultAddress).length > 0, "core vault address cannot be empty");
+        require(_assetManager != address(0), "invalid address");
+        require(_chainId != bytes32(0), "invalid chain");
+        require(bytes(_custodianAddress).length > 0, "invalid address");
+        require(bytes(_coreVaultAddress).length > 0, "invalid address");
 
         GovernedBase.initialise(_governanceSettings, _initialGovernance);
         AddressUpdatable.setAddressUpdaterValue(_addressUpdater);
@@ -127,6 +126,7 @@ contract CoreVaultManager is
         coreVaultAddressHash = keccak256(bytes(_coreVaultAddress));
         coreVaultAddress = _coreVaultAddress;
         nextSequenceNumber = _nextSequenceNumber;
+        emit CustodianAddressUpdated(_custodianAddress);
     }
 
     /**
@@ -139,9 +139,9 @@ contract CoreVaultManager is
     {
         require(_proof.data.responseBody.status == 0, "payment failed"); // 0 = payment success
         require(_proof.data.sourceId == chainId, "invalid chain");
-        require(fdcVerification.verifyPayment(_proof), "legal payment not proved");
-        require(_proof.data.responseBody.receivingAddressHash == coreVaultAddressHash, "not core vault's address");
-        require(_proof.data.responseBody.receivedAmount > 0, "no amount received");
+        require(fdcVerification.verifyPayment(_proof), "payment not proved");
+        require(_proof.data.responseBody.receivingAddressHash == coreVaultAddressHash, "not core vault");
+        require(_proof.data.responseBody.receivedAmount > 0, "invalid amount");
         if (!confirmedPayments[_proof.data.requestBody.transactionId]) {
             uint128 receivedAmount = uint128(uint256(_proof.data.responseBody.receivedAmount));
             confirmedPayments[_proof.data.requestBody.transactionId] = true;
@@ -166,8 +166,8 @@ contract CoreVaultManager is
         external
         onlyAssetManager notPaused
     {
-        require(_amount > 0, "amount must be greater than zero");
-        require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination address not allowed");
+        require(_amount > 0, "amount zero");
+        require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination not allowed");
         uint128 requestsAmount = nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount;
         require(_amount + requestsAmount <= availableFunds + escrowedFunds, "insufficient funds");
         bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
@@ -176,16 +176,13 @@ contract CoreVaultManager is
             // only one cancelable request per destination address
             for (uint256 i = 0; i < cancelableTransferRequests.length; i++) {
                 TransferRequest storage req = transferRequestById[cancelableTransferRequests[i]];
-                require(
-                    keccak256(bytes(req.destinationAddress)) != destinationAddressHash,
-                    "transfer request already exists"
-                );
+                require(keccak256(bytes(req.destinationAddress)) != destinationAddressHash, "request already exists");
             }
             cancelableTransferRequestsAmount += _amount;
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
-            require(_paymentReference == bytes32(0), "payment reference not empty");
+            require(_paymentReference == bytes32(0), "invalid payment reference");
             uint256 index = 0;
             while (index < nonCancelableTransferRequests.length) {
                 TransferRequest storage req = transferRequestById[nonCancelableTransferRequests[index]];
@@ -231,7 +228,7 @@ contract CoreVaultManager is
             }
             index++;
         }
-        require (index < cancelableTransferRequests.length, "transfer request not found");
+        require (index < cancelableTransferRequests.length, "transfer not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
         TransferRequest storage req = transferRequestById[transferRequestId];
         uint128 amount = req.amount;
@@ -257,26 +254,30 @@ contract CoreVaultManager is
     /**
      * @inheritdoc ICoreVaultManager
      */
-    function triggerInstructions() external onlyTriggeringAccount notPaused {
+    function triggerInstructions() external notPaused {
+        require(triggeringAccounts.contains(msg.sender), "not authorized");
         _processEscrows(type(uint256).max); // process all escrows
         uint128 availableFundsTmp = availableFunds;
         uint256 sequenceNumberTmp = nextSequenceNumber;
 
         // process cancelable transfer requests
+        uint128 fee = paymentFee;
+        require(fee > 0, "fee zero");
         uint256 index = 0;
         uint256 length = cancelableTransferRequests.length;
         uint128 amountTmp = cancelableTransferRequestsAmount;
         while (index < length) {
             uint256 transferRequestId = cancelableTransferRequests[index];
-            if (availableFundsTmp >= transferRequestById[transferRequestId].amount) {
+            if (availableFundsTmp >= transferRequestById[transferRequestId].amount + fee) {
                 TransferRequest memory req = transferRequestById[transferRequestId];
-                availableFundsTmp -= req.amount;
+                availableFundsTmp -= (req.amount + fee);
                 amountTmp -= req.amount;
                 emit PaymentInstructions(
                     sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
                     req.amount,
+                    fee,
                     req.paymentReference
                 );
                 // remove the transfer request - keep the order
@@ -298,15 +299,16 @@ contract CoreVaultManager is
         amountTmp = nonCancelableTransferRequestsAmount;
         while (index < length) {
             uint256 transferRequestId = nonCancelableTransferRequests[index];
-            if (availableFundsTmp >= transferRequestById[transferRequestId].amount) {
+            if (availableFundsTmp >= transferRequestById[transferRequestId].amount + fee) {
                 TransferRequest memory req = transferRequestById[transferRequestId];
-                availableFundsTmp -= req.amount;
+                availableFundsTmp -= (req.amount + fee);
                 amountTmp -= req.amount;
                 emit PaymentInstructions(
                     sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
                     req.amount,
+                    fee,
                     req.paymentReference
                 );
                 // remove the transfer request - keep the order
@@ -331,14 +333,15 @@ contract CoreVaultManager is
         }
 
         // create escrows
+        fee = escrowFee; // > 0
         uint256 preimageHashIndexTmp = nextUnusedPreimageHashIndex;
-        uint256 minFundsToTriggerEscrow = minimalAmount + escrowAmountTmp;
+        uint256 minFundsToTriggerEscrow = minimalAmount + escrowAmountTmp + fee;
         length = preimageHashes.length();
         amountTmp = escrowedFunds;
         if (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < length) {
             uint64 escrowEndTimestamp = _getNextEscrowEndTimestamp();
             while (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < length) {
-                availableFundsTmp -= escrowAmountTmp;
+                availableFundsTmp -= (escrowAmountTmp + fee);
                 amountTmp += escrowAmountTmp;
                 bytes32 preimageHash = preimageHashes.at(preimageHashIndexTmp++);
                 Escrow memory escrow = Escrow({
@@ -355,6 +358,7 @@ contract CoreVaultManager is
                     coreVaultAddress,
                     custodianAddress,
                     escrowAmountTmp,
+                    fee,
                     escrowEndTimestamp
                 );
                 // next escrow end timestamp
@@ -381,7 +385,7 @@ contract CoreVaultManager is
         onlyGovernance
     {
         for (uint256 i = 0; i < _allowedDestinationAddresses.length; i++) {
-            require(bytes(_allowedDestinationAddresses[i]).length > 0, "destination address cannot be empty");
+            require(bytes(_allowedDestinationAddresses[i]).length > 0, "invalid address");
             if (allowedDestinationAddressIndex[_allowedDestinationAddresses[i]] != 0) {
                 continue;
             }
@@ -466,7 +470,7 @@ contract CoreVaultManager is
         external
         onlyGovernance
     {
-        require(bytes(_custodianAddress).length > 0, "custodian address cannot be empty");
+        require(bytes(_custodianAddress).length > 0, "invalid address");
         custodianAddress = _custodianAddress;
         emit CustodianAddressUpdated(_custodianAddress);
     }
@@ -475,22 +479,29 @@ contract CoreVaultManager is
      * Updates the settings.
      * @param _escrowEndTimeSeconds Escrow end time in seconds.
      * @param _escrowAmount Escrow amount (setting to 0 will disable escrows).
+     * @param _escrowFee Escrow fee.
      * @param _minimalAmount Minimal amount left in the core vault after escrow.
+     * @param _paymentFee Payment fee.
      * NOTE: may only be called by the governance.
      */
     function updateSettings(
-        uint256 _escrowEndTimeSeconds,
+        uint128 _escrowEndTimeSeconds,
         uint128 _escrowAmount,
-        uint128 _minimalAmount
+        uint64 _escrowFee,
+        uint128 _minimalAmount,
+        uint64 _paymentFee
     )
         external
         onlyGovernance
     {
-        require(_escrowEndTimeSeconds < 1 days, "escrow end time must be less than a day");
+        require(_escrowEndTimeSeconds < 1 days, "invalid end time");
+        require(_escrowFee > 0 && _paymentFee > 0, "fee zero");
         escrowEndTimeSeconds = _escrowEndTimeSeconds;
         escrowAmount = _escrowAmount;
+        escrowFee = _escrowFee;
         minimalAmount = _minimalAmount;
-        emit SettingsUpdated(_escrowEndTimeSeconds, _escrowAmount, _minimalAmount);
+        paymentFee = _paymentFee;
+        emit SettingsUpdated(_escrowEndTimeSeconds, _escrowAmount, _escrowFee, _minimalAmount, _paymentFee);
     }
 
     /**
@@ -505,7 +516,7 @@ contract CoreVaultManager is
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
-            require(_preimageHashes[i] != bytes32(0), "preimage hash cannot be zero");
+            require(_preimageHashes[i] != bytes32(0), "preimage hash zero");
             require(preimageHashes.add(_preimageHashes[i]), "preimage hash already exists");
             emit PreimageHashAdded(_preimageHashes[i]);
         }
@@ -546,8 +557,7 @@ contract CoreVaultManager is
         uint128 escrowedFundsTmp = escrowedFunds;
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             uint256 escrowIndex = preimageHashToEscrowIndex[_preimageHashes[i]];
-            require(escrowIndex != 0, "escrow not found");
-            Escrow storage escrow = escrows[escrowIndex - 1];
+            Escrow storage escrow = _getEscrow(escrowIndex);
             require(!escrow.finished, "escrow already finished");
             escrow.finished = true;
             if (escrowIndex <= nextUnprocessedEscrowIndex) {
@@ -597,8 +607,7 @@ contract CoreVaultManager is
      * @inheritdoc ICoreVaultManager
      */
     function pause() external {
-        require(msg.sender == governance() || emergencyPauseSenders.contains(msg.sender),
-            "only governance or emergency pause senders");
+        require(msg.sender == governance() || emergencyPauseSenders.contains(msg.sender), "not authorized");
         paused = true;
         emit Paused();
     }
@@ -610,6 +619,22 @@ contract CoreVaultManager is
     function unpause() external onlyImmediateGovernance {
         paused = false;
         emit Unpaused();
+    }
+
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function getSettings()
+        external view
+        returns (
+            uint128 _escrowEndTimeSeconds,
+            uint128 _escrowAmount,
+            uint64 _escrowFee,
+            uint128 _minimalAmount,
+            uint64 _paymentFee
+        )
+    {
+        return (escrowEndTimeSeconds, escrowAmount, escrowFee, minimalAmount, paymentFee);
     }
 
     /**
@@ -663,8 +688,7 @@ contract CoreVaultManager is
      */
     function getEscrowByPreimageHash(bytes32 _preimageHash) external view returns (Escrow memory) {
         uint256 index = preimageHashToEscrowIndex[_preimageHash];
-        require(index != 0, "escrow not found");
-        return escrows[index - 1];
+        return _getEscrow(index);
     }
 
     /**
@@ -813,6 +837,16 @@ contract CoreVaultManager is
     }
 
     /**
+     * Gets the escrow by index.
+     * @param _index Escrow index (1-based).
+     * @return Escrow.
+     */
+    function _getEscrow(uint256 _index) internal view returns (Escrow storage) {
+        require(_index != 0, "escrow not found");
+        return escrows[_index - 1];
+    }
+
+    /**
      * Gets the next escrow end timestamp.
      * @return Next escrow end timestamp.
      */
@@ -833,5 +867,19 @@ contract CoreVaultManager is
             escrowEndTimestamp += 1 days;
         }
         return uint64(escrowEndTimestamp);
+    }
+
+    /**
+     * Checks if the caller is the asset manager.
+     */
+    function _checkOnlyAssetManager() internal view {
+        require(msg.sender == assetManager, "only asset manager");
+    }
+
+    /**
+     * Checks if the contract is not paused.
+     */
+    function _checkNotPaused() internal view {
+        require(!paused, "paused");
     }
 }
