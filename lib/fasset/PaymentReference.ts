@@ -9,6 +9,7 @@ export namespace PaymentReference {
     export const MINTING = toBN('0x4642505266410001').shln(TYPE_SHIFT);
     export const REDEMPTION = toBN('0x4642505266410002').shln(TYPE_SHIFT);
     export const ANNOUNCED_WITHDRAWAL = toBN('0x4642505266410003').shln(TYPE_SHIFT);
+    export const RETURN_FROM_CORE_VAULT = toBN('0x4642505266410004').shln(TYPE_SHIFT);
     export const TOPUP = toBN('0x4642505266410011').shln(TYPE_SHIFT);
     export const SELF_MINT = toBN('0x4642505266410012').shln(TYPE_SHIFT);
     export const ADDRESS_OWNERSHIP = toBN('0x4642505266410013').shln(TYPE_SHIFT);
@@ -23,6 +24,10 @@ export namespace PaymentReference {
 
     export function announcedWithdrawal(id: BNish) {
         return toHex(toBN(id).or(ANNOUNCED_WITHDRAWAL), 32);
+    }
+
+    export function returnFromCoreVault(id: BNish) {
+        return toHex(toBN(id).or(RETURN_FROM_CORE_VAULT), 32);
     }
 
     export function topup(address: string) {
