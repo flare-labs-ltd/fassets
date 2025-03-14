@@ -3,6 +3,7 @@ import {
   AddressUpdaterInstance,
   CoreVaultManagerInstance,
   CoreVaultManagerProxyInstance,
+  GovernanceSettingsInstance,
   MockContractInstance,
 } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
@@ -17,6 +18,7 @@ import {
   assertWeb3DeepEqual,
   assertWeb3Equal,
 } from "../../../utils/web3assertions";
+import { ZERO_ADDRESS } from "../../../../deployment/lib/deploy-utils";
 
 const CoreVaultManager = artifacts.require("CoreVaultManager");
 const CoreVaultManagerProxy = artifacts.require("CoreVaultManagerProxy");
@@ -30,6 +32,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
     let addressUpdater: AddressUpdaterInstance;
     let fdcVerification: MockContractInstance;
+    let governanceSettings: GovernanceSettingsInstance;
     const governance = accounts[1000];
     const assetManager = accounts[101];
     const chainId = web3.utils.keccak256("123");
@@ -39,7 +42,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
 
     async function initialize() {
       // create governance settings
-      const governanceSettings = await GovernanceSettings.new();
+      governanceSettings = await GovernanceSettings.new();
       await governanceSettings.initialise(governance, 60, [governance], {
         from: GENESIS_GOVERNANCE_ADDRESS,
       });
@@ -69,7 +72,6 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         [coreVaultManager.address],
         { from: governance }
       );
-
       // await coreVaultManager.switchToProductionMode({ from: governance });
       return { coreVaultManager };
     }
@@ -78,10 +80,28 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       ({ coreVaultManager } = await loadFixtureCopyVars(initialize));
     });
 
+    it("should not initialize contract if wrong parameters", async () => {
+      coreVaultManagerProxy = await CoreVaultManagerProxy.new(
+        coreVaultManagerImplementation.address,
+        governanceSettings.address,
+        governance,
+        addressUpdater.address,
+        ZERO_ADDRESS,
+        web3.utils.keccak256("123"),
+        custodianAddress,
+        coreVaultAddress,
+        0
+      );
+      let tx = CoreVaultManager.at(coreVaultManagerProxy.address);
+      await expectRevert(tx, "asset manager cannot be zero");
+    });
+
     it("should add destination addresses", async () => {
       const tx = await coreVaultManager.addAllowedDestinationAddresses(
         ["addr1", "addr2"],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "AllowedDestinationAddressAdded", {
         destinationAddress: "addr1",
@@ -111,7 +131,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       // if address already exists, it should not be added again
       await coreVaultManager.addAllowedDestinationAddresses(
         ["addr3", "addr1"],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       const allowedDestinationAddresses2 =
         await coreVaultManager.getAllowedDestinationAddresses();
@@ -124,7 +146,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should revert adding allowed destination address if not from governance", async () => {
       const tx = coreVaultManager.addAllowedDestinationAddresses(
         [accounts[1]],
-        { from: accounts[2] }
+        {
+          from: accounts[2],
+        }
       );
       await expectRevert(tx, "only governance");
     });
@@ -139,12 +163,16 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should remove allowed destination addresses", async () => {
       await coreVaultManager.addAllowedDestinationAddresses(
         ["addr1", "addr2"],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
 
       const tx = await coreVaultManager.removeAllowedDestinationAddresses(
         ["addr1", "addr2", "addr3"],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "AllowedDestinationAddressRemoved", {
         destinationAddress: "addr1",
@@ -160,7 +188,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       // if address is not on the list of allowed destination addresses, it shouldn't be removed
       const tx1 = await coreVaultManager.removeAllowedDestinationAddresses(
         ["addr1"],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent.notEmitted(tx1, "AllowedDestinationAddressRemoved");
     });
@@ -168,7 +198,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should revert removing allowed destination address if not from governance", async () => {
       const tx = coreVaultManager.removeAllowedDestinationAddresses(
         [accounts[1]],
-        { from: accounts[2] }
+        {
+          from: accounts[2],
+        }
       );
       await expectRevert(tx, "only governance");
     });
@@ -176,7 +208,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should add triggering accounts", async () => {
       const tx = await coreVaultManager.addTriggeringAccounts(
         [accounts[1], accounts[2]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "TriggeringAccountAdded", {
         triggeringAccount: accounts[1],
@@ -208,12 +242,16 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       // add triggering accounts
       await coreVaultManager.addTriggeringAccounts(
         [accounts[1], accounts[2], accounts[3]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
 
       const tx = await coreVaultManager.removeTriggeringAccounts(
         [accounts[1], accounts[2]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "TriggeringAccountRemoved", {
         triggeringAccount: accounts[1],
@@ -228,7 +266,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       // if triggering account is not in the list, it shouldn't be removed
       const tx1 = await coreVaultManager.removeTriggeringAccounts(
         [accounts[1]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent.notEmitted(tx1, "TriggeringAccountRemoved");
     });
@@ -243,7 +283,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should update custodian address", async () => {
       const tx = await coreVaultManager.updateCustodianAddress(
         "newCustodianAddress",
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "CustodianAddressUpdated", {
         custodianAddress: "newCustodianAddress",
@@ -331,7 +373,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should not add preimage hashes if not from governance", async () => {
       const tx = coreVaultManager.addPreimageHashes(
         [web3.utils.keccak256("hash1")],
-        { from: accounts[1] }
+        {
+          from: accounts[1],
+        }
       );
       await expectRevert(tx, "only governance");
     });
@@ -400,7 +444,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       await coreVaultManager.switchToProductionMode({ from: governance });
       const tx = await coreVaultManager.addEmergencyPauseSenders(
         [accounts[1], accounts[2]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "EmergencyPauseSenderAdded", { sender: accounts[1] });
       expectEvent(tx, "EmergencyPauseSenderAdded", { sender: accounts[2] });
@@ -413,7 +459,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       // if sender already exists, it should not be added again
       const tx1 = await coreVaultManager.addEmergencyPauseSenders(
         [accounts[1]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent.notEmitted(tx1, "EmergencyPauseSenderAdded");
     });
@@ -429,13 +477,17 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       await coreVaultManager.switchToProductionMode({ from: governance });
       await coreVaultManager.addEmergencyPauseSenders(
         [accounts[1], accounts[2], accounts[3]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
 
       // remove two senders
       const tx = await coreVaultManager.removeEmergencyPauseSenders(
         [accounts[1], accounts[3]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent(tx, "EmergencyPauseSenderRemoved", { sender: accounts[1] });
       expectEvent(tx, "EmergencyPauseSenderRemoved", { sender: accounts[3] });
@@ -446,7 +498,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       // if sender is not in the list, it shouldn't be removed
       const tx1 = await coreVaultManager.removeEmergencyPauseSenders(
         [accounts[1]],
-        { from: governance }
+        {
+          from: governance,
+        }
       );
       expectEvent.notEmitted(tx1, "EmergencyPauseSenderRemoved");
     });
@@ -488,7 +542,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
     it("should revert adding allowed destination address if not from governance", async () => {
       const tx = coreVaultManager.addAllowedDestinationAddresses(
         [accounts[1]],
-        { from: accounts[2] }
+        {
+          from: accounts[2],
+        }
       );
       await expectRevert(tx, "only governance");
     });
@@ -616,7 +672,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         const paymentReference = web3.utils.keccak256("paymentReference");
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress, "addr2"],
-          { from: governance }
+          {
+            from: governance,
+          }
         );
         const proof = createPaymentProof(
           web3.utils.keccak256("transactionId"),
@@ -629,7 +687,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference,
           100,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -668,7 +728,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference,
           100,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -681,7 +743,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference2,
           300,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
@@ -707,7 +771,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         const paymentReference = web3.utils.keccak256("paymentReference");
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress],
-          { from: governance }
+          {
+            from: governance,
+          }
         );
         const proof = createPaymentProof(
           web3.utils.keccak256("transactionId"),
@@ -720,7 +786,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference,
           100,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -734,7 +802,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
             paymentReference,
             300,
             true,
-            { from: assetManager }
+            {
+              from: assetManager,
+            }
           ),
           "already exists"
         );
@@ -753,7 +823,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         const destinationAddress = "destinationAddress";
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress, "addr2"],
-          { from: governance }
+          {
+            from: governance,
+          }
         );
         const proof = createPaymentProof(
           web3.utils.keccak256("transactionId"),
@@ -766,7 +838,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           ZERO_BYTES32,
           100,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -803,7 +877,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           ZERO_BYTES32,
           100,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -816,7 +892,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           ZERO_BYTES32,
           300,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
@@ -855,7 +933,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           ZERO_BYTES32,
           100,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -868,7 +948,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           ZERO_BYTES32,
           300,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
@@ -881,7 +963,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           ZERO_BYTES32,
           100,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx3, "TransferRequested", {
           destinationAddress: destinationAddress,
@@ -983,14 +1067,18 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference,
           100,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress2,
           ZERO_BYTES32,
           300,
           false,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
 
         await coreVaultManager.addAllowedDestinationAddresses(["addr1"], {
@@ -1031,7 +1119,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference,
           100,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
@@ -1044,7 +1134,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference2,
           300,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
@@ -1057,7 +1149,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
           paymentReference3,
           600,
           true,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx3, "TransferRequested", {
           destinationAddress: destinationAddress3,
@@ -1068,7 +1162,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
 
         const tx4 = await coreVaultManager.cancelTransferRequestFromCoreVault(
           destinationAddress,
-          { from: assetManager }
+          {
+            from: assetManager,
+          }
         );
         expectEvent(tx4, "TransferRequestCanceled", {
           destinationAddress,
@@ -1108,6 +1204,71 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       });
     });
 
+    describe("trigger instructions", async () => {
+      beforeEach(async () => {
+        // add triggering accounts
+        await coreVaultManager.addTriggeringAccounts([accounts[1]], {
+          from: governance,
+        });
+      });
+
+      it("should trigger instructions", async () => {
+        // confirm payment (fund core vault)
+        const transactionId = web3.utils.keccak256("transactionId");
+        const amount = 1000;
+        const proof = createPaymentProof(transactionId, amount);
+        await coreVaultManager.confirmPayment(proof);
+
+        // add destination addresses
+        await coreVaultManager.addAllowedDestinationAddresses(
+          ["addr1", "addr2", "addr3"],
+          {
+            from: governance,
+          }
+        );
+
+        // request cancelable transfer
+        await coreVaultManager.requestTransferFromCoreVault(
+          "addr1",
+          web3.utils.keccak256("ref1"),
+          100,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        // request non-cancelable transfer
+        await coreVaultManager.requestTransferFromCoreVault(
+          "addr2",
+          web3.utils.keccak256("ref2"),
+          200,
+          false,
+          {
+            from: assetManager,
+          }
+        );
+
+        // trigger instructions
+        const tx = await coreVaultManager.triggerInstructions({
+          from: accounts[1],
+        });
+        expectEvent(tx, "PaymentInstructions", {
+          sequence: "1",
+          coreVaultAddress: coreVaultAddress,
+          destinationAddress: "addr1",
+          amount: "100",
+          paymentReference: web3.utils.keccak256("ref1"),
+        });
+        expectEvent(tx, "PaymentInstructions", {
+          sequence: "2",
+          coreVaultAddress: coreVaultAddress,
+          destinationAddress: "addr2",
+          amount: "200",
+          paymentReference: web3.utils.keccak256("ref2"),
+        });
+      });
+    });
+
     describe("proxy upgrade", async () => {
       it("should upgrade via upgradeTo", async () => {
         // pause the contract
@@ -1139,7 +1300,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
         await coreVaultManagerProxy.upgradeToAndCall(
           newImpl.address,
           callData,
-          { from: governance }
+          {
+            from: governance,
+          }
         );
         // check
         assertWeb3Equal(coreVaultManager.address, proxyAddress);
@@ -1147,10 +1310,6 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager bas
       });
 
       it("calling initialize in upgradeToAndCall should revert in GovernedBase", async () => {
-        const governanceSettings = await GovernanceSettings.new();
-        await governanceSettings.initialise(governance, 60, [governance], {
-          from: GENESIS_GOVERNANCE_ADDRESS,
-        });
         const proxyAddress = coreVaultManager.address;
         const coreVaultManagerProxy = await CoreVaultManager.at(proxyAddress);
         // upgrade
