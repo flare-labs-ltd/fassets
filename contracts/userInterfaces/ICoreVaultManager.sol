@@ -25,6 +25,7 @@ interface ICoreVaultManager {
     // Events
     event PaymentConfirmed(
         bytes32 indexed transactionId,
+        bytes32 paymentReference,
         uint256 amount
     );
 

@@ -37,6 +37,7 @@ contract(
     const governance = accounts[1000];
     const assetManager = accounts[101];
     const chainId = web3.utils.keccak256("123");
+    const standardPaymentReference = web3.utils.keccak256("standardPaymentReference");
     const custodianAddress = "custodianAddress";
     const coreVaultAddress = "coreVaultAddress";
 
@@ -500,6 +501,7 @@ contract(
         const tx = await coreVaultManager.confirmPayment(proof);
         expectEvent(tx, "PaymentConfirmed", {
           transactionId,
+          paymentReference: standardPaymentReference,
           amount: amount.toString(),
         });
         expect((await coreVaultManager.availableFunds()).toNumber()).to.equal(
@@ -517,6 +519,7 @@ contract(
         const tx = await coreVaultManager.confirmPayment(proof);
         expectEvent(tx, "PaymentConfirmed", {
           transactionId,
+          paymentReference: standardPaymentReference,
           amount: amount.toString(),
         });
         const tx2 = await coreVaultManager.confirmPayment(proof);
@@ -607,8 +610,12 @@ contract(
         );
       });
 
+    });
+
+    describe("request and cancel transfers", async () => {
       it("should request transfer from core vault (cancelable)", async () => {
         const destinationAddress = "destinationAddress";
+        const paymentReference = web3.utils.keccak256("paymentReference");
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress, "addr2"],
           { from: governance }
@@ -621,12 +628,14 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          paymentReference,
           100,
           true,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference,
           amount: "100",
           cancelable: true,
         });
@@ -653,12 +662,12 @@ contract(
           await coreVaultManager.getNonCancelableTransferRequests();
         expect(nonCancelableTransferRequests.length).to.equal(0);
       });
-    });
 
-    describe("request and cancel transfers", async () => {
       it("should request multiple transfers from core vault - different destination addresses (cancelable)", async () => {
         const destinationAddress = "destinationAddress";
         const destinationAddress2 = "destinationAddress2";
+        const paymentReference = web3.utils.keccak256("paymentReference");
+        const paymentReference2 = web3.utils.keccak256("paymentReference2");
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress, destinationAddress2],
           { from: governance }
@@ -671,23 +680,27 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          paymentReference,
           100,
           true,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference,
           amount: "100",
           cancelable: true,
         });
         const tx2 = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress2,
+          paymentReference2,
           300,
           true,
           { from: assetManager }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
+          paymentReference: paymentReference2,
           amount: "300",
           cancelable: true,
         });
@@ -721,6 +734,7 @@ contract(
 
       it("should revert requesting multiple transfers from core vault - same destination address (cancelable)", async () => {
         const destinationAddress = "destinationAddress";
+        const paymentReference = web3.utils.keccak256("paymentReference");
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress],
           { from: governance }
@@ -733,18 +747,21 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          paymentReference,
           100,
           true,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference,
           amount: "100",
           cancelable: true,
         });
         await expectRevert(
           coreVaultManager.requestTransferFromCoreVault(
             destinationAddress,
+            paymentReference,
             300,
             true,
             { from: assetManager }
@@ -789,12 +806,14 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          ZERO_BYTES32,
           100,
           false,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference: ZERO_BYTES32,
           amount: "100",
           cancelable: false,
         });
@@ -839,23 +858,27 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          ZERO_BYTES32,
           100,
           false,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference: ZERO_BYTES32,
           amount: "100",
           cancelable: false,
         });
         const tx2 = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress2,
+          ZERO_BYTES32,
           300,
           false,
           { from: assetManager }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
+          paymentReference: ZERO_BYTES32,
           amount: "300",
           cancelable: false,
         });
@@ -906,34 +929,40 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          ZERO_BYTES32,
           100,
           false,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference: ZERO_BYTES32,
           amount: "100",
           cancelable: false,
         });
         const tx2 = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress2,
+          ZERO_BYTES32,
           300,
           false,
           { from: assetManager }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
+          paymentReference: ZERO_BYTES32,
           amount: "300",
           cancelable: false,
         });
         const tx3 = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          ZERO_BYTES32,
           100,
           false,
           { from: assetManager }
         );
         expectEvent(tx3, "TransferRequested", {
           destinationAddress: destinationAddress,
+          paymentReference: ZERO_BYTES32,
           amount: "100",
           cancelable: false,
         });
@@ -972,7 +1001,7 @@ contract(
       it("should revert requesting transfer if not from asset manager", async () => {
         assert.notEqual(assetManager, accounts[1]);
         await expectRevert(
-          coreVaultManager.requestTransferFromCoreVault("addr1", 10, false, {
+          coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 10, false, {
             from: accounts[1],
           }),
           "only asset manager"
@@ -982,7 +1011,7 @@ contract(
       it("should revert requesting transfer if paused", async () => {
         await coreVaultManager.pause({ from: governance });
         await expectRevert(
-          coreVaultManager.requestTransferFromCoreVault("addr1", 10, false, {
+          coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 10, false, {
             from: assetManager,
           }),
           "paused"
@@ -991,7 +1020,7 @@ contract(
 
       it("should revert requesting transfer if amount is 0", async () => {
         await expectRevert(
-          coreVaultManager.requestTransferFromCoreVault("addr1", 0, false, {
+          coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 0, false, {
             from: assetManager,
           }),
           "amount must be greater than zero"
@@ -1000,16 +1029,41 @@ contract(
 
       it("should revert requesting transfer if destination address is not allowed", async () => {
         await expectRevert(
-          coreVaultManager.requestTransferFromCoreVault("addr1", 10, false, {
+          coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 10, false, {
             from: assetManager,
           }),
           "destination address not allowed"
         );
       });
 
+      it("should revert requesting non-cancelable transfer if payment reference is not empty", async () => {
+        const destinationAddress = "destinationAddress";
+        const paymentReference = web3.utils.keccak256("paymentReference");
+        await coreVaultManager.addAllowedDestinationAddresses(
+          ["addr1", destinationAddress, "addr2"],
+          { from: governance }
+        );
+        const proof = createPaymentProof(
+          web3.utils.keccak256("transactionId"),
+          1000
+        );
+        await coreVaultManager.confirmPayment(proof); // available funds = 1000
+
+        await expectRevert(
+          coreVaultManager.requestTransferFromCoreVault(
+            destinationAddress,
+            paymentReference,
+            100,
+            false,
+            { from: assetManager }),
+            "payment reference not empty"
+          );
+      });
+
       it("should revert requesting transfer if there are insufficient funds", async () => {
         const destinationAddress = "destinationAddress";
         const destinationAddress2 = "destinationAddress2";
+        const paymentReference = web3.utils.keccak256("paymentReference");
         await coreVaultManager.addAllowedDestinationAddresses(
           ["addr1", destinationAddress, destinationAddress2],
           { from: governance }
@@ -1022,12 +1076,14 @@ contract(
 
         await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          paymentReference,
           100,
           true,
           { from: assetManager }
         );
         await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress2,
+          ZERO_BYTES32,
           300,
           false,
           { from: assetManager }
@@ -1037,7 +1093,7 @@ contract(
           from: governance,
         });
         await expectRevert(
-          coreVaultManager.requestTransferFromCoreVault("addr1", 700, false, {
+          coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 700, false, {
             from: assetManager,
           }),
           "insufficient funds"
@@ -1048,6 +1104,9 @@ contract(
         const destinationAddress = "destinationAddress";
         const destinationAddress2 = "destinationAddress2";
         const destinationAddress3 = "destinationAddress3";
+        const paymentReference = web3.utils.keccak256("paymentReference");
+        const paymentReference2 = web3.utils.keccak256("paymentReference2");
+        const paymentReference3 = web3.utils.keccak256("paymentReference3");
         await coreVaultManager.addAllowedDestinationAddresses(
           [
             "addr1",
@@ -1065,34 +1124,40 @@ contract(
 
         const tx = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress,
+          paymentReference,
           100,
           true,
           { from: assetManager }
         );
         expectEvent(tx, "TransferRequested", {
           destinationAddress,
+          paymentReference,
           amount: "100",
           cancelable: true,
         });
         const tx2 = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress2,
+          paymentReference2,
           300,
           true,
           { from: assetManager }
         );
         expectEvent(tx2, "TransferRequested", {
           destinationAddress: destinationAddress2,
+          paymentReference: paymentReference2,
           amount: "300",
           cancelable: true,
         });
         const tx3 = await coreVaultManager.requestTransferFromCoreVault(
           destinationAddress3,
+          paymentReference3,
           600,
           true,
           { from: assetManager }
         );
         expectEvent(tx3, "TransferRequested", {
           destinationAddress: destinationAddress3,
+          paymentReference: paymentReference3,
           amount: "600",
           cancelable: true,
         });
@@ -1103,6 +1168,7 @@ contract(
         );
         expectEvent(tx4, "TransferRequestCanceled", {
           destinationAddress,
+          paymentReference,
           amount: "100",
         });
 
@@ -1284,7 +1350,8 @@ contract(
       _amount: number,
       _status = "0",
       _chainId = chainId,
-      _receivingAddressHash = web3.utils.keccak256(coreVaultAddress)
+      _receivingAddressHash = web3.utils.keccak256(coreVaultAddress),
+      _standardPaymentReference = standardPaymentReference
     ): Payment.Proof {
       const requestBody: Payment.RequestBody = {
         transactionId: _transactionId,
@@ -1298,7 +1365,7 @@ contract(
         sourceAddressesRoot: ZERO_BYTES32,
         receivingAddressHash: _receivingAddressHash,
         intendedReceivingAddressHash: _receivingAddressHash,
-        standardPaymentReference: ZERO_BYTES32,
+        standardPaymentReference: _standardPaymentReference,
         spentAmount: "0",
         intendedSpentAmount: "0",
         receivedAmount: String(_amount),

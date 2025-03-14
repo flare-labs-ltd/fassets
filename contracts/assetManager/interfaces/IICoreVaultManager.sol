@@ -10,12 +10,14 @@ interface IICoreVaultManager is ICoreVaultManager {
 
     event TransferRequested(
         string destinationAddress,
+        bytes32 paymentReference,
         uint256 amount,
         bool cancelable
     );
 
     event TransferRequestCanceled(
         string destinationAddress,
+        bytes32 paymentReference,
         uint256 amount
     );
 

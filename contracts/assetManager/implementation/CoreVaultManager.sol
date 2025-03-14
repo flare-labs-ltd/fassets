@@ -148,6 +148,7 @@ contract CoreVaultManager is
             availableFunds += receivedAmount;
             emit PaymentConfirmed(
                 _proof.data.requestBody.transactionId,
+                _proof.data.responseBody.standardPaymentReference,
                 receivedAmount
             );
         }
@@ -184,7 +185,7 @@ contract CoreVaultManager is
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
-            require(_paymentReference == bytes32(0), "non-cancelable request cannot have a payment reference");
+            require(_paymentReference == bytes32(0), "payment reference not empty");
             uint256 index = 0;
             while (index < nonCancelableTransferRequests.length) {
                 TransferRequest storage req = transferRequestById[nonCancelableTransferRequests[index]];
@@ -209,7 +210,7 @@ contract CoreVaultManager is
                 amount: _amount
             });
         }
-        emit TransferRequested(_destinationAddress, _amount, _cancelable);
+        emit TransferRequested(_destinationAddress, _paymentReference, _amount, _cancelable);
     }
 
     /**
@@ -224,17 +225,18 @@ contract CoreVaultManager is
         bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
         uint256 index = 0;
         while (index < cancelableTransferRequests.length) {
-            TransferRequest storage req = transferRequestById[cancelableTransferRequests[index]];
-            if (keccak256(bytes(req.destinationAddress)) == destinationAddressHash) {
+            string memory destAddress = transferRequestById[cancelableTransferRequests[index]].destinationAddress;
+            if (keccak256(bytes(destAddress)) == destinationAddressHash) {
                 break;
             }
             index++;
         }
         require (index < cancelableTransferRequests.length, "transfer request not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
-        uint128 amount = transferRequestById[transferRequestId].amount;
+        TransferRequest storage req = transferRequestById[transferRequestId];
+        uint128 amount = req.amount;
         cancelableTransferRequestsAmount -= amount;
-        emit TransferRequestCanceled(_destinationAddress, amount);
+        emit TransferRequestCanceled(_destinationAddress, req.paymentReference, amount);
 
         // remove the transfer request - keep the order
         while (index < cancelableTransferRequests.length - 1) { // length > 0
