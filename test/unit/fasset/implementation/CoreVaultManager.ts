@@ -13,6 +13,7 @@ import { abiEncodeCall, erc165InterfaceId, toBN, ZERO_BYTES32 } from "../../../.
 import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../utils/web3assertions";
 import { ZERO_ADDRESS } from "../../../../deployment/lib/deploy-utils";
 import { ZERO_BYTES_32 } from "@flarenetwork/state-connector-protocol";
+import { finished } from "stream";
 
 const CoreVaultManager = artifacts.require("CoreVaultManager");
 const CoreVaultManagerProxy = artifacts.require("CoreVaultManagerProxy");
@@ -88,7 +89,7 @@ contract(
         coreVaultAddress,
         0
       );
-      await expectRevert(tx, "asset manager cannot be zero");
+      await expectRevert(tx, "invalid address");
 
       // chain id cannot be zero
       tx = CoreVaultManagerProxy.new(
@@ -102,7 +103,7 @@ contract(
         coreVaultAddress,
         0
       );
-      await expectRevert(tx, "chain id cannot be zero");
+      await expectRevert(tx, "invalid chain");
 
       // custodian address cannot be empty
       tx = CoreVaultManagerProxy.new(
@@ -116,7 +117,7 @@ contract(
         coreVaultAddress,
         0
       );
-      await expectRevert(tx, "custodian address cannot be empty");
+      await expectRevert(tx, "invalid address");
 
       // core vault address cannot be empty
       tx = CoreVaultManagerProxy.new(
@@ -130,7 +131,7 @@ contract(
         "",
         0
       );
-      await expectRevert(tx, "core vault address cannot be empty");
+      await expectRevert(tx, "invalid address");
     });
 
     it("should add destination addresses", async () => {
@@ -969,8 +970,8 @@ contract(
             100,
             false,
             { from: assetManager }),
-            "invalid payment reference"
-          );
+          "invalid payment reference"
+        );
       });
 
       it("should revert requesting transfer if there are insufficient funds", async () => {
@@ -1112,6 +1113,37 @@ contract(
       const paymentFee = "15";
       const escrowFee = "25";
       const destinationAddress3 = "destinationAddress3";
+
+      async function createEscrows() {
+        // fund contract
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 800);
+        coreVaultManager.confirmPayment(proof);
+
+        const currentTimestamp = await time.latest();
+        const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
+        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        if (cancelAfterTs1.lte(currentTimestamp.addn(DAY / 2))) {
+          cancelAfterTs1 = cancelAfterTs1.addn(DAY);
+        }
+        const cancelAfterTs2 = cancelAfterTs1.addn(DAY);
+
+        // create two escrows
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        const escrow1 = {
+          preimageHash: preimageHash1,
+          amount: "200",
+          cancelAfterTs: cancelAfterTs1,
+          finished: false,
+        }
+        const escrow2 = {
+          preimageHash: preimageHash2,
+          amount: "200",
+          cancelAfterTs: cancelAfterTs2,
+          finished: false,
+        }
+        return [escrow1, escrow2];
+      }
+
       beforeEach(async () => {
         // add triggering accounts
         await coreVaultManager.addTriggeringAccounts([accounts[1]], {
@@ -1211,15 +1243,23 @@ contract(
           cancelAfterTs: cancelAfterTs2
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(),
-          1100 - 100 - 200 - 200 - 200 - 2 * 25 - 2 * 15);
+          1100 - 100 - 200 - 200 - 200 - 2 * 25 - 2 * 15); // 320
         assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 4);
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 200 + 200);
+
+        // trigger instructions again. Nothing should happen as there are no new requests and escrows still didn't expire
+        const tx1 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 4);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 400);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 320);
+        expectEvent.notEmitted(tx1, "PaymentInstructions");
+        expectEvent.notEmitted(tx1, "EscrowInstructions");
       });
 
       it("should trigger instructions and process escrows", async () => {
         // confirm payment (fund core vault)
         const transactionId = web3.utils.keccak256("transactionId");
-        const amount = 1000;
+        const amount = 1100;
         const proof = createPaymentProof(transactionId, amount);
         await coreVaultManager.confirmPayment(proof);
 
@@ -1260,21 +1300,310 @@ contract(
         if (cancelAfterTs1.lte(currentTimestamp.addn(DAY / 2))) {
           cancelAfterTs1 = cancelAfterTs1.addn(DAY);
         }
-        await time.increaseTo(escrowEndTimestamp1.addn(1));
+        await time.increaseTo(cancelAfterTs1.addn(1));
 
         // trigger instructions again
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 4);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 400 - 200);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 320 + 200);
 
+        // set second escrow as finished
+        const setEscrowFinishedTx = await coreVaultManager.setEscrowsFinished([preimageHash2], { from: governance });
+        expectEvent(setEscrowFinishedTx, "EscrowFinished", {
+          preimageHash: preimageHash2,
+          amount: "200"
+        });
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 0);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 320 + 200);
 
-
+        // move to the expiry of the second escrow
+        // since the escrow is finished, funds balances should not be released
+        await time.increase(DAY);
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 0);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 320 + 200);
       });
 
-      // trigger instructions again. Nothing should happen as there are no new requests and escrows still didn't expire
-      const tx1 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
-      assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 4);
-      assertWeb3Equal(await coreVaultManager.escrowedFunds(), 400);
-      assertWeb3Equal(await coreVaultManager.availableFunds(), 300);
-      expectEvent.notEmitted(tx1, "PaymentInstructions");
-      expectEvent.notEmitted(tx1, "EscrowInstructions");
+      it("should not issue payment instructions if there are no funds", async () => {
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 1100 + 225 * 2 + 300);
+        await coreVaultManager.confirmPayment(proof);
+
+        // request cancelable transfers
+        const amount1 = "1085";
+        const paymentReference1 = web3.utils.keccak256("ref1");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress1,
+          paymentReference1,
+          amount1,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+
+        // trigger instructions
+        const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        expectEvent(tx, "PaymentInstructions", {
+          sequence: "0",
+          account: coreVaultAddress,
+          destination: destinationAddress1,
+          amount: amount1,
+          fee: paymentFee,
+          paymentReference: paymentReference1,
+        });
+        expectEvent(tx, "EscrowInstructions", {
+          sequence: "1",
+          preimageHash: preimageHash1,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+        });
+        expectEvent(tx, "EscrowInstructions", {
+          sequence: "2",
+          preimageHash: preimageHash2,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+        });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 300);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+
+        // request transfers
+        const amount2 = "286";
+        const paymentReference2 = web3.utils.keccak256("ref2");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress2,
+          paymentReference2,
+          amount2,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        const amount3 = "286";
+        const paymentReference3 = ZERO_BYTES_32;
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress3,
+          paymentReference3,
+          amount3,
+          false,
+          {
+            from: assetManager,
+          }
+        );
+        // trigger instructions
+        // should not issue payment instructions as there are no enough funds to cover the requested amounts
+        const tx2 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        expectEvent.notEmitted(tx2, "PaymentInstructions");
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 300);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+
+        // confirm payment. One payment should be issued
+        const transactionId1 = web3.utils.keccak256("transactionId1");
+        const proof1 = createPaymentProof(transactionId1, 1);
+        await coreVaultManager.confirmPayment(proof1);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 301);
+        const tx3 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        expectEvent(tx3, "PaymentInstructions", {
+          sequence: "3",
+          account: coreVaultAddress,
+          destination: destinationAddress2,
+          amount: amount2,
+          fee: paymentFee,
+          paymentReference: paymentReference2
+        });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
+
+        // first escrow expires
+        // 200 should be released which is not enough to cover the requested amount
+        const currentTimestamp = await time.latest();
+        const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
+        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        if (cancelAfterTs1.lte(currentTimestamp.addn(DAY / 2))) {
+          cancelAfterTs1 = cancelAfterTs1.addn(DAY);
+        }
+        await time.increaseTo(cancelAfterTs1.addn(1));
+
+        // trigger instructions
+        const tx4 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 200);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 200);
+        expectEvent.notEmitted(tx4, "PaymentInstructions");
+
+        // second escrow expires; 200 should be released and payment should be issued
+        await time.increase(DAY);
+        const tx5 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        expectEvent(tx5, "PaymentInstructions", {
+          sequence: "4",
+          account: coreVaultAddress,
+          destination: destinationAddress3,
+          amount: amount3,
+          fee: paymentFee,
+          paymentReference: paymentReference3
+        });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 2 * 200 - 286 - 15);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 0);
+      });
+
+      it("should set already processed escrow as finished", async () => {
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 500);
+        await coreVaultManager.confirmPayment(proof);
+
+        // trigger instructions - not enough funds to create escrow
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 500);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 0);
+
+        // add funds for fee
+        const transactionId1 = web3.utils.keccak256("transactionId1");
+        const proof1 = createPaymentProof(transactionId1, 25);
+        await coreVaultManager.confirmPayment(proof1);
+        // trigger instructions - create escrow
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 300);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 200);
+
+        // move to the expiry of the escrow
+        await time.increase(2 * DAY);
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 500);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 0);
+
+        // request transfer
+        const amount = "200";
+        const paymentReference = web3.utils.keccak256("ref1");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress1,
+          paymentReference,
+          amount,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        // trigger instructions
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 500 - 200 - 15);
+
+        // set escrow as finished; available funds will decrease
+        await coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 285 - 200);
+      });
+
+      it("should skip creating new escrows if there are remaining cancelable requests", async () => {
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 800);
+        await coreVaultManager.confirmPayment(proof);
+
+        // create escrow
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 200 * 2 - 25 * 2);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 400);
+
+        // create cancelable request
+        const amount1 = "385";
+        const paymentReference1 = web3.utils.keccak256("ref1");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress1,
+          paymentReference1,
+          amount1,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        // trigger instructions
+        const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 350);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 400);
+        expectEvent.notEmitted(tx, "EscrowInstructions");
+      });
+
+      it("should skip creating escrows if escrow amount is zero (escrow disabled)", async () => {
+        // set escrow amount to zero
+        await coreVaultManager.updateSettings(escrowTimeSeconds, 0, 25, 300, 15, { from: governance });
+
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 800);
+        await coreVaultManager.confirmPayment(proof);
+
+        // trigger instructions; no escrows should be created
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 0);
+      });
+
+      it("should revert triggering instructions if not from triggering account", async () => {
+        await expectRevert(coreVaultManager.triggerInstructions({ from: accounts[2] }), "not authorized");
+      });
+
+      it("should revert triggering instructions if paused", async () => {
+        await coreVaultManager.pause({ from: governance });
+        await expectRevert(coreVaultManager.triggerInstructions({ from: accounts[1] }), "paused");
+      });
+
+      it("should not set escrow as finished if not from governance", async () => {
+        await expectRevert(coreVaultManager.setEscrowsFinished([preimageHash1], { from: accounts[1] }), "only governance");
+      });
+
+      it("should revert setting escrow as finished if escrow not found", async () => {
+        await expectRevert(coreVaultManager.setEscrowsFinished([web3.utils.keccak256("wrong hash")], { from: governance }), "escrow not found");
+      });
+
+      it("should revert setting escrow if already finished", async () => {
+        await createEscrows();
+        await coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance });
+        await expectRevert(coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance }), "escrow already finished");
+      });
+
+      it("should get escrows", async () => {
+        assertWeb3Equal(await coreVaultManager.getEscrowsCount(), 0);
+
+        let escrows = await createEscrows();
+        assertWeb3DeepEqual(await coreVaultManager.getUnprocessedEscrows(), escrows.map(e => Object.values(e)));
+
+        // move to the expiry of the first escrow
+        await time.increase(2 * DAY);
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3DeepEqual(await coreVaultManager.getUnprocessedEscrows(), [Object.values(escrows[1])]);
+
+        assertWeb3Equal(await coreVaultManager.getEscrowsCount(), 2);
+        const currentTimestamp = await time.latest();
+        const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
+        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        if (cancelAfterTs1.lte(currentTimestamp.addn(DAY / 2))) {
+          cancelAfterTs1 = cancelAfterTs1.addn(DAY);
+        }
+
+        // set escrow as finished
+        await coreVaultManager.setEscrowsFinished([preimageHash2], { from: governance });
+        assertWeb3DeepEqual(await coreVaultManager.getEscrowByIndex(0), Object.values(escrows[0]));
+        escrows[1].finished = true;
+        assertWeb3DeepEqual(await coreVaultManager.getEscrowByIndex(1), Object.values(escrows[1]));
+        assertWeb3DeepEqual(await coreVaultManager.getEscrowByPreimageHash(preimageHash1), Object.values(escrows[0]));
+      });
+
+      it.skip("should process finished escrow", async () => {
+        await createEscrows();
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * (200 + 25));
+
+         // finish the first escrow
+         await coreVaultManager.setEscrowsFinished([preimageHash1, preimageHash2], { from: governance });
+
+         // process escrows
+        const tx = await coreVaultManager.processEscrows(2);
+        expectEvent(tx, "NotAllEscrowsProcessed");
+      });
     });
 
     describe("proxy upgrade", async () => {
@@ -1425,5 +1754,6 @@ contract(
 
       return proof;
     }
-  }
-);
+
+
+  });
