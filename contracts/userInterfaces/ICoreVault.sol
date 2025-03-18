@@ -63,7 +63,8 @@ interface ICoreVault {
     event CoreVaultRedemptionRequested(
         address indexed redeemer,
         string paymentAddress,
-        uint256 valueUBA);
+        uint256 valueUBA,
+        uint256 feeUBA);
 
     /**
      * Agent can transfer their backing to core vault.

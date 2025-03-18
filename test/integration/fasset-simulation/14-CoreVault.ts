@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, requireNotNull, toBN, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
+import { BNish, DAYS, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -321,20 +321,26 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const transferAmount = context.convertLotsToUBA(10);
         await agent.transferToCoreVault(transferAmount);
         // redeemer requests direct redemption from CV
-        await context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address });
+        const res = await context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address });
+        const redeem = requiredEventArgs(res, "CoreVaultRedemptionRequested");
+        assertWeb3Equal(redeem.redeemer, redeemer.address);
+        assertWeb3Equal(redeem.paymentAddress, redeemer.underlyingAddress);
+        assertWeb3Equal(redeem.valueUBA, context.convertLotsToUBA(10));
+        assertWeb3Equal(redeem.feeUBA, toBN(redeem.valueUBA).mul(toBN(context.initSettings.coreVaultRedemptionFeeBIPS)).divn(MAX_BIPS));
+        const redemptionPaymentAmount = toBN(redeem.valueUBA).sub(toBN(redeem.feeUBA));
         // trigger CV requests
         const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
         assert.equal(paymentReqs.length, 1);
         assertWeb3Equal(paymentReqs[0].args.account, coreVaultUnderlyingAddress);
         assertWeb3Equal(paymentReqs[0].args.destination, redeemer.underlyingAddress);
-        assertWeb3Equal(paymentReqs[0].args.amount, context.convertLotsToUBA(10));
+        assertWeb3Equal(paymentReqs[0].args.amount, redemptionPaymentAmount);
         // simulate transfer from CV
         const wallet = new MockChainWallet(mockChain);
         for (const req of paymentReqs) {
             await wallet.addTransaction(req.args.account, req.args.destination, req.args.amount, null);
         }
-        assertWeb3Equal(await mockChain.getBalance(redeemer.underlyingAddress), context.convertLotsToUBA(10));
+        assertWeb3Equal(await mockChain.getBalance(redeemer.underlyingAddress), redemptionPaymentAmount);
     });
 
     it("test checks in requesting direct redemption from core vault", async () => {

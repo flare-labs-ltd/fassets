@@ -210,12 +210,16 @@ library CoreVault {
         require(_lots >= minimumRedeemLots, "requested amount too small");
         // burn the senders fassets
         uint64 redeemedAMG = _lots * settings.lotSizeAMG;
-        uint128 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG).toUint128();
+        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG).toUint128();
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
+        // subtract the redemption fee
+        uint256 redemptionFeeUBA = redeemedUBA.mulBips(state.redemptionFeeBIPS);
+        uint128 paymentUBA = (redeemedUBA - redemptionFeeUBA).toUint128();
         // transfer from core vault
         state.coreVaultManager.requestTransferFromCoreVault(
-            _redeemerUnderlyingAddress, bytes32(0), redeemedUBA, false);
-        emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, redeemedUBA);
+            _redeemerUnderlyingAddress, bytes32(0), paymentUBA, false);
+        emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress,
+            redeemedUBA, redemptionFeeUBA);
     }
 
     function getTransferFee(uint64 _amountAMG)
