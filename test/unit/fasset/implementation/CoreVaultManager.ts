@@ -500,6 +500,11 @@ contract(
       assertWeb3Equal(await coreVaultManager.paused(), false);
     });
 
+    it("should not unpause the contract if not from governance", async () => {
+      const tx = coreVaultManager.unpause({ from: accounts[1] });
+      await expectRevert(tx, "only governance");
+    });
+
     it("should revert adding allowed destination address if not from governance", async () => {
       const tx = coreVaultManager.addAllowedDestinationAddresses([accounts[1]], {
         from: accounts[2],
@@ -1007,11 +1012,12 @@ contract(
         const destinationAddress = "destinationAddress";
         const destinationAddress2 = "destinationAddress2";
         const destinationAddress3 = "destinationAddress3";
+        const destinationAddress4 = "destinationAddress4";
         const paymentReference = web3.utils.keccak256("paymentReference");
         const paymentReference2 = web3.utils.keccak256("paymentReference2");
         const paymentReference3 = web3.utils.keccak256("paymentReference3");
         await coreVaultManager.addAllowedDestinationAddresses(
-          ["addr1", destinationAddress, destinationAddress2, destinationAddress3],
+          ["addr1", destinationAddress, destinationAddress2, destinationAddress3, destinationAddress4],
           { from: governance }
         );
         const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
@@ -1063,21 +1069,21 @@ contract(
           cancelable: true,
         });
 
-        const tx4 = await coreVaultManager.cancelTransferRequestFromCoreVault(destinationAddress, {
+        const tx4 = await coreVaultManager.cancelTransferRequestFromCoreVault(destinationAddress2, {
           from: assetManager,
         });
         expectEvent(tx4, "TransferRequestCanceled", {
-          destinationAddress,
-          paymentReference,
-          amount: "100",
+          destinationAddress: destinationAddress2,
+          paymentReference: paymentReference2,
+          amount: "300",
         });
 
         assertWeb3Equal(await coreVaultManager.availableFunds(), 1000);
-        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 900);
+        assertWeb3Equal(await coreVaultManager.totalRequestAmountWithFee(), 700);
         const cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
         expect(cancelableTransferRequests.length).to.equal(2);
-        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress2);
-        assertWeb3Equal(cancelableTransferRequests[0].amount, 300);
+        expect(cancelableTransferRequests[0].destinationAddress).to.equal(destinationAddress);
+        assertWeb3Equal(cancelableTransferRequests[0].amount, 100);
         expect(cancelableTransferRequests[1].destinationAddress).to.equal(destinationAddress3);
         assertWeb3Equal(cancelableTransferRequests[1].amount, 600);
         const nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
@@ -1101,6 +1107,13 @@ contract(
           }),
           "not found"
         );
+      });
+
+      it("should not trigger instructions if payment fee is not set (is zero)", async () => {
+        await coreVaultManager.addTriggeringAccounts([accounts[1]], {
+          from: governance,
+        });
+        await expectRevert(coreVaultManager.triggerInstructions({ from: accounts[1] }), "fee zero");
       });
     });
 
@@ -1572,7 +1585,7 @@ contract(
         assertWeb3DeepEqual(await coreVaultManager.getUnprocessedEscrows(), escrows.map(e => Object.values(e)));
 
         // move to the expiry of the first escrow
-        await time.increase(2 * DAY);
+        await time.increaseTo(escrows[0].cancelAfterTs.addn(1));
         await coreVaultManager.triggerInstructions({ from: accounts[1] });
         assertWeb3DeepEqual(await coreVaultManager.getUnprocessedEscrows(), [Object.values(escrows[1])]);
 
@@ -1592,17 +1605,294 @@ contract(
         assertWeb3DeepEqual(await coreVaultManager.getEscrowByPreimageHash(preimageHash1), Object.values(escrows[0]));
       });
 
-      it.skip("should process finished escrow", async () => {
+      it("should process finished escrow", async () => {
         await createEscrows();
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
         assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * (200 + 25));
 
-         // finish the first escrow
-         await coreVaultManager.setEscrowsFinished([preimageHash1, preimageHash2], { from: governance });
+        // finish escrows
+        await coreVaultManager.setEscrowsFinished([preimageHash1, preimageHash2], { from: governance });
 
-         // process escrows
-        const tx = await coreVaultManager.processEscrows(2);
+        // process one escrow
+        const tx = await coreVaultManager.processEscrows(1);
         expectEvent(tx, "NotAllEscrowsProcessed");
+
+        // all escrows are now processed
+        const tx1 = await coreVaultManager.processEscrows(1);
+        expectEvent.notEmitted(tx1, "NotAllEscrowsProcessed");
+      });
+
+      it("should process expired escrow", async () => {
+        await createEscrows();
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * (200 + 25));
+
+        // go to second escrow expiry
+        await time.increase(3 * DAY + 1);
+
+        // process one escrow
+        const tx = await coreVaultManager.processEscrows(1);
+        expectEvent(tx, "NotAllEscrowsProcessed");
+
+        // all escrows are now processed
+        const tx1 = await coreVaultManager.processEscrows(1);
+        expectEvent.notEmitted(tx1, "NotAllEscrowsProcessed");
+      });
+
+      it("should issue payment instruction for request with lower amount and keep the order", async () => {
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 800);
+        await coreVaultManager.confirmPayment(proof);
+
+        // create escrows
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+
+        // request three cancelable transfer requests
+        const amount1 = "336";
+        const paymentReference1 = web3.utils.keccak256("ref1");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress1,
+          paymentReference1,
+          amount1,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        const amount2 = "335";
+        const paymentReference2 = web3.utils.keccak256("ref2");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress2,
+          paymentReference2,
+          amount2,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        const amount3 = "20";
+        const paymentReference3 = web3.utils.keccak256("ref3");
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress3,
+          paymentReference3,
+          amount3,
+          true,
+          {
+            from: assetManager,
+          }
+        );
+        let cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(cancelableTransferRequests.length, 3);
+        assertWeb3DeepEqual(cancelableTransferRequests[0].destinationAddress, destinationAddress1);
+        assertWeb3DeepEqual(cancelableTransferRequests[1].destinationAddress, destinationAddress2);
+        assertWeb3DeepEqual(cancelableTransferRequests[2].destinationAddress, destinationAddress3);
+
+        // trigger instructions
+        const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        expectEvent(tx, "PaymentInstructions", {
+          sequence: "2",
+          account: coreVaultAddress,
+          destination: destinationAddress2,
+          amount: amount2,
+          fee: paymentFee,
+          paymentReference: paymentReference2
+        });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
+        cancelableTransferRequests = await coreVaultManager.getCancelableTransferRequests();
+        assertWeb3Equal(cancelableTransferRequests.length, 2);
+        assertWeb3DeepEqual(cancelableTransferRequests[0].destinationAddress, destinationAddress1);
+        assertWeb3DeepEqual(cancelableTransferRequests[1].destinationAddress, destinationAddress3);
+      });
+
+      it("should issue payment instruction for request with lower amount and keep the order - non cancelable", async () => {
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 800);
+        await coreVaultManager.confirmPayment(proof);
+
+        // create escrows
+        await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+
+        // request three non-cancelable transfer requests
+        const amount1 = "336";
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress1,
+          ZERO_BYTES_32,
+          amount1,
+          false,
+          {
+            from: assetManager,
+          }
+        );
+        const amount2 = "335";
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress2,
+          ZERO_BYTES_32,
+          amount2,
+          false,
+          {
+            from: assetManager,
+          }
+        );
+        const amount3 = "20";
+        await coreVaultManager.requestTransferFromCoreVault(
+          destinationAddress3,
+          ZERO_BYTES_32,
+          amount3,
+          false,
+          {
+            from: assetManager,
+          }
+        );
+        let nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        assertWeb3Equal(nonCancelableTransferRequests.length, 3);
+        assertWeb3DeepEqual(nonCancelableTransferRequests[0].destinationAddress, destinationAddress1);
+        assertWeb3DeepEqual(nonCancelableTransferRequests[1].destinationAddress, destinationAddress2);
+        assertWeb3DeepEqual(nonCancelableTransferRequests[2].destinationAddress, destinationAddress3);
+
+        // trigger instructions
+        const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        expectEvent(tx, "PaymentInstructions", {
+          sequence: "2",
+          account: coreVaultAddress,
+          destination: destinationAddress2,
+          amount: amount2,
+          fee: paymentFee,
+          paymentReference: ZERO_BYTES_32
+        });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
+        nonCancelableTransferRequests = await coreVaultManager.getNonCancelableTransferRequests();
+        assertWeb3Equal(nonCancelableTransferRequests.length, 2);
+        assertWeb3DeepEqual(nonCancelableTransferRequests[0].destinationAddress, destinationAddress1);
+        assertWeb3DeepEqual(nonCancelableTransferRequests[1].destinationAddress, destinationAddress3);
+      });
+
+      it("should create escrow in every trigger instructions call", async () => {
+        const preimageHash3 = web3.utils.keccak256("hash3");
+        const preimageHash4 = web3.utils.keccak256("hash4");
+        await coreVaultManager.addPreimageHashes([preimageHash3, preimageHash4], {
+          from: governance,
+        });
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 800);
+        await coreVaultManager.confirmPayment(proof);
+
+        // create escrows
+        const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+        const currentTimestamp = await time.latest();
+        const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
+        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        if (cancelAfterTs1.lte(currentTimestamp.addn(DAY / 2))) {
+          cancelAfterTs1 = cancelAfterTs1.addn(DAY);
+        }
+        const cancelAfterTs2 = cancelAfterTs1.addn(DAY);
+        expectEvent(tx, "EscrowInstructions", {
+          sequence: "0",
+          preimageHash: preimageHash1,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+          cancelAfterTs: cancelAfterTs1
+        });
+        expectEvent(tx, "EscrowInstructions", {
+          sequence: "1",
+          preimageHash: preimageHash2,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+          cancelAfterTs: cancelAfterTs2
+        });
+
+        // send additional funds to contract
+        const transactionId1 = web3.utils.keccak256("transactionId1");
+        const proof1 = createPaymentProof(transactionId1, 75);
+        await coreVaultManager.confirmPayment(proof1);
+        // move to the expiry of the first escrow
+        await time.increaseTo(cancelAfterTs1.addn(1));
+        // create escrows
+        const tx1 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        const currentTimestamp1 = await time.latest();
+        let lastUnfinishedExpiry = cancelAfterTs2;
+        const escrowEndTimestamp3 = lastUnfinishedExpiry.addn(DAY);
+        let cancelAfterTs3 = escrowEndTimestamp3.subn(escrowEndTimestamp3.modn(DAY)).addn(escrowTimeSeconds);
+        if (cancelAfterTs3.lte(currentTimestamp1.addn(DAY / 2))) {
+          cancelAfterTs3 = cancelAfterTs3.addn(DAY);
+        }
+        expectEvent(tx1, "EscrowInstructions", {
+          sequence: "2",
+          preimageHash: preimageHash3,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+          cancelAfterTs: cancelAfterTs3
+        });
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 350 + 200 - 200 - 25 + 75);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+
+        // move to the expiry of the second escrow
+        await time.increaseTo(cancelAfterTs2.addn(1));
+        // set escrow as finished
+        await coreVaultManager.setEscrowsFinished([preimageHash2], { from: governance });
+        // send additional funds to contract
+        const proof2 = createPaymentProof(web3.utils.keccak256("transactionId2"), 125);
+        await coreVaultManager.confirmPayment(proof2);
+        // create escrows
+        const tx2 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        lastUnfinishedExpiry = cancelAfterTs3;
+        const escrowEndTimestamp4 = lastUnfinishedExpiry.addn(DAY);
+        let cancelAfterTs4 = escrowEndTimestamp4.subn(escrowEndTimestamp4.modn(DAY)).addn(escrowTimeSeconds);
+        if (cancelAfterTs4.lte(escrowEndTimestamp4.addn(DAY / 2))) {
+          cancelAfterTs3 = cancelAfterTs3.addn(DAY);
+        }
+        expectEvent(tx2, "EscrowInstructions", {
+          sequence: "3",
+          preimageHash: preimageHash4,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+          cancelAfterTs: cancelAfterTs4
+        });
+      });
+
+      it("...", async () => {
+        // skip time to one second before start of the day
+        const currentTimestamp = await time.latest();
+        const startOfDay = currentTimestamp.addn(DAY - currentTimestamp.modn(DAY));
+        await time.increaseTo(startOfDay.subn(1));
+
+        // fund contract
+        const transactionId = web3.utils.keccak256("transactionId");
+        const proof = createPaymentProof(transactionId, 800);
+        await coreVaultManager.confirmPayment(proof);
+
+        // create escrows
+        const currentTs = await time.latest();
+        const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        const endTime = currentTs.addn(DAY);
+        const cancelAfterTs = endTime.subn(endTime.modn(DAY)).addn(escrowTimeSeconds);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
+        expectEvent(tx, "EscrowInstructions", {
+          sequence: "0",
+          preimageHash: preimageHash1,
+          account: coreVaultAddress,
+          destination: custodianAddress,
+          amount: "200",
+          fee: escrowFee,
+          cancelAfterTs: cancelAfterTs
+        });
       });
     });
 

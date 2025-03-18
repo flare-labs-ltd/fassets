@@ -840,7 +840,8 @@ contract CoreVaultManager is
         availableFunds = availableFundsTmp;
         escrowedFunds = escrowedFundsTmp;
 
-        if (_maxCount == 0) {
+        if (_maxCount == 0 && index < escrows.length &&
+            (escrows[index].expiryTs <= block.timestamp || escrows[index].finished)) {
             emit NotAllEscrowsProcessed();
         }
         return _maxCount > 0;
