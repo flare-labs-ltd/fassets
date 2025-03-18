@@ -217,6 +217,7 @@ library CollateralReservations {
     )
         internal
     {
+        if (_fee == 0) return;
         uint256 poolFeeShare = _fee.mulBips(_agent.poolFeeShareBIPS);
         _agent.collateralPool.depositNat{value: poolFeeShare}();
         IIAgentVault(_agent.vaultAddress()).depositNat{value: _fee - poolFeeShare}(Globals.getWNat());

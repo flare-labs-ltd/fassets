@@ -1882,7 +1882,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("ERC-165 interface identification", () => {
-        it.only("should properly respond to supportsInterface", async () => {
+        it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAssetManager = artifacts.require("IAssetManager");
             const IIAssetManager = artifacts.require("IIAssetManager");
