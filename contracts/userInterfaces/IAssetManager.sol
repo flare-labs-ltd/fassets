@@ -16,6 +16,7 @@ import "./IRedemptionTimeExtension.sol";
 import "./ITransferFees.sol";
 import "./ICoreVault.sol";
 import "./ICoreVaultSettings.sol";
+import "./IAgentAlwaysAllowedMinters.sol";
 
 
 /**
@@ -29,7 +30,8 @@ interface IAssetManager is
     IRedemptionTimeExtension,
     ITransferFees,
     ICoreVault,
-    ICoreVaultSettings
+    ICoreVaultSettings,
+    IAgentAlwaysAllowedMinters
 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information

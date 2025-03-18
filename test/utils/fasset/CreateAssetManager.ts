@@ -164,6 +164,7 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
         await deployFacet('EmergencyPauseFacet', interfaceSelectors),
         await deployFacet('EmergencyPauseTransfersFacet', interfaceSelectors),
         await deployFacet('AgentPingFacet', interfaceSelectors),
+        await deployFacet('AgentAlwaysAllowedMintersFacet', interfaceSelectors),
     ];
     // verify every required selector is included in some cut
     return [diamondCuts, assetManagerInit, interfaceSelectors];

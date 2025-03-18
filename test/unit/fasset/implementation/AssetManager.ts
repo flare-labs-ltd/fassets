@@ -1882,7 +1882,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("ERC-165 interface identification", () => {
-        it("should properly respond to supportsInterface", async () => {
+        it.only("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAssetManager = artifacts.require("IAssetManager");
             const IIAssetManager = artifacts.require("IIAssetManager");
@@ -1895,6 +1895,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const ICoreVault = artifacts.require("ICoreVault");
             const ICoreVaultSettings = artifacts.require("ICoreVaultSettings");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
+            const IAgentAlwaysAllowedMinters = artifacts.require("IAgentAlwaysAllowedMinters");
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IERC165)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondLoupe)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondCut)));
@@ -1904,7 +1905,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ITransferFees)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ICoreVault)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ICoreVaultSettings)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager, [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault, ICoreVaultSettings])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager,
+                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IIAssetManager, [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });

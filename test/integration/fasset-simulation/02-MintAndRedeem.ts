@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -13,6 +13,7 @@ import { testChainInfo } from "../utils/TestChainInfo";
 import { ERC20MockInstance } from "../../../typechain-truffle";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -772,6 +773,29 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [requests2] = await redeemer.requestRedemption(1);
             assert.equal(requests2.length, 1);
             assertWeb3Equal(requests2[0].valueUBA, context.lotSize());
+        });
+
+        it("non-public agent can add 'always allowed minter' and that one doesn't pay CR fee", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const allowedMinter = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositVaultCollateral(fullAgentCollateral);
+            await agent.buyCollateralPoolTokens(fullAgentCollateral);
+            // allow a single minter
+            await context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address, { from: agent.ownerWorkAddress });
+            // ordinary minters cannot mint
+            await expectRevert(minter.reserveCollateral(agent.vaultAddress, 1), "agent not in mint queue");
+            // allowed minter can mint without paying collateral reservation fee
+            const agentInfo = await agent.getAgentInfo();
+            const mintingRes = await context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address });
+            const minting = requiredEventArgs(mintingRes, "CollateralReserved");
+            const txhash = await allowedMinter.performMintingPayment(minting);
+            await allowedMinter.executeMinting(minting, txhash);
+            // however, if the agent becomes public, everybody has to pay collateral reservation fee
+            await agent.makeAvailable();
+            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address }),
+                "inappropriate fee amount");
         });
     });
 });

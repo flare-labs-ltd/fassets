@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../../interfaces/IICollateralPool.sol";
 
 
@@ -183,6 +184,8 @@ library Agent {
         // confirmation time. If agent uses all the redemption fee for transaction fees, this could make the
         // agent's free underlying balance negative.
         uint16 redemptionPoolFeeShareBIPS;
+
+        EnumerableSet.AddressSet alwaysAllowedMinters;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

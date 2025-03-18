@@ -61,7 +61,7 @@ library Minting {
             Transfers.transferNAT(crt.executor, unclaimedExecutorFee);
             unclaimedExecutorFee = 0;
         }
-        // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
+        // pay the collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         CollateralReservations.distributeCollateralReservationFee(agent,
             crt.reservationFeeNatWei + unclaimedExecutorFee);
         // cleanup

@@ -21,6 +21,7 @@ library CollateralReservations {
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     // double hash of empty string (same as _doubleHash("") which cannot be used for constant initialization)
     bytes32 internal constant EMPTY_ADDRESS_DOUBLE_HASH = keccak256(abi.encodePacked(keccak256(bytes(""))));
@@ -40,7 +41,8 @@ library CollateralReservations {
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         AssetManagerState.State storage state = AssetManagerState.get();
         require(state.mintingPausedAt == 0, "minting paused");
-        require(agent.availableAgentsPos != 0, "agent not in mint queue");
+        require(agent.availableAgentsPos != 0 || agent.alwaysAllowedMinters.contains(_minter),
+            "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");
         require(agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
@@ -49,11 +51,15 @@ library CollateralReservations {
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         _reserveCollateral(agent, valueAMG, underlyingFeeUBA);
-        // poolCollateral is WNat, so we can use its price
-        uint256 reservationFee = _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG);
+        // - only charge reservation fee for public minting, not for alwaysAllowedMinters on non-public agent
+        // - poolCollateral is WNat, so we can use its price for calculation of CR fee
+        uint256 reservationFee = agent.availableAgentsPos != 0
+            ? _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG)
+            : 0;
         require(msg.value >= reservationFee, "inappropriate fee amount");
+        // create new crt id - pre-increment, so that id can never be 0
         state.newCrtId += PaymentReference.randomizedIdSkip();
-        uint64 crtId = state.newCrtId;   // pre-increment - id can never be 0
+        uint64 crtId = state.newCrtId;
         // create in-memory cr and then put it to storage to not go out-of-stack
         CollateralReservation.Data memory cr;
         cr.valueAMG = valueAMG;
