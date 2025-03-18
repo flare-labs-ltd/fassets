@@ -186,6 +186,26 @@
             "pattern": "^[0-9 ]+$",
             "type": "string"
         },
+        "coreVaultMinimumAmountLeftBIPS": {
+            "description": "The minimum amount that has to be left on agent's underlying address after the transfer to the core vault,\nto make sure that the agent stays redeemable.\n\nExpressed as a percentage of the \"agent's minting capacity\", which is the amount of backed assets at which\nthe agent's vault or pool collateral ratio falls to the corresponding system minimum collateral ratio.\n\nWarning: agent minting capacity is based on the system min CR, which is typicaly 10-20% (or more) smaller\nthan the agent's minting CR. We intentioanaly use minCR instead of mintingCR, because that would be gameable.\nHowever, this means that to make a typical agent keep about 50% of their minting capacity,\nthis value should be set 20% lower, e.g. to 40%.",
+            "type": "integer"
+        },
+        "coreVaultMinimumRedeemLots": {
+            "description": "The minimum amount of lots that can be redeemed directly from the core vault, to lower the amount of transactions that\nthe core vault has to perform.",
+            "type": "integer"
+        },
+        "coreVaultNativeAddress": {
+            "description": "The address that collects the core vault transfer fee.",
+            "type": "string"
+        },
+        "coreVaultRedemptionFeeBIPS": {
+            "description": "The fee charged for direct redemption from the core vault.",
+            "type": "integer"
+        },
+        "coreVaultTransferFeeBIPS": {
+            "description": "The fee that the agent has to pay for transfer to core vault.\nThe fee amount is proportional to the transfer amount and paid in FLR/SGB.",
+            "type": "integer"
+        },
         "diamondCutMinTimelockSeconds": {
             "description": "Minimum time that the system must wait before performing diamond cut.\nThe actual timelock is the maximum of this setting and GovernanceSettings.timelock.",
             "type": "integer"
@@ -422,6 +442,11 @@
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
+        "coreVaultMinimumAmountLeftBIPS",
+        "coreVaultMinimumRedeemLots",
+        "coreVaultNativeAddress",
+        "coreVaultRedemptionFeeBIPS",
+        "coreVaultTransferFeeBIPS",
         "diamondCutMinTimelockSeconds",
         "emergencyPauseDurationResetAfterSeconds",
         "fAssetName",
@@ -466,3 +491,4 @@
     ],
     "type": "object"
 }
+
