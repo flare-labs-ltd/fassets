@@ -34,6 +34,7 @@ export const assetManagerFacets = [
     'EmergencyPauseFacet',
     'EmergencyPauseTransfersFacet',
     'AgentPingFacet',
+    'AgentAlwaysAllowedMintersFacet',
 ];
 
 export const assetManagerFacetsDeployedByDiamondCut = [

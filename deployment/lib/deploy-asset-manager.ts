@@ -97,6 +97,22 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
             },
         },
         { execute: true, verbose: false });
+    await deployCutsOnDiamond(hre, contracts,
+        {
+            diamond: assetManager.address,
+            facets: [
+                { contract: "CoreVaultFacet", exposedInterfaces: ["ICoreVault"] },
+                { contract: "CoreVaultSettingsFacet", exposedInterfaces: ["ICoreVaultSettings"] }
+            ],
+            init: {
+                contract: "CoreVaultSettingsFacet",
+                method: "initCoreVaultFacet",
+                args: [ZERO_ADDRESS, parameters.coreVaultNativeAddress,
+                    parameters.coreVaultTransferFeeBIPS, parameters.coreVaultRedemptionFeeBIPS,
+                    parameters.coreVaultMinimumAmountLeftBIPS, parameters.coreVaultMinimumRedeemLots]
+            },
+        },
+        { execute: true, verbose: false });
 
     // everything from IIAssetManager must be implemented now
     await checkAllAssetManagerMethodsImplemented(hre, assetManager.address);
