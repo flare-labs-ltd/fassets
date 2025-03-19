@@ -21,9 +21,7 @@ const GovernanceSettings = artifacts.require("GovernanceSettings");
 const AddressUpdater = artifacts.require("AddressUpdater");
 const MockContract = artifacts.require("MockContract");
 
-contract(
-  `CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager unit tests`,
-  async (accounts) => {
+contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager unit tests`, async (accounts) => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
@@ -955,7 +953,7 @@ contract(
           coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 10, false, {
             from: assetManager,
           }),
-          "destination not allowed"
+          "dest not allowed"
         );
       });
 
@@ -975,7 +973,7 @@ contract(
             100,
             false,
             { from: assetManager }),
-          "invalid payment reference"
+          "invalid reference"
         );
       });
 
@@ -1130,7 +1128,7 @@ contract(
       async function createEscrows() {
         // fund contract
         const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 800);
-        coreVaultManager.confirmPayment(proof);
+        await coreVaultManager.confirmPayment(proof);
 
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
@@ -1569,13 +1567,13 @@ contract(
       });
 
       it("should revert setting escrow as finished if escrow not found", async () => {
-        await expectRevert(coreVaultManager.setEscrowsFinished([web3.utils.keccak256("wrong hash")], { from: governance }), "escrow not found");
+        await expectRevert(coreVaultManager.setEscrowsFinished([web3.utils.keccak256("wrong hash")], { from: governance }), "not found");
       });
 
       it("should revert setting escrow if already finished", async () => {
         await createEscrows();
         await coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance });
-        await expectRevert(coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance }), "escrow already finished");
+        await expectRevert(coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance }), "already finished");
       });
 
       it("should get escrows", async () => {

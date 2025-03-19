@@ -167,7 +167,7 @@ contract CoreVaultManager is
         onlyAssetManager notPaused
     {
         require(_amount > 0, "amount zero");
-        require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination not allowed");
+        require(allowedDestinationAddressIndex[_destinationAddress] != 0, "dest not allowed");
         bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
         bool newTransferRequest = false;
         if (_cancelable) {
@@ -180,7 +180,7 @@ contract CoreVaultManager is
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
-            require(_paymentReference == bytes32(0), "invalid payment reference");
+            require(_paymentReference == bytes32(0), "invalid reference");
             uint256 index = 0;
             while (index < nonCancelableTransferRequests.length) {
                 TransferRequest storage req = transferRequestById[nonCancelableTransferRequests[index]];
@@ -230,7 +230,7 @@ contract CoreVaultManager is
             }
             index++;
         }
-        require (index < cancelableTransferRequests.length, "request not found");
+        require (index < cancelableTransferRequests.length, "not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
         TransferRequest storage req = transferRequestById[transferRequestId];
         uint128 amount = req.amount;
@@ -560,7 +560,7 @@ contract CoreVaultManager is
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             uint256 escrowIndex = preimageHashToEscrowIndex[_preimageHashes[i]];
             Escrow storage escrow = _getEscrow(escrowIndex);
-            require(!escrow.finished, "escrow already finished");
+            require(!escrow.finished, "already finished");
             escrow.finished = true;
             if (escrowIndex <= nextUnprocessedEscrowIndex) {
                 availableFundsTmp -= escrow.amount;
@@ -816,9 +816,9 @@ contract CoreVaultManager is
     /**
      * Processes the escrows.
      * @param _maxCount Maximum number of escrows to process.
-     * @return True if all escrows were processed, false otherwise.
+     * @return _allProcessed True if all escrows were processed, false otherwise.
      */
-    function _processEscrows(uint256 _maxCount) internal returns(bool) {
+    function _processEscrows(uint256 _maxCount) internal returns(bool _allProcessed) {
         uint128 availableFundsTmp = availableFunds;
         uint128 escrowedFundsTmp = escrowedFunds;
         // process all expired or finished escrows
@@ -840,12 +840,11 @@ contract CoreVaultManager is
         availableFunds = availableFundsTmp;
         escrowedFunds = escrowedFundsTmp;
 
-        if (_maxCount == 0 && index < escrows.length &&
-            (escrows[index].expiryTs <= block.timestamp || escrows[index].finished)) {
+        _allProcessed = _maxCount > 0 || index == escrows.length ||
+            (escrows[index].expiryTs > block.timestamp && !escrows[index].finished);
+        if (!_allProcessed) {
             emit NotAllEscrowsProcessed();
-            return false;
         }
-        return true;
     }
 
     /**
@@ -854,7 +853,7 @@ contract CoreVaultManager is
      * @return Escrow.
      */
     function _getEscrow(uint256 _index) internal view returns (Escrow storage) {
-        require(_index != 0, "escrow not found");
+        require(_index != 0, "not found");
         return escrows[_index - 1];
     }
 
