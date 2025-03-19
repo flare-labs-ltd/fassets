@@ -53,6 +53,11 @@ library CoreVault {
     {
         State storage state = getState();
         address agentVault = _agent.vaultAddress();
+        // for agent in full liquidation, the system cannot know if there is enough underlying for the transfer
+        require(_agent.status != Agent.Status.FULL_LIQUIDATION, "invalid agent status");
+        // agent must have enough underlying for the transfer (if the required backing < 100%, they may have less)
+        require(Conversion.convertAmgToUBA(_amountAMG).toInt256() <= _agent.underlyingBalanceUBA,
+            "not enough underlying");
         // only one transfer can be active
         require(_agent.activeTransferToCoreVault == 0, "transfer already active");
         // close agent's redemption tickets
