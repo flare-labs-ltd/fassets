@@ -372,32 +372,32 @@
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0x39604C55D2eB20B2316CE430ab296aAB9dEAC75F"
+    "address": "0xF2e2DB9dA5431AE1C8a1bd43e704Cdb617D3c9Ec"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x5A632247D08B3eD5De30fe74C6DA55d6CC7c29ed"
+    "address": "0x98f9b377A198F6f7FfA1274d0b03735E07Ef1b77"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x998a0A4C01b1F1CE1456B22e4B064e2ea9e7df33"
+    "address": "0x36ecfc639BbB5405492AE74606D6404003649e84"
   },
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0x727eD405b75f6eA2211744227487462889cD868C"
+    "address": "0xd927432cc5F3F7d9cB42e9d5BCDf74cd59db9265"
   },
   {
     "name": "RedemptionDefaultsFacet",
     "contractName": "RedemptionDefaultsFacet.sol",
-    "address": "0x4769EE3F4591b68D69fb7632106715ead88a771B"
+    "address": "0x5F81cf2D3A780C3802dBC09923BA88D7D935Ee93"
   },
   {
     "name": "RedemptionHandshakeFacet",
     "contractName": "RedemptionHandshakeFacet.sol",
-    "address": "0x13d0099dfe9D99638646D6bbC68f6F1F69239aBC"
+    "address": "0xD3B828309703dC5732A471216DF748c5171482C4"
   },
   {
     "name": "LiquidationFacet",
@@ -422,12 +422,12 @@
   {
     "name": "AgentVaultManagementFacet",
     "contractName": "AgentVaultManagementFacet.sol",
-    "address": "0xF2d1596Bf5a771B633C30553F6606250114D4D7D"
+    "address": "0x380bf43baD30852B699bdC3609a1d96c8E890b2f"
   },
   {
     "name": "AgentSettingsFacet",
     "contractName": "AgentSettingsFacet.sol",
-    "address": "0xcAFb74346a0229aD82faC8000C51904Be2186C1c"
+    "address": "0x1Bb53967bd183a410574575Cc59708EA13542461"
   },
   {
     "name": "CollateralTypesFacet",
@@ -488,5 +488,31 @@
     "name": "EmergencyPauseTransfersFacet",
     "contractName": "EmergencyPauseTransfersFacet.sol",
     "address": "0xc11CCc3705E9D6ec51119eCB9c21168426CAD5cf"
+  },
+  {
+    "name": "CoreVaultManagerImplementation",
+    "contractName": "CoreVaultManager.sol",
+    "address": "0xcf27c7d6D938220438f0F5F206083c247cd8520b"
+  },
+  {
+    "name": "CoreVaultManager_FTestXRP",
+    "contractName": "CoreVaultManager.sol",
+    "address": "0xCC9206d850fb9140019E78e6b2B309193a34DA3c",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "AgentAlwaysAllowedMintersFacet",
+    "contractName": "AgentAlwaysAllowedMintersFacet.sol",
+    "address": "0xe929C8C7f9Ec2C3d96a713e3A4f1B9F8aE4Ee718"
+  },
+  {
+    "name": "CoreVaultFacet",
+    "contractName": "CoreVaultFacet.sol",
+    "address": "0x4ECC5317969Fc1802918aa0Fc24B7ee29063819E"
+  },
+  {
+    "name": "CoreVaultSettingsFacet",
+    "contractName": "CoreVaultSettingsFacet.sol",
+    "address": "0x751F035d2bDA74Ef1602B3175BeaF9c5A6Fd78B2"
   }
 ]
