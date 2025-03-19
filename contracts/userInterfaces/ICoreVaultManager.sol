@@ -95,9 +95,8 @@ interface ICoreVaultManager {
     event SettingsUpdated(
         uint256 escrowEndTimeSeconds,
         uint256 escrowAmount,
-        uint256 escrowFee,
         uint256 minimalAmount,
-        uint256 paymentFee
+        uint256 fee
     );
 
     event PreimageHashAdded(
@@ -176,18 +175,16 @@ interface ICoreVaultManager {
      * Returns settings.
      * @return _escrowEndTimeSeconds Escrow end time in seconds.
      * @return _escrowAmount Escrow amount.
-     * @return _escrowFee Escrow fee.
      * @return _minimalAmount Minimal amount.
-     * @return _paymentFee Payment fee.
+     * @return _fee Fee.
      */
     function getSettings()
         external view
         returns (
             uint128 _escrowEndTimeSeconds,
             uint128 _escrowAmount,
-            uint64 _escrowFee,
             uint128 _minimalAmount,
-            uint64 _paymentFee
+            uint128 _fee
         );
 
     /**

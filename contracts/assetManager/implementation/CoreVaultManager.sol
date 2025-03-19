@@ -59,16 +59,16 @@ contract CoreVaultManager is
     EnumerableSet.AddressSet private triggeringAccounts;
     EnumerableSet.AddressSet private emergencyPauseSenders;
 
+    // settings
     /// escrow end time during a day in seconds (UTC time)
     uint128 private escrowEndTimeSeconds;
-    /// escrow fee
-    uint64 private escrowFee;
-    /// payment fee
-    uint64 private paymentFee;
     /// amount to be escrowed
     uint128 private escrowAmount;
     /// minimal amount left in the core vault after escrowing
     uint128 private minimalAmount;
+    /// fee
+    uint128 private fee;
+
     /// available funds in the core vault
     uint128 public availableFunds;
     /// escrowed funds
@@ -77,6 +77,7 @@ contract CoreVaultManager is
     uint128 private cancelableTransferRequestsAmount;
     /// non-cancelable transfer requests amount
     uint128 private nonCancelableTransferRequestsAmount;
+
     /// paused state
     bool public paused;
 
@@ -167,7 +168,7 @@ contract CoreVaultManager is
         onlyAssetManager notPaused
     {
         require(_amount > 0, "amount zero");
-        require(allowedDestinationAddressIndex[_destinationAddress] != 0, "dest not allowed");
+        require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination not allowed");
         bytes32 destinationAddressHash = keccak256(bytes(_destinationAddress));
         bool newTransferRequest = false;
         if (_cancelable) {
@@ -180,7 +181,7 @@ contract CoreVaultManager is
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
-            require(_paymentReference == bytes32(0), "invalid reference");
+            require(_paymentReference == bytes32(0), "invalid payment reference");
             uint256 index = 0;
             while (index < nonCancelableTransferRequests.length) {
                 TransferRequest storage req = transferRequestById[nonCancelableTransferRequests[index]];
@@ -230,7 +231,7 @@ contract CoreVaultManager is
             }
             index++;
         }
-        require (index < cancelableTransferRequests.length, "not found");
+        require (index < cancelableTransferRequests.length, "request not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
         TransferRequest storage req = transferRequestById[transferRequestId];
         uint128 amount = req.amount;
@@ -263,23 +264,23 @@ contract CoreVaultManager is
         uint256 sequenceNumberTmp = nextSequenceNumber;
 
         // process cancelable transfer requests
-        uint128 fee = paymentFee;
-        require(fee > 0, "fee zero");
+        uint128 feeTmp = fee;
+        require(feeTmp > 0, "fee zero");
         uint256 index = 0;
         uint256 length = cancelableTransferRequests.length;
         uint128 amountTmp = cancelableTransferRequestsAmount;
         while (index < length) {
             uint256 transferRequestId = cancelableTransferRequests[index];
-            if (availableFundsTmp >= transferRequestById[transferRequestId].amount + fee) {
+            if (availableFundsTmp >= transferRequestById[transferRequestId].amount + feeTmp) {
                 TransferRequest memory req = transferRequestById[transferRequestId];
-                availableFundsTmp -= (req.amount + fee);
+                availableFundsTmp -= (req.amount + feeTmp);
                 amountTmp -= req.amount;
                 emit PaymentInstructions(
                     sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
                     req.amount,
-                    fee,
+                    feeTmp,
                     req.paymentReference
                 );
                 // remove the transfer request - keep the order
@@ -301,16 +302,16 @@ contract CoreVaultManager is
         amountTmp = nonCancelableTransferRequestsAmount;
         while (index < length) {
             uint256 transferRequestId = nonCancelableTransferRequests[index];
-            if (availableFundsTmp >= transferRequestById[transferRequestId].amount + fee) {
+            if (availableFundsTmp >= transferRequestById[transferRequestId].amount + feeTmp) {
                 TransferRequest memory req = transferRequestById[transferRequestId];
-                availableFundsTmp -= (req.amount + fee);
+                availableFundsTmp -= (req.amount + feeTmp);
                 amountTmp -= req.amount;
                 emit PaymentInstructions(
                     sequenceNumberTmp++,
                     coreVaultAddress,
                     req.destinationAddress,
                     req.amount,
-                    fee,
+                    feeTmp,
                     req.paymentReference
                 );
                 // remove the transfer request - keep the order
@@ -335,15 +336,14 @@ contract CoreVaultManager is
         }
 
         // create escrows
-        fee = escrowFee; // > 0
         uint256 preimageHashIndexTmp = nextUnusedPreimageHashIndex;
-        uint256 minFundsToTriggerEscrow = minimalAmount + escrowAmountTmp + fee;
+        uint256 minFundsToTriggerEscrow = minimalAmount + escrowAmountTmp + feeTmp;
         length = preimageHashes.length();
         amountTmp = escrowedFunds;
         if (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < length) {
             uint64 escrowEndTimestamp = _getNextEscrowEndTimestamp();
             while (availableFundsTmp >= minFundsToTriggerEscrow && preimageHashIndexTmp < length) {
-                availableFundsTmp -= (escrowAmountTmp + fee);
+                availableFundsTmp -= (escrowAmountTmp + feeTmp);
                 amountTmp += escrowAmountTmp;
                 bytes32 preimageHash = preimageHashes.at(preimageHashIndexTmp++);
                 Escrow memory escrow = Escrow({
@@ -360,7 +360,7 @@ contract CoreVaultManager is
                     coreVaultAddress,
                     custodianAddress,
                     escrowAmountTmp,
-                    fee,
+                    feeTmp,
                     escrowEndTimestamp
                 );
                 // next escrow end timestamp
@@ -481,29 +481,26 @@ contract CoreVaultManager is
      * Updates the settings.
      * @param _escrowEndTimeSeconds Escrow end time in seconds.
      * @param _escrowAmount Escrow amount (setting to 0 will disable escrows).
-     * @param _escrowFee Escrow fee.
      * @param _minimalAmount Minimal amount left in the core vault after escrow.
-     * @param _paymentFee Payment fee.
+     * @param _fee Fee.
      * NOTE: may only be called by the governance.
      */
     function updateSettings(
         uint128 _escrowEndTimeSeconds,
         uint128 _escrowAmount,
-        uint64 _escrowFee,
         uint128 _minimalAmount,
-        uint64 _paymentFee
+        uint128 _fee
     )
         external
         onlyGovernance
     {
         require(_escrowEndTimeSeconds < 1 days, "invalid end time");
-        require(_escrowFee > 0 && _paymentFee > 0, "fee zero");
+        require(_fee > 0, "fee zero");
         escrowEndTimeSeconds = _escrowEndTimeSeconds;
         escrowAmount = _escrowAmount;
-        escrowFee = _escrowFee;
         minimalAmount = _minimalAmount;
-        paymentFee = _paymentFee;
-        emit SettingsUpdated(_escrowEndTimeSeconds, _escrowAmount, _escrowFee, _minimalAmount, _paymentFee);
+        fee = _fee;
+        emit SettingsUpdated(_escrowEndTimeSeconds, _escrowAmount, _minimalAmount, _fee);
     }
 
     /**
@@ -560,7 +557,7 @@ contract CoreVaultManager is
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             uint256 escrowIndex = preimageHashToEscrowIndex[_preimageHashes[i]];
             Escrow storage escrow = _getEscrow(escrowIndex);
-            require(!escrow.finished, "already finished");
+            require(!escrow.finished, "escrow already finished");
             escrow.finished = true;
             if (escrowIndex <= nextUnprocessedEscrowIndex) {
                 availableFundsTmp -= escrow.amount;
@@ -631,12 +628,11 @@ contract CoreVaultManager is
         returns (
             uint128 _escrowEndTimeSeconds,
             uint128 _escrowAmount,
-            uint64 _escrowFee,
             uint128 _minimalAmount,
-            uint64 _paymentFee
+            uint128 _fee
         )
     {
-        return (escrowEndTimeSeconds, escrowAmount, escrowFee, minimalAmount, paymentFee);
+        return (escrowEndTimeSeconds, escrowAmount, minimalAmount, fee);
     }
 
     /**
@@ -744,7 +740,7 @@ contract CoreVaultManager is
      */
     function totalRequestAmountWithFee() public view returns (uint256) {
         return nonCancelableTransferRequestsAmount + cancelableTransferRequestsAmount +
-            (cancelableTransferRequests.length + nonCancelableTransferRequests.length) * paymentFee;
+            (cancelableTransferRequests.length + nonCancelableTransferRequests.length) * fee;
     }
 
     /**
@@ -853,7 +849,7 @@ contract CoreVaultManager is
      * @return Escrow.
      */
     function _getEscrow(uint256 _index) internal view returns (Escrow storage) {
-        require(_index != 0, "not found");
+        require(_index != 0, "escrow not found");
         return escrows[_index - 1];
     }
 

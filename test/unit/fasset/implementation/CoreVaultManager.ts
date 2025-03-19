@@ -9,11 +9,10 @@ import {
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { Payment } from "@flarenetwork/state-connector-protocol/dist/generated/types/typescript/Payment";
-import { abiEncodeCall, erc165InterfaceId, toBN, ZERO_BYTES32 } from "../../../../lib/utils/helpers";
+import { abiEncodeCall, erc165InterfaceId, ZERO_BYTES32 } from "../../../../lib/utils/helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../utils/web3assertions";
 import { ZERO_ADDRESS } from "../../../../deployment/lib/deploy-utils";
 import { ZERO_BYTES_32 } from "@flarenetwork/state-connector-protocol";
-import { finished } from "stream";
 
 const CoreVaultManager = artifacts.require("CoreVaultManager");
 const CoreVaultManagerProxy = artifacts.require("CoreVaultManagerProxy");
@@ -21,7 +20,7 @@ const GovernanceSettings = artifacts.require("GovernanceSettings");
 const AddressUpdater = artifacts.require("AddressUpdater");
 const MockContract = artifacts.require("MockContract");
 
-contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager unit tests`, async (accounts) => {
+contract.only(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager unit tests`, async (accounts) => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
@@ -294,48 +293,41 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
     });
 
     it("should update settings", async () => {
-      const tx = await coreVaultManager.updateSettings(12345, 800, 20, 900, 10, {
+      const tx = await coreVaultManager.updateSettings(12345, 800, 900, 10, {
         from: governance,
       });
       expectEvent(tx, "SettingsUpdated", {
         escrowEndTimeSeconds: "12345",
         escrowAmount: "800",
-        escrowFee: "20",
         minimalAmount: "900",
-        paymentFee: "10",
+        fee: "10",
       });
       const settings = await coreVaultManager.getSettings();
       assertWeb3Equal(settings[0], "12345"); // escrowEndTimeSeconds
       assertWeb3Equal(settings[1], "800"); // escrowAmount
-      assertWeb3Equal(settings[2], "20"); // escrowFee
-      assertWeb3Equal(settings[3], "900"); // minimalAmount
-      assertWeb3Equal(settings[4], "10"); // paymentFee
+      assertWeb3Equal(settings[2], "900"); // minimalAmount
+      assertWeb3Equal(settings[3], "10"); // fee
     });
 
     it("should not update settings if not from governance", async () => {
-      const tx = coreVaultManager.updateSettings(12345, 800, 20, 900, 10, {
+      const tx = coreVaultManager.updateSettings(12345, 800, 900, 10, {
         from: accounts[1],
       });
       await expectRevert(tx, "only governance");
     });
 
     it("should not update settings if escrow end time is more than a day", async () => {
-      const tx = coreVaultManager.updateSettings(24 * 3600, 800, 20, 900, 10, {
+      const tx = coreVaultManager.updateSettings(24 * 3600, 800, 900, 10, {
         from: governance,
       });
       await expectRevert(tx, "invalid end time");
     });
 
     it("should not update settings if fee is zero", async () => {
-      const tx = coreVaultManager.updateSettings(12345, 800, 0, 900, 10, {
+      const tx = coreVaultManager.updateSettings(12345, 800, 900, 0, {
         from: governance,
       });
       await expectRevert(tx, "fee zero");
-
-      const tx2 = coreVaultManager.updateSettings(12345, 800, 20, 900, 0, {
-        from: governance,
-      });
-      await expectRevert(tx2, "fee zero");
     });
 
     it("should add preimage hashes", async () => {
@@ -953,7 +945,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           coreVaultManager.requestTransferFromCoreVault("addr1", ZERO_BYTES32, 10, false, {
             from: assetManager,
           }),
-          "dest not allowed"
+          "destination not allowed"
         );
       });
 
@@ -973,7 +965,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             100,
             false,
             { from: assetManager }),
-          "invalid reference"
+          "invalid payment reference"
         );
       });
 
@@ -1103,7 +1095,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           coreVaultManager.cancelTransferRequestFromCoreVault("addr1", {
             from: assetManager,
           }),
-          "not found"
+          "request not found"
         );
       });
 
@@ -1162,7 +1154,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         });
 
         // settings
-        await coreVaultManager.updateSettings(escrowTimeSeconds, 200, 25, 300, 15, { from: governance });
+        await coreVaultManager.updateSettings(escrowTimeSeconds, 200, 300, 15, { from: governance });
 
         // add preimage hashes
         await coreVaultManager.addPreimageHashes([preimageHash1, preimageHash2], {
@@ -1540,7 +1532,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
       it("should skip creating escrows if escrow amount is zero (escrow disabled)", async () => {
         // set escrow amount to zero
-        await coreVaultManager.updateSettings(escrowTimeSeconds, 0, 25, 300, 15, { from: governance });
+        await coreVaultManager.updateSettings(escrowTimeSeconds, 0, 300, 15, { from: governance });
 
         // fund contract
         const transactionId = web3.utils.keccak256("transactionId");
@@ -1567,13 +1559,13 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       });
 
       it("should revert setting escrow as finished if escrow not found", async () => {
-        await expectRevert(coreVaultManager.setEscrowsFinished([web3.utils.keccak256("wrong hash")], { from: governance }), "not found");
+        await expectRevert(coreVaultManager.setEscrowsFinished([web3.utils.keccak256("wrong hash")], { from: governance }), "escrow not found");
       });
 
       it("should revert setting escrow if already finished", async () => {
         await createEscrows();
         await coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance });
-        await expectRevert(coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance }), "already finished");
+        await expectRevert(coreVaultManager.setEscrowsFinished([preimageHash1], { from: governance }), "escrow already finished");
       });
 
       it("should get escrows", async () => {

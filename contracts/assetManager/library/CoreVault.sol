@@ -263,8 +263,8 @@ library CoreVault {
         returns (uint256)
     {
         State storage state = getState();
-        (,,,, uint256 paymentFee) = state.coreVaultManager.getSettings();
-        return paymentFee;
+        (,,, uint256 fee) = state.coreVaultManager.getSettings();
+        return fee;
     }
 
     function _minimumRemainingAfterTransferAMG(
