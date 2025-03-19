@@ -50,7 +50,7 @@ library Agents {
     )
         internal
     {
-        require(_feeBIPS < SafePct.MAX_BIPS, "fee too high");
+        require(_feeBIPS <= SafePct.MAX_BIPS, "fee too high");
         _agent.feeBIPS = _feeBIPS.toUint16();
     }
 
@@ -60,7 +60,7 @@ library Agents {
     )
         internal
     {
-        require(_poolFeeShareBIPS < SafePct.MAX_BIPS, "value too high");
+        require(_poolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
@@ -70,7 +70,7 @@ library Agents {
     )
         internal
     {
-        require(_redemptionPoolFeeShareBIPS < SafePct.MAX_BIPS, "value too high");
+        require(_redemptionPoolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
         _agent.redemptionPoolFeeShareBIPS = _redemptionPoolFeeShareBIPS.toUint16();
     }
 
