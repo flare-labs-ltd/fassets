@@ -843,8 +843,9 @@ contract CoreVaultManager is
         if (_maxCount == 0 && index < escrows.length &&
             (escrows[index].expiryTs <= block.timestamp || escrows[index].finished)) {
             emit NotAllEscrowsProcessed();
+            return false;
         }
-        return _maxCount > 0;
+        return true;
     }
 
     /**
