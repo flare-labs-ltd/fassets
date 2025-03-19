@@ -1113,13 +1113,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       const escrowTimeSeconds = 3600;
       const destinationAddress1 = "destinationAddress";
       const destinationAddress2 = "destinationAddress2";
-      const paymentFee = "15";
-      const escrowFee = "25";
+      const fee = "15";
       const destinationAddress3 = "destinationAddress3";
 
       async function createEscrows() {
         // fund contract
-        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 800);
+        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 780);
         await coreVaultManager.confirmPayment(proof);
 
         const currentTimestamp = await time.latest();
@@ -1170,7 +1169,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       it("should trigger instructions", async () => {
         // confirm payment (fund core vault)
         const transactionId = web3.utils.keccak256("transactionId");
-        const amount = 1100;
+        const amount = 1080;
         const proof = createPaymentProof(transactionId, amount);
         await coreVaultManager.confirmPayment(proof);
 
@@ -1208,7 +1207,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress1,
           amount: amount1,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: paymentReference1,
         });
         expectEvent(tx, "PaymentInstructions", {
@@ -1216,7 +1215,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress2,
           amount: amount2,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: paymentReference2,
         });
         const currentTimestamp = await time.latest();
@@ -1231,7 +1230,6 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
           cancelAfterTs: cancelAfterTs1
         });
         const escrowEndTimestamp2 = cancelAfterTs1;
@@ -1242,11 +1240,10 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
           cancelAfterTs: cancelAfterTs2
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(),
-          1100 - 100 - 200 - 200 - 200 - 2 * 25 - 2 * 15); // 320
+          1080 - 100 - 200 - 200 - 200 - 2 * 15 - 2 * 15); // 320
         assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 4);
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 200 + 200);
 
@@ -1262,7 +1259,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       it("should trigger instructions and process escrows", async () => {
         // confirm payment (fund core vault)
         const transactionId = web3.utils.keccak256("transactionId");
-        const amount = 1100;
+        const amount = 1080;
         const proof = createPaymentProof(transactionId, amount);
         await coreVaultManager.confirmPayment(proof);
 
@@ -1330,7 +1327,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
       it("should not issue payment instructions if there are no funds", async () => {
         const transactionId = web3.utils.keccak256("transactionId");
-        const proof = createPaymentProof(transactionId, 1100 + 225 * 2 + 300);
+        const proof = createPaymentProof(transactionId, 1080 + 225 * 2 + 300);
         await coreVaultManager.confirmPayment(proof);
 
         // request cancelable transfers
@@ -1353,7 +1350,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress1,
           amount: amount1,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: paymentReference1,
         });
         expectEvent(tx, "EscrowInstructions", {
@@ -1362,7 +1359,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
+          fee: fee,
         });
         expectEvent(tx, "EscrowInstructions", {
           sequence: "2",
@@ -1370,7 +1367,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
+          fee: fee,
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(), 300);
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
@@ -1416,7 +1413,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress2,
           amount: amount2,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: paymentReference2
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
@@ -1445,7 +1442,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress3,
           amount: amount3,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: paymentReference3
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(), 2 * 200 - 286 - 15);
@@ -1465,7 +1462,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
         // add funds for fee
         const transactionId1 = web3.utils.keccak256("transactionId1");
-        const proof1 = createPaymentProof(transactionId1, 25);
+        const proof1 = createPaymentProof(transactionId1, 15);
         await coreVaultManager.confirmPayment(proof1);
         // trigger instructions - create escrow
         await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1502,13 +1499,13 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       it("should skip creating new escrows if there are remaining cancelable requests", async () => {
         // fund contract
         const transactionId = web3.utils.keccak256("transactionId");
-        const proof = createPaymentProof(transactionId, 800);
+        const proof = createPaymentProof(transactionId, 780);
         await coreVaultManager.confirmPayment(proof);
 
         // create escrow
         await coreVaultManager.triggerInstructions({ from: accounts[1] });
 
-        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 200 * 2 - 25 * 2);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 780 - 200 * 2 - 15 * 2);
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 400);
 
         // create cancelable request
@@ -1632,12 +1629,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       it("should issue payment instruction for request with lower amount and keep the order", async () => {
         // fund contract
         const transactionId = web3.utils.keccak256("transactionId");
-        const proof = createPaymentProof(transactionId, 800);
+        const proof = createPaymentProof(transactionId, 780);
         await coreVaultManager.confirmPayment(proof);
 
         // create escrows
         await coreVaultManager.triggerInstructions({ from: accounts[1] });
-        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 780 - 2 * 200 - 2 * 15); // 350
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
 
         // request three cancelable transfer requests
@@ -1687,7 +1684,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress2,
           amount: amount2,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: paymentReference2
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
@@ -1700,12 +1697,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       it("should issue payment instruction for request with lower amount and keep the order - non cancelable", async () => {
         // fund contract
         const transactionId = web3.utils.keccak256("transactionId");
-        const proof = createPaymentProof(transactionId, 800);
+        const proof = createPaymentProof(transactionId, 780);
         await coreVaultManager.confirmPayment(proof);
 
         // create escrows
         await coreVaultManager.triggerInstructions({ from: accounts[1] });
-        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 780 - 2 * 200 - 2 * 15); // 350
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
 
         // request three non-cancelable transfer requests
@@ -1752,7 +1749,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: destinationAddress2,
           amount: amount2,
-          fee: paymentFee,
+          fee: fee,
           paymentReference: ZERO_BYTES_32
         });
         assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
@@ -1770,12 +1767,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         });
         // fund contract
         const transactionId = web3.utils.keccak256("transactionId");
-        const proof = createPaymentProof(transactionId, 800);
+        const proof = createPaymentProof(transactionId, 780);
         await coreVaultManager.confirmPayment(proof);
 
         // create escrows
         const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
-        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 780 - 2 * 200 - 2 * 15); // 350
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
@@ -1790,7 +1787,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
+          fee: fee,
           cancelAfterTs: cancelAfterTs1
         });
         expectEvent(tx, "EscrowInstructions", {
@@ -1799,7 +1796,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
+          fee: fee,
           cancelAfterTs: cancelAfterTs2
         });
 
@@ -1824,10 +1821,10 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
+          fee: fee,
           cancelAfterTs: cancelAfterTs3
         });
-        assertWeb3Equal(await coreVaultManager.availableFunds(), 350 + 200 - 200 - 25 + 75);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 350 + 200 - 200 - 15 + 75);
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
 
         // move to the expiry of the second escrow
@@ -1851,12 +1848,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
+          fee: fee,
           cancelAfterTs: cancelAfterTs4
         });
       });
 
-      it("...", async () => {
+      it("should create escrow", async () => {
         // skip time to one second before start of the day
         const currentTimestamp = await time.latest();
         const startOfDay = currentTimestamp.addn(DAY - currentTimestamp.modn(DAY));
@@ -1864,7 +1861,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
         // fund contract
         const transactionId = web3.utils.keccak256("transactionId");
-        const proof = createPaymentProof(transactionId, 800);
+        const proof = createPaymentProof(transactionId, 780);
         await coreVaultManager.confirmPayment(proof);
 
         // create escrows
@@ -1872,7 +1869,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
         const endTime = currentTs.addn(DAY);
         const cancelAfterTs = endTime.subn(endTime.modn(DAY)).addn(escrowTimeSeconds);
-        assertWeb3Equal(await coreVaultManager.availableFunds(), 800 - 2 * 200 - 2 * 25); // 350
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 780 - 2 * 200 - 2 * 15); // 350
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
         expectEvent(tx, "EscrowInstructions", {
           sequence: "0",
@@ -1880,7 +1877,6 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           account: coreVaultAddress,
           destination: custodianAddress,
           amount: "200",
-          fee: escrowFee,
           cancelAfterTs: cancelAfterTs
         });
       });
