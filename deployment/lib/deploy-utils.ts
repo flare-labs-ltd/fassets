@@ -78,3 +78,17 @@ export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: s
 export function truffleContractMetadata(contract: Truffle.Contract<any>): { contractName: string, abi: AbiItem[] } {
     return (contract as any)._json;
 }
+
+/**
+ * Encode contract names in a way compatible with AddressUpdatable.updateContractAddresses.
+ */
+export function encodeContractNames(names: string[]): string[] {
+    return names.map(name => encodeContractName(name));
+}
+
+/**
+ * Encode contract name in a way compatible with AddressUpdatable.updateContractAddresses.
+ */
+export function encodeContractName(text: string): string {
+    return web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [text]));
+}

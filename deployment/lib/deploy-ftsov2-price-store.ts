@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { readFileSync } from 'node:fs';
 import { FAssetContractStore } from "./contracts";
-import { loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
+import { encodeContractNames, loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
 
 interface FtsoV2PriceStoreParameters {
     contractName: string;
@@ -61,14 +61,6 @@ export function encodeFeedIds(feedIds: IFeedId[]): string[] {
         result.push("0x" + feedId.category.toString(16).padStart(2, "0") + Buffer.from(feedId.name).toString("hex").padEnd(40, "0"));
     }
     return result;
-}
-
-export function encodeContractNames(names: string[]): string[] {
-    return names.map(name => encodeString(name));
-}
-
-export function encodeString(text: string): string {
-    return web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [text]));
 }
 
 function readFtsoV2Parameters(hre: HardhatRuntimeEnvironment): FtsoV2PriceStoreParameters {

@@ -9,7 +9,7 @@ import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
-import { deployAssetManager, deployAssetManagerController, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
+import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
@@ -64,6 +64,16 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
                 await deployAssetManager(hre, paramFile, contracts, true);
             }
         }
+    });
+
+task("deploy-core-vault-manager", "Deploy core vault manager for one fasset.")
+    .addFlag("set", "Also set the deployed core vault manager to the corresponing asset manager. Only works when asset manager is not in production mode.")
+    .addPositionalParam("parametersFile", "The file with core vault manager parameters.")
+    .setAction(async ({ parametersFile, set }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
+        await deployCoreVaultManager(hre, contracts, parametersFile, set);
     });
 
 task("verify-contract", "Verify a contract in contracts.json.")
