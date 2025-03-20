@@ -215,7 +215,7 @@ library CoreVault {
         require(_lots >= minimumRedeemLots, "requested amount too small");
         // burn the senders fassets
         uint64 redeemedAMG = _lots * settings.lotSizeAMG;
-        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG).toUint128();
+        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG);
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
         // subtract the redemption fee
         uint256 redemptionFeeUBA = redeemedUBA.mulBips(state.redemptionFeeBIPS);
