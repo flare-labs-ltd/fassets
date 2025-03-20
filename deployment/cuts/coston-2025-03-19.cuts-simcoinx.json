@@ -1,0 +1,62 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FSimCoinX"],
+    "facets": [
+        {
+            "contract": "ChallengesFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "LiquidationFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "UnderlyingBalanceFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentAlwaysAllowedMintersFacet",
+            "exposedInterfaces": ["IAgentAlwaysAllowedMinters"]
+        },
+        {
+            "contract": "CoreVaultFacet",
+            "exposedInterfaces": ["ICoreVault"]
+        },
+        {
+            "contract": "CoreVaultSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultSettings"]
+        },
+        {
+            "contract": "AgentVaultManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentSettingsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionHandshakeFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

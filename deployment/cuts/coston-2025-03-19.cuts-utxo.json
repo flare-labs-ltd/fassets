@@ -1,6 +1,6 @@
 {
     "$schema": "./diamond-cuts.schema.json",
-    "diamond": ["AssetManager_FTestDOGE"],
+    "diamond": ["AssetManager_FTestBTC", "AssetManager_FTestDOGE"],
     "facets": [
         {
             "contract": "AgentAlwaysAllowedMintersFacet",
