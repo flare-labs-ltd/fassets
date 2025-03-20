@@ -166,7 +166,7 @@ export async function deployCoreVaultManager(hre: HardhatRuntimeEnvironment, con
 
     const fAsset = await FAsset.at(settings.fAsset);
     const fAssetSymbol = await fAsset.symbol();
-    contracts.add(`CoreVaultManager_${fAssetSymbol}`, "CoreVaultManager.sol", coreVaultManager.address, { mustSwitchToProduction: true });
+    contracts.add(`CoreVaultManager_${fAssetSymbol}`, "CoreVaultManagerProxy.sol", coreVaultManager.address, { mustSwitchToProduction: true });
 
     if (setOnAssetManager) {
         if (!(await assetManager.productionMode())) {
