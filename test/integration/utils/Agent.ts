@@ -695,7 +695,7 @@ export class Agent extends AssetContextClient {
         return this.context.convertUBAToLots(toMintUBA);
     }
 
-    async getRedemptionQueue(pageSize: BNish) {
+    async getRedemptionQueue(pageSize: BNish = 20) {
         const result: RedemptionTicketInfo[] = [];
         let firstTicketId = BN_ZERO;
         do {
