@@ -187,7 +187,9 @@ export class FuzzingTimeline {
         // increase timestamps
         const newFlareTime = Math.min(startFlareTime + skippedTime, this.chain.lastBlockTimestamp());
         if (newFlareTime > startFlareTime) {
-            await time.increaseTo(newFlareTime);
+            await time.increaseTo(newFlareTime).catch(e => {
+                this.logger?.log(`???? ERROR Invalid time increase ${startFlareTime}->${newFlareTime}, (${e})`);
+            });
         }
         if (startUnderlyingTime + skippedTime > this.chain.currentTimestamp()) {
             this.chain.skipTimeTo(startUnderlyingTime + skippedTime);

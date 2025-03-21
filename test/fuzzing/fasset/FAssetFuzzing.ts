@@ -5,7 +5,6 @@ import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingC
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
-import { FtsoMockInstance } from "../../../typechain-truffle";
 import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
 import { AssetContext } from "../../integration/utils/AssetContext";
 import { CommonContext } from "../../integration/utils/CommonContext";
@@ -24,6 +23,7 @@ import { FuzzingTimeline } from "./FuzzingTimeline";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
+import { MultiStateLock } from "./MultiStateLock";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -32,6 +32,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const CHAIN = getEnv('CHAIN', 'string', 'xrp');
     const LOOPS = getEnv('LOOPS', 'number', 100);
     const AUTOMINE = getEnv('AUTOMINE', 'boolean', true);
+    const STRICT = getEnv('STRICT', 'boolean', false);
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
     const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
     const N_KEEPERS = getEnv('N_KEEPERS', 'number', 1);
@@ -55,6 +56,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
+    let runnerLock: MultiStateLock;
     let interceptor: TruffleTransactionInterceptor;
     let truffleEvents: InterceptorEvmEvents;
     let eventQueue: EventExecutionQueue;
@@ -71,8 +73,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         context = await AssetContext.createTest(commonContext, chainInfo);
         chain = context.chain as MockChain;
         // create interceptor
+        runnerLock = new MultiStateLock();
         eventDecoder = new Web3EventDecoder({});
         interceptor = new TruffleTransactionInterceptor(eventDecoder, accounts[0]);
+        interceptor.lock = runnerLock;
         interceptor.captureEvents({
             assetManager: context.assetManager,
             assetManagerController: context.assetManagerController,
@@ -107,8 +111,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     after(async () => {
         // fuzzingState.logAllAgentActions();
         if (!checkedInvariants) {
-            await fuzzingState.checkInvariants(false).catch(e => {});
+            await checkInvariants(false).catch(e => {});
         }
+        fuzzingState.logProblemTotals();
         fuzzingState.logAllAgentSummaries();
         fuzzingState.logAllPoolSummaries();
         fuzzingState.logExpectationFailures();
@@ -229,7 +234,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             if (loop % 10 === 0) {
                 // run all queued event handlers
                 eventQueue.runAll();
-                await fuzzingState.checkInvariants(false);     // state change may happen during check, so we don't wany failure here
+                await checkInvariants(STRICT);     // state change may happen during check, so we don't wany failure here by default
                 interceptor.comment(`-----  LOOP ${loop}  ${await timeInfo()}  -----`);
                 await timeline.skipTime(100);
                 await timeline.executeTriggers();
@@ -256,7 +261,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         checkedInvariants = true;
-        await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
+        await checkInvariants(true);  // all events are flushed, state must match
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });
 
@@ -376,5 +381,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const newPrice = mulDecimal(price, factor);
         await context.priceStore.setCurrentPrice(symbol, newPrice, 0);
         await context.priceStore.setCurrentPriceFromTrustedProviders(symbol, newPrice, 0);
+    }
+
+    async function checkInvariants(failOnProblems: boolean) {
+        await runnerLock.runLocked("check", async () => {
+            await fuzzingState.checkInvariants(failOnProblems);
+        });
     }
 });

@@ -30,10 +30,14 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
         await this.lock.run(async () => {
             if (!this.poolInfo) {
                 const agent = randomChoice(Array.from(this.state.agents.values()));
-                this.poolInfo = {
-                    pool: this.getContract<CollateralPoolInstance>(agent.collateralPoolAddress),
-                    poolToken: this.getContract<CollateralPoolTokenInstance>(agent.collateralPoolTokenAddress),
-                };
+                try {
+                    this.poolInfo = {
+                        pool: this.getContract<CollateralPoolInstance>(agent.collateralPoolAddress),
+                        poolToken: this.getContract<CollateralPoolTokenInstance>(agent.collateralPoolTokenAddress),
+                    };
+                } catch (error) {
+                    scope.exitOnExpectedError(error, ['Unknown contract address']); // possible when pool was just created
+                }
             }
             const natPrice = this.state.prices.getNat();
             const lotSizeWei = natPrice.convertUBAToTokenWei(this.state.lotSize());

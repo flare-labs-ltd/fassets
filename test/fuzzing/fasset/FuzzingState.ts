@@ -72,6 +72,10 @@ export class FuzzingState extends TrackedState {
         return new FuzzingAgentState(this, data);
     }
 
+    totalChecks = 0;
+    problemChecks = 0;
+    totalProblems = 0;
+
     async checkInvariants(failOnProblems: boolean) {
         const checker = new FuzzingStateComparator();
         // total supply
@@ -100,6 +104,10 @@ export class FuzzingState extends TrackedState {
         if (failOnProblems && checker.problems > 0) {
             assert.fail("Tracked and actual state different");
         }
+        // update counts
+        this.totalChecks += 1;
+        this.problemChecks += checker.problems > 0 ? 1 : 0;
+        this.totalProblems += checker.problems;
     }
 
     // logs
@@ -133,6 +141,11 @@ export class FuzzingState extends TrackedState {
         for (const agent of this.agents.values()) {
             agent.writePoolSummary(this.logger);
         }
+    }
+
+    logProblemTotals() {
+        this.logger?.log(`\nTOTAL CHECKS: ${this.totalChecks}  PROBLEM CHECKS: ${this.problemChecks}  TOTAL PROBLEMS: ${this.totalProblems}`);
+        console.log(`\nTOTAL CHECKS: ${this.totalChecks}  PROBLEM CHECKS: ${this.problemChecks}  TOTAL PROBLEMS: ${this.totalProblems}`);
     }
 
     writeBalanceTrackingList(dir: string) {
