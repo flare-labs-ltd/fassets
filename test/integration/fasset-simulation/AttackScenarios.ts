@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -12,6 +12,7 @@ import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 import { filterEvents } from "../../../lib/utils/events/truffle";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { Challenger } from "../utils/Challenger";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -562,5 +563,69 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log(">> underlyingBalance after: ", underlyingBalanceAfter);
         console.log(">> underlyingBalance on underlying chain: ", (await context.chain.getBalance(agent.underlyingAddress)).toString());
 
+    });
+
+    it("nnez-circumventing-challenges", async () => {
+        // Prelim setup
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        const challenger = await Challenger.create(context, challengerAddress1);
+
+        // Make agent available and deposit some collateral
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block, passing agent creation block
+        await context.updateUnderlyingBlock();
+
+        // Perform minting
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        await context.assetManager.announceAgentSettingUpdate(agent.agentVault.address, "handshakeType", 1, {from: agentOwner1});
+        // agentFeeChangeTimelockSeconds: 21600
+        // skip time to execute change of setting
+        await deterministicTimeIncrease(6 * 3600 + 1);
+        mockChain.skipTime(6 * 3600 + 12);
+        mockChain.mine((6*3600/12) + 1);
+        await context.assetManager.executeAgentSettingUpdate(agent.agentVault.address, "handshakeType", {from: agentOwner1});
+
+        // Make a redemption request to agent's owned address
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+        const [redemptionRequests,,,] = await redeemer.requestRedemption(lots);
+        const request = redemptionRequests[0];
+
+        // Reject redemption so that it cannot be confirmed by any proof of payment
+        await context.assetManager.rejectRedemptionRequest(request.requestId, {from: agentOwner1});
+
+        // Assume no one is taking over
+
+        // Perform the first payment
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        const tx1Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+
+        await deterministicTimeIncrease((await context.assetManager.getSettings()).confirmationByOthersAfterSeconds);
+        // No one can confirm this payment because this redemption is already rejected
+        await expectRevert(agent.confirmActiveRedemptionPayment(request, tx1Hash), 'rejected redemption cannot be confirmed');
+
+        // Agent waits for 14 days
+        await deterministicTimeIncrease(15 * DAYS + 10);
+        mockChain.skipTime(14 * DAYS + 10);
+        mockChain.mine(100*14);
+
+        // perform double payment to the same payment reference
+        const tx2Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+
+        // shows that it's impossible to challenge this act of wrongdoing
+        await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), 'verified transaction too old');
+        await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), 'verified transaction too old');
+        await expectRevert(challenger.illegalPaymentChallenge(agent, tx2Hash), 'matching redemption active')
+        await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx2Hash]), 'verified transaction too old');
+        await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx2Hash]), 'mult chlg: enough balance');
+
+        // After exploitation, agent can close the redemption by calling `rejectedRedemptionPaymentDefault`
+        await context.assetManager.rejectedRedemptionPaymentDefault(request.requestId, {from: agentOwner1});
     });
 });
