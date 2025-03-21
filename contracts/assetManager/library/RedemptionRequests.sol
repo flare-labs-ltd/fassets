@@ -285,11 +285,12 @@ library RedemptionRequests {
             return 0;    // empty redemption queue
         }
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
-        uint64 maxRedeemLots = ticket.valueAMG / settings.lotSizeAMG;
+        address agentVault = ticket.agentVault;
+        Agent.State storage agent = Agent.get(agentVault);
+        uint64 maxRedeemLots = (ticket.valueAMG + agent.dustAMG) / settings.lotSizeAMG;
         _redeemedLots = SafeMath64.min64(_lots, maxRedeemLots);
         if (_redeemedLots > 0) {
             uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
-            address agentVault = ticket.agentVault;
             // find list index for ticket's agent
             uint256 index = 0;
             while (index < _list.length && _list.items[index].agentVault != agentVault) {

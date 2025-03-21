@@ -16,21 +16,15 @@ library Redemptions {
         Agent.State storage _agent,
         uint64 _amountAMG,
         bool _immediatelyReleaseMinted,
-        bool _skipDust
+        bool _closeWholeLotsOnly
     )
         internal
         returns (uint64 _closedAMG, uint256 _closedUBA)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        if (!_skipDust) {
-            // dust first
-            _closedAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
-            if (_closedAMG > 0) {
-                Agents.decreaseDust(_agent, _closedAMG);
-            }
-        }
         // redemption tickets
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
+        uint64 lotSize = Globals.getSettings().lotSizeAMG;
         for (uint256 i = 0; i < maxRedeemedTickets && _closedAMG < _amountAMG; i++) {
             // each loop, firstTicketId will change since we delete the first ticket
             uint64 ticketId = state.redemptionQueue.agents[_agent.vaultAddress()].firstTicketId;
@@ -38,16 +32,29 @@ library Redemptions {
                 break;  // no more tickets for this agent
             }
             RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
-            uint64 ticketValueAMG = SafeMath64.min64(_amountAMG - _closedAMG, ticket.valueAMG);
+            uint64 maxTicketRedeemAMG = ticket.valueAMG + _agent.dustAMG;
+            maxTicketRedeemAMG -= maxTicketRedeemAMG % lotSize; // round down to whole lots
+            uint64 ticketRedeemAMG = SafeMath64.min64(_amountAMG - _closedAMG, maxTicketRedeemAMG);
             // only remove from tickets and add to total, do everything else after the loop
-            removeFromTicket(ticketId, ticketValueAMG);
-            _closedAMG += ticketValueAMG;
+            removeFromTicket(ticketId, ticketRedeemAMG);
+            _closedAMG += ticketRedeemAMG;
         }
-        _closedUBA = Conversion.convertAmgToUBA(_closedAMG);
+        // now close the dust if anything remains (e.g. if there were no tickets to redeem)
+        uint64 closeDustAMG = _amountAMG - _closedAMG;
+        if (_closeWholeLotsOnly) {
+            closeDustAMG = closeDustAMG % lotSize;
+        }
+        closeDustAMG = SafeMath64.min64(closeDustAMG, _agent.dustAMG);
+        if (closeDustAMG > 0) {
+            _closedAMG += closeDustAMG;
+            Agents.decreaseDust(_agent, closeDustAMG);
+        }
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
         if (_immediatelyReleaseMinted) {
             Agents.releaseMintedAssets(_agent, _closedAMG);
         }
+        // return
+        _closedUBA = Conversion.convertAmgToUBA(_closedAMG);
     }
 
     function removeFromTicket(
@@ -56,22 +63,22 @@ library Redemptions {
     )
         internal
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(_redemptionTicketId);
-        uint64 remainingAMG = ticket.valueAMG - _redeemedAMG;
-        if (remainingAMG == 0) {
-            emit IAssetManagerEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
-            state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
-        } else if (remainingAMG < Globals.getSettings().lotSizeAMG) {   // dust created
-            Agent.State storage agent = Agent.get(ticket.agentVault);
-            Agents.increaseDust(agent, remainingAMG);
-            emit IAssetManagerEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
-            state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
-        } else {
-            ticket.valueAMG = remainingAMG;
-            uint256 remainingUBA = Conversion.convertAmgToUBA(remainingAMG);
-            emit IAssetManagerEvents.RedemptionTicketUpdated(ticket.agentVault, _redemptionTicketId, remainingUBA);
+        RedemptionQueue.State storage redemptionQueue = AssetManagerState.get().redemptionQueue;
+        RedemptionQueue.Ticket storage ticket = redemptionQueue.getTicket(_redemptionTicketId);
+        Agent.State storage agent = Agent.get(ticket.agentVault);
+        uint64 lotSize = Globals.getSettings().lotSizeAMG;
+        uint64 remainingAMG = ticket.valueAMG + agent.dustAMG - _redeemedAMG;
+        uint64 remainingAMGDust = remainingAMG % lotSize;
+        uint64 remainingAMGLots = remainingAMG - remainingAMGDust;
+        if (remainingAMGLots == 0) {
+            redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
+            emit IAssetManagerEvents.RedemptionTicketDeleted(agent.vaultAddress(), _redemptionTicketId);
+        } else if (remainingAMGLots != ticket.valueAMG) {
+            ticket.valueAMG = remainingAMGLots;
+            uint256 remainingUBA = Conversion.convertAmgToUBA(remainingAMGLots);
+            emit IAssetManagerEvents.RedemptionTicketUpdated(agent.vaultAddress(), _redemptionTicketId, remainingUBA);
         }
+        Agents.changeDust(agent, remainingAMGDust);
     }
 
     function burnFAssets(

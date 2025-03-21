@@ -286,8 +286,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform self close
             const [dustChanges1, selfClosedUBA] = await agent.selfClose(minted1.mintedAmountUBA);
             assertWeb3Equal(selfClosedUBA, minted1.mintedAmountUBA);
-            assert.equal(dustChanges1.length, 1); // pool fees
-            assertWeb3Equal(dustChanges1[0], 0);
+            assert.equal(dustChanges1.length, 0); // pool fees
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA).add(selfClosedUBA),

@@ -624,7 +624,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.mintedAmountUBA, mintedUBA: minted.poolFeeUBA });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
-            assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
+            assert.equal(dustChanges.length, 0);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -654,7 +654,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
             await agent.checkAgentInfo({ mintedUBA: minted.poolFeeUBA, freeUnderlyingBalanceUBA: mintAmountUBA.add(mintPoolFeeUBA) });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
-            assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
+            assert.equal(dustChanges.length, 0);
             // now the underlying is free again, so agent can re-mint
             const minted2 = await agent.mintFromFreeUnderlying(lots);
             assertWeb3Equal(minted2.mintedAmountUBA, mintAmountUBA);
@@ -696,7 +696,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 mintedUBA: minted.poolFeeUBA
             });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
-            assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
+            assert.equal(dustChanges.length, 0);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -766,13 +766,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // mint 1 more lot
             await minter.performMinting(agent.vaultAddress, 1);
             // try redeem
-            // console.log(deepFormat(await context.assetManager.redemptionQueue(0, 10)));
             const [requests] = await redeemer.requestRedemption(1);
-            assert.equal(requests.length, 0);
-            // try again - now it should get 1 lot
-            const [requests2] = await redeemer.requestRedemption(1);
-            assert.equal(requests2.length, 1);
-            assertWeb3Equal(requests2[0].valueUBA, context.lotSize());
+            assert.equal(requests.length, 1);
+            assertWeb3Equal(requests[0].valueUBA, context.lotSize());
         });
 
         it("non-public agent can add 'always allowed minter' and that one doesn't pay CR fee", async () => {
