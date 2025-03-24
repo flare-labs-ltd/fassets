@@ -26,7 +26,6 @@ library RedemptionConfirmations {
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = Agents.isOwner(agent, msg.sender);
         require(isAgent || _othersCanConfirmPayment(request), "only agent vault owner");
-        require(request.rejectionTimestamp == 0, "rejected redemption cannot be confirmed");
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match

@@ -565,7 +565,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("nnez-circumventing-challenges", async () => {
+    it("nnez-circumventing-challenges - fixed", async () => {
         // Prelim setup
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -607,8 +607,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         const tx1Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
 
         await deterministicTimeIncrease((await context.assetManager.getSettings()).confirmationByOthersAfterSeconds);
-        // No one can confirm this payment because this redemption is already rejected
-        await expectRevert(agent.confirmActiveRedemptionPayment(request, tx1Hash), 'rejected redemption cannot be confirmed');
+        // The payment can be confirmed by 3rd party
+        await agent.confirmActiveRedemptionPayment(request, tx1Hash);
 
         // Agent waits for 14 days
         await deterministicTimeIncrease(15 * DAYS + 10);
@@ -618,14 +618,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // perform double payment to the same payment reference
         const tx2Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
 
-        // shows that it's impossible to challenge this act of wrongdoing
+        // cannot challenge the old transaction
         await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), 'verified transaction too old');
         await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), 'verified transaction too old');
-        await expectRevert(challenger.illegalPaymentChallenge(agent, tx2Hash), 'matching redemption active')
-        await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx2Hash]), 'verified transaction too old');
-        await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx2Hash]), 'mult chlg: enough balance');
 
-        // After exploitation, agent can close the redemption by calling `rejectedRedemptionPaymentDefault`
-        await context.assetManager.rejectedRedemptionPaymentDefault(request.requestId, {from: agentOwner1});
+        // but the new transaction can be challenged since the redemption request was deleted
+        await challenger.illegalPaymentChallenge(agent, tx2Hash);
     });
 });
