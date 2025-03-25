@@ -402,7 +402,7 @@
   {
     "name": "LiquidationFacet",
     "contractName": "LiquidationFacet.sol",
-    "address": "0xD745612ae0879928e360A66436d7F80BbEdbbEb0"
+    "address": "0x01dD225D433f58C119fFA744b2D7393BAD51c345"
   },
   {
     "name": "ChallengesFacet",

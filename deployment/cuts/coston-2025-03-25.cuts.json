@@ -7,6 +7,10 @@
             "exposedInterfaces": ["IIAssetManager"]
         },
         {
+            "contract": "LiquidationFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
             "contract": "CoreVaultFacet",
             "exposedInterfaces": ["ICoreVault"]
         },
