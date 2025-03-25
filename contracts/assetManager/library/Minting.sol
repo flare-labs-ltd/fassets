@@ -51,6 +51,8 @@ library Minting {
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
+        // mark payment used
+        AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // execute minting
         _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
             uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt.underlyingFeeUBA));

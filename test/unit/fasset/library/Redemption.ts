@@ -3,7 +3,7 @@ import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManag
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BNish, HOURS, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
@@ -233,15 +233,15 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         assert.equal(vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter).toString(), vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore).toString())
     });
 
-    it("should finish redemption payment - payment not from agent's address", async () => {
+    it("should finish redemption payment - payment partially not from agent's address", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         chain.mint(underlyingAgent2, paymentAmt);
-        const tx1Hash = await wallet.addTransaction(underlyingAgent2, request.paymentAddress, paymentAmt, request.paymentReference);
-        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent2, request.paymentAddress);
+        const tx1Hash = await wallet.addMultiTransaction({ [underlyingAgent2]: paymentAmt.subn(1), [underlyingAgent1]: 1 }, { [request.paymentAddress]: paymentAmt }, request.paymentReference);
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
     });
@@ -846,7 +846,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(promise, "invalid request id");
     });
 
-    it("should not confirm redemption payment if redemption is rejected", async () => {
+    it("should be able to 3rd party confirm redemption payment if redemption is rejected", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -856,9 +856,10 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // try to perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+        //
+        await deterministicTimeIncrease(settings.confirmationByOthersAfterSeconds);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
-        let promise = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        await expectRevert(promise, "rejected redemption cannot be confirmed");
+        await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: accounts[100] });
     });
 
     it("should revert rejected redemption payment default - redemption not rejected", async () => {

@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -11,6 +11,8 @@ import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 import { filterEvents } from "../../../lib/utils/events/truffle";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { Challenger } from "../utils/Challenger";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -494,5 +496,133 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // because agent.redeemingAMG is less than request.valueAMG
         await context.assetManager.redemptionPaymentDefault(proof2, request2.requestId, { from: innocentBystander });
 
+    });
+
+    it("nnez-negative-spent-amount-from-another-source - must fail", async() => {
+
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+
+        // prepare an agent with collateral
+        console.log(">> Prepare an agent with collateral");
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        mockChain.mine(5);
+
+        console.log(">> Minting 3 lots of FAsset");
+        await context.updateUnderlyingBlock();
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+
+        console.log(">> Make a redemption request on self");
+        const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
+        const request = redemptionRequests[0];
+
+        console.log(">> Perform payment that results in negative spentAmont of source");
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        /**
+        inUTXO
+        underlyingMinter1 : 1
+        underlyingMinter2: 1000+redemptionAmount
+
+        outUTXO
+        underlyingMinter1: 1000
+        redeemer: redemptionAmount
+        */
+        let redeemPaymentTxHash = await agent.wallet.addMultiTransaction(
+            {
+                [underlyingMinter1]: context.underlyingAmount(1),
+                [underlyingMinter2]: context.underlyingAmount(1000).add(paymentAmount)
+            },
+            {
+                [redeemer.underlyingAddress]: paymentAmount,
+                [underlyingMinter1]: context.underlyingAmount(1000)
+            },
+            PaymentReference.redemption(request.requestId)
+        );
+
+        let underlyingBalanceBefore = (await agent.getAgentInfo()).underlyingBalanceUBA;
+
+        console.log(">> Request proof, specifying underlyingMinter1 as source");
+        const proof = await context.attestationProvider.provePayment(redeemPaymentTxHash, underlyingMinter1, request.paymentAddress);
+        console.log(">> spentAmount: ", proof.data.responseBody.spentAmount);
+
+        console.log(">> Confirm redemption payment");
+        // this was successfull before fix
+        await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
+            "source not agent's underlying address");
+
+        let underlyingBalanceAfter = (await agent.getAgentInfo()).underlyingBalanceUBA;
+        console.log(">> underlyingBalance before: ", underlyingBalanceBefore);
+        console.log(">> underlyingBalance after: ", underlyingBalanceAfter);
+        console.log(">> underlyingBalance on underlying chain: ", (await context.chain.getBalance(agent.underlyingAddress)).toString());
+
+    });
+
+    it("nnez-circumventing-challenges - fixed", async () => {
+        // Prelim setup
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        const challenger = await Challenger.create(context, challengerAddress1);
+
+        // Make agent available and deposit some collateral
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block, passing agent creation block
+        await context.updateUnderlyingBlock();
+
+        // Perform minting
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        await context.assetManager.announceAgentSettingUpdate(agent.agentVault.address, "handshakeType", 1, {from: agentOwner1});
+        // agentFeeChangeTimelockSeconds: 21600
+        // skip time to execute change of setting
+        await deterministicTimeIncrease(6 * 3600 + 1);
+        mockChain.skipTime(6 * 3600 + 12);
+        mockChain.mine((6*3600/12) + 1);
+        await context.assetManager.executeAgentSettingUpdate(agent.agentVault.address, "handshakeType", {from: agentOwner1});
+
+        // Make a redemption request to agent's owned address
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+        const [redemptionRequests,,,] = await redeemer.requestRedemption(lots);
+        const request = redemptionRequests[0];
+
+        // Reject redemption so that it cannot be confirmed by any proof of payment
+        await context.assetManager.rejectRedemptionRequest(request.requestId, {from: agentOwner1});
+
+        // Assume no one is taking over
+
+        // Perform the first payment
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        const tx1Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+
+        await deterministicTimeIncrease((await context.assetManager.getSettings()).confirmationByOthersAfterSeconds);
+        // The payment can be confirmed by 3rd party
+        await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+
+        // Agent waits for 14 days
+        await deterministicTimeIncrease(15 * DAYS + 10);
+        mockChain.skipTime(14 * DAYS + 10);
+        mockChain.mine(100*14);
+
+        // perform double payment to the same payment reference
+        const tx2Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+
+        // cannot challenge the old transaction
+        await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), 'verified transaction too old');
+        await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), 'verified transaction too old');
+
+        // but the new transaction can be challenged since the redemption request was deleted
+        await challenger.illegalPaymentChallenge(agent, tx2Hash);
     });
 });
