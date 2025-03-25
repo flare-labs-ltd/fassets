@@ -1,6 +1,7 @@
 import { AgentStatus, AssetManagerSettings, CollateralType } from "../fasset/AssetManagerTypes";
 import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
+import { deepCopy } from "../utils/deepCopy";
 import { EventFormatter } from "../utils/events/EventFormatter";
 import { IEvmEvents } from "../utils/events/IEvmEvents";
 import { EventExecutionQueue, TriggerableEvent } from "../utils/events/ScopedEvents";
@@ -50,7 +51,7 @@ export class TrackedState {
 
     // async initialization part
     async initialize() {
-        this.settings = await this.context.assetManager.getSettings();
+        this.settings = { ...await this.context.assetManager.getSettings() };
         const collateralTypes = await this.context.assetManager.getCollateralTypes();
         for (const collateralToken of collateralTypes) {
             const collateral = await this.addCollateralType(collateralToken);
