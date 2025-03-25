@@ -227,11 +227,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             await this.lock.acquire("execute");
         }
         try {
-            const promise = originalMethod(...args);
-            if (!(promise instanceof Promise)) {
-                txLog.push(`???? ERROR non-promise return from method call ${methodAbi.name}`);
-            }
-            return await promise;
+            return await originalMethod(...args);
         } finally {
             if (this.lock && !methodAbi.constant) {
                 this.lock?.release("execute");

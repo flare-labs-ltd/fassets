@@ -10,8 +10,8 @@
   "author": "Flare Labs",
   "license": "MIT",
   "directories": {},
-  "engines" : {
-    "node" : ">=16"
+  "engines": {
+    "node": ">=16"
   },
   "scripts": {
     "---------TEST---SCRIPTS": "",
@@ -105,5 +105,6 @@
     "typescript": "5.1.6",
     "typescript-json-schema": "0.59.0",
     "yarn-audit-fix": "9.3.12"
-  }
+  },
+  "packageManager": "yarn@1.22.22"
 }
