@@ -39,12 +39,11 @@ library Redemptions {
             removeFromTicket(ticketId, ticketRedeemAMG);
             _closedAMG += ticketRedeemAMG;
         }
-        // now close the dust if anything remains (e.g. if there were no tickets to redeem)
-        uint64 closeDustAMG = _amountAMG - _closedAMG;
+        // now close the dust if anything remains (e.g. if there were not enough tickets to redeem)
+        uint64 closeDustAMG = SafeMath64.min64(_amountAMG - _closedAMG, _agent.dustAMG);
         if (_closeWholeLotsOnly) {
-            closeDustAMG = closeDustAMG % lotSize;
+            closeDustAMG = closeDustAMG - closeDustAMG % lotSize;
         }
-        closeDustAMG = SafeMath64.min64(closeDustAMG, _agent.dustAMG);
         if (closeDustAMG > 0) {
             _closedAMG += closeDustAMG;
             Agents.decreaseDust(_agent, closeDustAMG);
