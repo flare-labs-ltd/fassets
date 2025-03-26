@@ -311,7 +311,7 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     private underlyingOperationText(paymentReference: string | null, defaultText: string): [string, string | null] {
         if (!PaymentReference.isValid(paymentReference)) return [defaultText, null];
-        const type = PaymentReference.decodeType(paymentReference);
+        const type = PaymentReference.decodeTypeIndex(paymentReference);
         const idBN = PaymentReference.decodeId(paymentReference);
         const id = type >= 0x10 ? null : String(idBN);
         return ['underlying ' + this.underlyingOperations[type], id];

@@ -166,6 +166,7 @@ contract CoreVaultManager is
     )
         external
         onlyAssetManager notPaused
+        returns (bytes32)
     {
         require(_amount > 0, "amount zero");
         require(allowedDestinationAddressIndex[_destinationAddress] != 0, "destination not allowed");
@@ -181,13 +182,13 @@ contract CoreVaultManager is
             cancelableTransferRequests.push(nextTransferRequestId);
             newTransferRequest = true;
         } else {
-            require(_paymentReference == bytes32(0), "invalid payment reference");
             uint256 index = 0;
             while (index < nonCancelableTransferRequests.length) {
                 TransferRequest storage req = transferRequestById[nonCancelableTransferRequests[index]];
                 if (keccak256(bytes(req.destinationAddress)) == destinationAddressHash) {
                     // add the amount to the existing request
                     req.amount += _amount;
+                    _paymentReference = req.paymentReference;   // use the old payment reference when merged
                     break;
                 }
                 index++;
@@ -211,6 +212,7 @@ contract CoreVaultManager is
             });
         }
         emit TransferRequested(_destinationAddress, _paymentReference, _amount, _cancelable);
+        return _paymentReference;
     }
 
     /**

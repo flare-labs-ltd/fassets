@@ -32,6 +32,7 @@ library CoreVault {
         // state
         bool initialized;
         uint64 newTransferFromCoreVaultId;
+        uint64 newRedemptionFromCoreVaultId;
     }
 
     // doesn't really matter in the contracts, but indicates to the bots that
@@ -220,10 +221,13 @@ library CoreVault {
         // subtract the redemption fee
         uint256 redemptionFeeUBA = redeemedUBA.mulBips(state.redemptionFeeBIPS);
         uint128 paymentUBA = (redeemedUBA - redemptionFeeUBA).toUint128();
-        // transfer from core vault
-        state.coreVaultManager.requestTransferFromCoreVault(
-            _redeemerUnderlyingAddress, bytes32(0), paymentUBA, false);
-        emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress,
+        // create new request id
+        state.newRedemptionFromCoreVaultId += PaymentReference.randomizedIdSkip();
+        bytes32 paymentReference = PaymentReference.redemptionFromCoreVault(state.newRedemptionFromCoreVaultId);
+        // transfer from core vault (paymentReference may change when the reuest is merged)
+        paymentReference = state.coreVaultManager.requestTransferFromCoreVault(
+            _redeemerUnderlyingAddress, paymentReference, paymentUBA, false);
+        emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, paymentReference,
             redeemedUBA, redemptionFeeUBA);
     }
 

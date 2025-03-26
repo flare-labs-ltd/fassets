@@ -63,6 +63,7 @@ interface ICoreVault {
     event CoreVaultRedemptionRequested(
         address indexed redeemer,
         string paymentAddress,
+        bytes32 paymentReference,
         uint256 valueUBA,
         uint256 feeUBA);
 

@@ -949,26 +949,6 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         );
       });
 
-      it("should revert requesting non-cancelable transfer if payment reference is not empty", async () => {
-        const destinationAddress = "destinationAddress";
-        const paymentReference = web3.utils.keccak256("paymentReference");
-        await coreVaultManager.addAllowedDestinationAddresses(["addr1", destinationAddress, "addr2"], {
-          from: governance,
-        });
-        const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-        await coreVaultManager.confirmPayment(proof); // available funds = 1000
-
-        await expectRevert(
-          coreVaultManager.requestTransferFromCoreVault(
-            destinationAddress,
-            paymentReference,
-            100,
-            false,
-            { from: assetManager }),
-          "invalid payment reference"
-        );
-      });
-
       it("should revert requesting transfer if there are insufficient funds", async () => {
         const destinationAddress = "destinationAddress";
         const destinationAddress2 = "destinationAddress2";

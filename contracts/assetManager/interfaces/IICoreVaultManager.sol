@@ -14,6 +14,9 @@ interface IICoreVaultManager is ICoreVaultManager {
      * @param _paymentReference payment reference
      * @param _amount amount
      * @param _cancelable cancelable flag (if true, the request can be canceled)
+     * @return _actualPaymentReference the actual payment reference that will be used - for non-cancelable requests
+     *  it can differ from the requested payment reference, because multiple queued payments to the same address
+     *  are merged in which case the reference of the previous payment to the same address will be used
      * NOTE: destination address must be allowed otherwise the request will revert.
      * NOTE: may only be called by the asset manager.
      */
@@ -23,7 +26,8 @@ interface IICoreVaultManager is ICoreVaultManager {
         uint128 _amount,
         bool _cancelable
     )
-        external;
+        external
+        returns (bytes32 _actualPaymentReference);
 
     /**
      * Cancels transfer request from core vault.

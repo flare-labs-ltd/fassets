@@ -212,6 +212,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assert.isTrue(toBN(returnReq.requestId).gten(1));
         assertWeb3Equal(returnReq.agentVault, agent2.vaultAddress);
         assertWeb3Equal(returnReq.valueUBA, context.convertLotsToUBA(5));
+        assert.isTrue(PaymentReference.isValid(returnReq.paymentReference));
+        assertWeb3Equal(PaymentReference.decodeType(returnReq.paymentReference), PaymentReference.RETURN_FROM_CORE_VAULT);
+        // check transfer requested event from core vault
         const transferRequested = requiredEventArgsFrom(rres, context.coreVaultManager!, "TransferRequested");
         assert.equal(transferRequested.cancelable, true);
         assert.equal(transferRequested.destinationAddress, agent2.underlyingAddress);
@@ -369,6 +372,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(redeem.paymentAddress, redeemer.underlyingAddress);
         assertWeb3Equal(redeem.valueUBA, context.convertLotsToUBA(10));
         assertWeb3Equal(redeem.feeUBA, toBN(redeem.valueUBA).mul(toBN(context.initSettings.coreVaultRedemptionFeeBIPS)).divn(MAX_BIPS));
+        assert.isTrue(PaymentReference.isValid(redeem.paymentReference));
+        assertWeb3Equal(PaymentReference.decodeType(redeem.paymentReference), PaymentReference.REDEMPTION_FROM_CORE_VAULT);
         const redemptionPaymentAmount = toBN(redeem.valueUBA).sub(toBN(redeem.feeUBA));
         // trigger CV requests
         const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
