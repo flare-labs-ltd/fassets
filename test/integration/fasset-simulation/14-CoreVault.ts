@@ -181,6 +181,41 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
     });
 
+    it("by setting coreVaultMinimumAmountLeftBIPS, system may require that some minting is left on the agent", async () => {
+        // set nonzero coreVaultMinimumAmountLeftBIPS
+        await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultMinimumAmountLeftBIPS(2000, { from: governance }));
+        //
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        const cv = await Redeemer.create(context, context.initSettings.coreVaultNativeAddress, coreVaultUnderlyingAddress);
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(10);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for all backing to core vault
+        const info = await agent.getAgentInfo();
+        const mintedAmount = toBN(info.mintedUBA);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(mintedAmount);
+        // trying to transfer everything will fail
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, mintedAmount, { from: agent.ownerWorkAddress, value: cbTransferFee }),
+            "too little minting left after transfer");
+        // check the maximum transfer amount, should be somewhere between 50% and 80%
+        const { 0: maxTransferAmount, 1: minLeftAmount } = await context.assetManager.maximumTransferToCoreVault(agent.vaultAddress);
+        assert.isTrue(maxTransferAmount.gte(mintedAmount.muln(50).divn(100)));
+        assert.isTrue(maxTransferAmount.lte(mintedAmount.muln(80).divn(100)));
+        assertWeb3Equal(minLeftAmount, mintedAmount.sub(maxTransferAmount));
+        // trying to transfer above max transfer amount will fail
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, maxTransferAmount.addn(1), { from: agent.ownerWorkAddress, value: cbTransferFee }),
+            "too little minting left after transfer");
+        // the agent can transfer up to maxTransferAmount
+        const transferAmount = maxTransferAmount;
+        const cbTransferFee2 = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee2 });
+        expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: transferAmount });
+    });
+
     async function prefundCoreVault(from: string, amount: BNish) {
         const wallet = new MockChainWallet(mockChain);
         const rtx = await wallet.addTransaction(from, coreVaultUnderlyingAddress, amount, null);

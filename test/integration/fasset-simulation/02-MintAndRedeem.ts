@@ -780,6 +780,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.buyCollateralPoolTokens(fullAgentCollateral);
             // allow a single minter
             await context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address, { from: agent.ownerWorkAddress });
+            assertWeb3DeepEqual(await context.assetManager.alwaysAllowedMintersForAgent(agent.vaultAddress), [allowedMinter.address]);
             // ordinary minters cannot mint
             await expectRevert(minter.reserveCollateral(agent.vaultAddress, 1), "agent not in mint queue");
             // allowed minter can mint without paying collateral reservation fee
@@ -792,6 +793,39 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.makeAvailable();
             await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address }),
                 "inappropriate fee amount");
+            await agent.exitAvailable();
+            // allowed minter can be removed and then it cannot mint on non-pubic agent anymore
+            await context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address, { from: agent.ownerWorkAddress });
+            assertWeb3DeepEqual(await context.assetManager.alwaysAllowedMintersForAgent(agent.vaultAddress), []);
+            // now allowedMinter cannot mint
+            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address }),
+                "agent not in mint queue")
+        });
+
+        it("when agent sets non-zero redemption pool fee share, some fassets are minted to pool after redemption", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // set non-zero pool fee share
+            const redemptionPoolFeeShareBIPS = 4000;
+            await agent.changeSettings({ redemptionPoolFeeShareBIPS });
+            //
+            const lots = 10;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)) });
+            //
+            const [rrqs] = await redeemer.requestRedemption(lots);
+            await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA), redeemingUBA: toBN(minted.mintedAmountUBA) });
+            // assert.equal(rrqs.length, 1);
+            const poolBalanceBefore = await context.fAsset.balanceOf(agent.collateralPool.address);
+            await agent.performRedemptions(rrqs);
+            const poolBalanceAfter = await context.fAsset.balanceOf(agent.collateralPool.address);
+            const totalRedemptionFee = context.convertLotsToUBA(lots).mul(toBN(context.settings.redemptionFeeBIPS)).divn(MAX_BIPS);
+            const poolRedemptionFee = totalRedemptionFee.muln(redemptionPoolFeeShareBIPS).divn(MAX_BIPS);
+            assertWeb3Equal(poolBalanceAfter.sub(poolBalanceBefore), poolRedemptionFee);
+            await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA).add(poolRedemptionFee), redeemingUBA: 0 });
         });
     });
 });
