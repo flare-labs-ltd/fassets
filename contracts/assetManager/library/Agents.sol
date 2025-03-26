@@ -232,15 +232,6 @@ library Agents {
         emit IAssetManagerEvents.DustChanged(_agent.vaultAddress(), dustUBA);
     }
 
-    function increaseDust(
-        Agent.State storage _agent,
-        uint64 _dustIncreaseAMG
-    )
-        internal
-    {
-        changeDust(_agent, _agent.dustAMG + _dustIncreaseAMG);
-    }
-
     function decreaseDust(
         Agent.State storage _agent,
         uint64 _dustDecreaseAMG
