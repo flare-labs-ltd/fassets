@@ -153,14 +153,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // another mint, just to prevent merging tickets
         await minter.performMinting(agent2.vaultAddress, 1);
         // agent requests transfer for half backing to core vault
+        const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
         const transferAmount = context.lotSize().muln(5);
-        const remainingTicketAmount = context.lotSize().muln(5);
         const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         // agent now has approx half backing in redeeming state
-        const expectRemainingMinted = remainingTicketAmount.add(toBN(minted.poolFeeUBA));
+        const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount }, "reset");
         // agent cancels transfer request
         const cancelRes = await context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
@@ -168,7 +168,50 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // proving transfer of underlying should fail
         await expectRevert(agent.performRedemptions(rdreqs), "invalid request id");
         // agent now has again full backing left
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)), redeemingUBA: 0 }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 }, "reset");
+        // redemption queue now has two tickets of 5 lots (and 1 by agent2)
+        const queue = await context.getRedemptionQueue();
+        assert.equal(queue.length, 3);
+        assertWeb3Equal(queue[0].ticketValueUBA, context.lotSize().muln(5));
+        assertWeb3Equal(queue[1].ticketValueUBA, context.lotSize());
+        assertWeb3Equal(queue[2].ticketValueUBA, context.lotSize().muln(5));
+        // redemption of all lots can go through
+        const redemptionRes = await context.assetManager.redeem(11, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
+        expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: minted.mintedAmountUBA });
+        expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+    });
+
+    it("confirming failed transfer payment acts like cancel", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // another mint, just to prevent merging tickets
+        await minter.performMinting(agent2.vaultAddress, 1);
+        // agent requests transfer for half backing to core vault
+        const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
+        const transferAmount = context.lotSize().muln(5);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assertWeb3Equal(rdreqs.length, 1);
+        // agent now has approx half backing in redeeming state
+        const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount }, "reset");
+        // agent makes and proves redemption payment with wrong amount
+        const request = rdreqs[0];
+        const txHash = await agent.performPayment(request.paymentAddress, 1, request.paymentReference);
+        const proof = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, request.paymentAddress);
+        const paymentRes = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
+        expectEvent(paymentRes, "RedemptionPaymentFailed");
+        // agent now has again full backing left
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 }, "reset");
         // redemption queue now has two tickets of 5 lots (and 1 by agent2)
         const queue = await context.getRedemptionQueue();
         assert.equal(queue.length, 3);
