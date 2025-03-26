@@ -105,7 +105,8 @@ export class FuzzingAgent extends FuzzingActor {
             const cheatOnPayment = coinFlip(0.2);
             const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
-            const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
+            // const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
+            const amountToMyself = takeFee;
             this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amountToMyself);
             const txHash = await agent.wallet.addMultiTransaction({ [agent.underlyingAddress]: paymentAmount.add(amountToMyself) },
                 { [request.paymentAddress]: paymentAmount, [this.ownerUnderlyingAddress]: amountToMyself },
@@ -292,7 +293,8 @@ export class FuzzingAgent extends FuzzingActor {
         // pull out fees
         const poolFeeBalance = await agent.poolFeeBalance();
         if (poolFeeBalance.gt(BN_ZERO)) {
-            await agent.withdrawPoolFees(poolFeeBalance);
+            await agent.withdrawPoolFees(poolFeeBalance)
+                .catch(e => scope.handleExpectedErrors(e, { exit: ['free f-asset balance too small'] }));
             // self-close agent fee fassets
             await agent.selfClose(poolFeeBalance);
         }

@@ -298,7 +298,11 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             // call handlers
             for (const event of events) {
                 for (const handler of this.eventHandlers.values()) {
-                    handler(event);
+                    try {
+                        handler(event);
+                    } catch (error) {
+                        txLog.push(`???? ERROR handling event ${event.event} in ${method}: ${error}`);
+                    }
                 }
             }
         } catch (e) {

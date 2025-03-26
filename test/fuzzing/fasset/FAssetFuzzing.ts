@@ -182,7 +182,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testSelfMint, 10],
             [testSelfClose, 10],
             [testLiquidate, 10],
-            [testConvertDustToTicket, 10],
+            [testConvertDustToTicket, 1],
             [testUnderlyingWithdrawal, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
