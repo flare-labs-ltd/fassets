@@ -259,7 +259,22 @@ export class TrackedState {
     // helpers
 
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
-        return this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
+        const emitter = this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
+        emitter.subscribe((args) => this.checkEventOrder(args.$event));
+        return emitter;
+    }
+
+    lastEventHandled?: EvmEvent;
+
+    checkEventOrder(event: EvmEvent) {
+        const last = this.lastEventHandled;
+        if (last) {
+            if (last.blockNumber > event.blockNumber || (last.blockNumber === event.blockNumber && last.logIndex > event.logIndex)) {
+                this.logger?.log(`???? ISSUE Inconsistent event ordering: previous event ${last.event} at ${last.blockNumber}.${last.logIndex}, ` +
+                    `current event ${event.event} at ${event.blockNumber}.${event.logIndex}.`);
+            }
+        }
+        this.lastEventHandled = event;
     }
 
     // getters

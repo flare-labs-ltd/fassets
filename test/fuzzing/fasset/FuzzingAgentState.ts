@@ -563,23 +563,23 @@ export class FuzzingAgentState extends TrackedAgentState {
         // reserved
         const reservedUBA = this.calculateReservedUBA();
         checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, this.reservedUBA);
-        checker.checkEquality(`${agentName}.reservedUBA.cumulative`, agentInfo.reservedUBA, reservedUBA);
+        checker.checkEquality(`${agentName}.reservedUBA.from_requests`, agentInfo.reservedUBA, reservedUBA);
         // minted
         const mintedUBA = this.calculateMintedUBA();
         checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, this.mintedUBA);
-        checker.checkEquality(`${agentName}.mintedUBA.cumulative`, agentInfo.mintedUBA, mintedUBA);
+        checker.checkEquality(`${agentName}.mintedUBA.from_tickets`, agentInfo.mintedUBA, mintedUBA);
         // redeeming
         const redeemingUBA = this.calculateRedeemingUBA();
         checker.checkEquality(`${agentName}.redeemingUBA`, agentInfo.redeemingUBA, this.redeemingUBA);
-        checker.checkEquality(`${agentName}.redeemingUBA.cumulative`, agentInfo.redeemingUBA, redeemingUBA);
+        checker.checkEquality(`${agentName}.redeemingUBA.from_requests`, agentInfo.redeemingUBA, redeemingUBA);
         // poolRedeeming
         const poolRedeemingUBA = this.calculatePoolRedeemingUBA();
         checker.checkEquality(`${agentName}.poolRedeemingUBA`, agentInfo.poolRedeemingUBA, this.poolRedeemingUBA);
-        checker.checkEquality(`${agentName}.poolRedeemingUBA.cumulative`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
+        checker.checkEquality(`${agentName}.poolRedeemingUBA.from_requests`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
         // free balance
         const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
         checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, this.freeUnderlyingBalanceUBA);
-        checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
+        checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.from_tickets_and_requests`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         // pool fees
         const MAX_ERR = 10; // virtual fee calculation is approximate and may have rounding errors
         const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
