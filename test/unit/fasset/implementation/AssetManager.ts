@@ -1261,12 +1261,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Announce exit
             let annRes = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
             let exitTime = requiredEventArgs(annRes, 'AvailableAgentExitAnnounced').exitAllowedAt;
-            // announce twice returns the same time for exit
-            await deterministicTimeIncrease(1);
+            // announce twice start new countdown
+            await deterministicTimeIncrease(10);
             let annRes2 = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
-            expectEvent.notEmitted(annRes2, 'AvailableAgentExitAnnounced');
-            let exitTime2 = await assetManager.announceExitAvailableAgentList.call(agentVault.address, { from: agentOwner1 });
-            assertWeb3Equal(exitTime, exitTime2);
+            let exitTime2 = requiredEventArgs(annRes2, 'AvailableAgentExitAnnounced').exitAllowedAt;
+            assert.isTrue(exitTime2.gt(exitTime));
             //Must wait agentExitAvailableTimelockSeconds before agent can exit
             res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
             await expectRevert(res, "exit too soon");
