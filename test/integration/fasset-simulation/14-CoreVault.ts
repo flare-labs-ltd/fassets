@@ -139,6 +139,95 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         expectEvent(redemptionRes, "RedemptionRequestIncomplete");
     });
 
+    it("should not transfer to core vault if agent in full liquidation", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const lots = 10;
+        const [minted, crt, txHash] = await minter.performMinting(agent.vaultAddress, lots);
+
+        await agent.poolCRFee(lots);
+        assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+        // perform illegal payment
+        await agent.performPayment("IllegalPayment1", 100);
+        // challenge agent for illegal payment
+        const proof = await context.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
+        await context.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: accounts[1234] });
+        const agentInfo = await agent.getAgentInfo();
+        const agentStatus = Number(agentInfo.status) as AgentStatus;
+        assert.equal(agentStatus, AgentStatus.FULL_LIQUIDATION);
+
+        // agent requests transfer for half backing to core vault
+        const transferAmount = context.lotSize().muln(10);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        await expectRevert(res, "invalid agent status");
+    });
+
+    it("should not transfer to core vault if not enough underlying", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const lots = 3;
+        const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+
+        await agent.poolCRFee(lots);
+        assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+        const mintedAmount = toBN(minted.mintedAmountUBA).add(minted.poolFeeUBA);
+        // perform illegal payment
+        await agent.performPayment("IllegalPayment1", 100);
+
+        // agent requests transfer for all backing to core vault
+        const transferAmount = context.lotSize().muln(10);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        await expectRevert(res, "not enough underlying");
+    });
+
+    it("should not transfer to core vault if transfer is already active", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for half backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+
+        // try to transfer again
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        await expectRevert(res, "transfer already active");
+    });
+
+    it("should not transfer to core vault if too little minting left", async () => {
+        await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(10, { from: context.governance });
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        await minter.performMinting(agent.vaultAddress, 5);
+        const redemptionRes = await context.assetManager.redeem(5, minter.underlyingAddress, ZERO_ADDRESS, { from: minter.address });
+        // agent requests transfer for half backing to core vault
+        const transferAmount = context.lotSize().muln(4);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        await expectRevert(res, "too little minting left after transfer");
+    });
+
     it("should cancel transfer to core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
@@ -257,6 +346,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const cbTransferFee2 = await context.assetManager.transferToCoreVaultFee(transferAmount);
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee2 });
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: transferAmount });
+    it("should revert canceling transfer to core vault if no active transfer", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const res = context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
+        await expectRevert(res, "no active transfer");
     });
 
     async function prefundCoreVault(from: string, amount: BNish) {
@@ -354,6 +447,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assert.equal(paymentReqs.length, 0);
     });
 
+    it("should not cancel return from core vault if not requested", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const res = context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
+        await expectRevert(res, "no active return request");
+    });
+
     it("test checks in requesting return from core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
@@ -379,6 +478,82 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // requested redeem amount cannot be more than total available amount on core vault
         await expectRevert(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 20, { from: agent2.ownerWorkAddress }),
             "not enough available on core vault");
+    });
+
+    it("should not request return from core vault if return already requested", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        await agent.transferToCoreVault(transferAmount);
+        // second agent requests return from CV
+        await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
+        // second agent tries to request return again
+        const res = context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
+        await expectRevert(res, "return from core vault already requested");
+    });
+
+    it("should not request return from core vault if agent in status is not normal", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted, crt, txHash] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        await agent.transferToCoreVault(transferAmount);
+
+        // perform illegal payment
+        await agent2.performPayment("IllegalPayment1", 100);
+        // challenge agent for illegal payment
+        const proof = await context.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent2.underlyingAddress);
+        await context.assetManager.illegalPaymentChallenge(proof, agent2.agentVault.address, { from: accounts[1234] });
+        const agentInfo = await agent2.getAgentInfo();
+        const agentStatus = Number(agentInfo.status) as AgentStatus;
+        assert.equal(agentStatus, AgentStatus.FULL_LIQUIDATION);
+
+        // second agent requests return from CV
+        const res = context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
+        await expectRevert(res, "invalid agent status");
+    });
+
+    it("should not request return from core vault if not enough free collateral", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(toWei(3e5), toWei(3e5));
+        // mint
+        const [minted, crt, txHash] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        await agent.transferToCoreVault(transferAmount);
+
+        // second agent requests return from CV
+        const res = context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 10, { from: agent2.ownerWorkAddress });
+        await expectRevert(res, "not enough free collateral");
     });
 
     async function makeAndConfirmReturnPayment(agent: Agent, from: string, to: string, amount: BNish, paymentReference: string) {
@@ -568,5 +743,58 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultMinimumRedeemLots(3, { from: governance }));
         assert.equal(timelocked, false);
+    });
+
+    it("should revert if core vault not enabled", async () => {
+        async function initialize1() {
+            commonContext = await CommonContext.createTest(governance);
+            context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+            return { commonContext, context };
+        }
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize1));
+        mockChain = context.chain as MockChain;
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+
+        // transfer to core vault
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10), { from: agent.ownerWorkAddress }), "core vault not enabled");
+        // cancel transfer to core vault
+        await expectRevert(context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        // request return from core vault
+        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        // cancel return from core vault
+        await expectRevert(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        // confirm return from core vault
+        const wallet = new MockChainWallet(mockChain);
+        const rtx = await wallet.addTransaction(agent.underlyingAddress, coreVaultUnderlyingAddress, 10, null);
+        const proof = await context.attestationProvider.provePayment(rtx, agent.underlyingAddress, coreVaultUnderlyingAddress);
+        await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        // redeem return from core vault
+        await expectRevert(context.assetManager.redeemFromCoreVault(10, agent.underlyingAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+
+        // // confirm transfer to core vault
+        // const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // // await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // // allow CV manager addresses
+        // // await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        // // make agent available
+        // // const fullAgentCollateral = toWei(3e8);
+        // // await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // // // mint
+        // // const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // // await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // // // agent requests transfer for some backing to core vault
+        // // const transferAmount = context.convertLotsToUBA(10);
+        // // await agent.transferToCoreVault(transferAmount);
+        // // // redeemer requests direct redemption from CV
+        // // make agent available
+        // const fullAgentCollateral = toWei(3e8);
+        // await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // // mint
+        // const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // await context.assetManager.redeem(1, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
+        // // const res = context.assetManager.redeem(10, redeemer.underlyingAddress, { from: redeemer.address });
+        // // await expectRevert(res, "core vault not enabled");
     });
 });

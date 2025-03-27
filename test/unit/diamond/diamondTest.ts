@@ -422,7 +422,6 @@ contract('DiamondTest', async function (accounts) {
         const test1Facet = await Test1Facet.at(diamondCutAddr);
         const selectors = DiamondSelectors.fromABI(test1Facet).restrict(['supportsInterface(bytes4)']);
         const testFacetAddress = test1FacetCode.address;
-        console.log("nene");
         let result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
