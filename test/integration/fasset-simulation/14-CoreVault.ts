@@ -214,7 +214,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(10, { from: context.governance });
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
         await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
@@ -346,6 +345,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const cbTransferFee2 = await context.assetManager.transferToCoreVaultFee(transferAmount);
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee2 });
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: transferAmount });
+    });
+
     it("should revert canceling transfer to core vault if no active transfer", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const res = context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
@@ -770,31 +771,5 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
         // redeem return from core vault
         await expectRevert(context.assetManager.redeemFromCoreVault(10, agent.underlyingAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
-
-        // // confirm transfer to core vault
-        // const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        // const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        // // await prefundCoreVault(minter.underlyingAddress, 1e6);
-        // // allow CV manager addresses
-        // // await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
-        // // make agent available
-        // // const fullAgentCollateral = toWei(3e8);
-        // // await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        // // // mint
-        // // const [minted] = await minter.performMinting(agent.vaultAddress, 10);
-        // // await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
-        // // // agent requests transfer for some backing to core vault
-        // // const transferAmount = context.convertLotsToUBA(10);
-        // // await agent.transferToCoreVault(transferAmount);
-        // // // redeemer requests direct redemption from CV
-        // // make agent available
-        // const fullAgentCollateral = toWei(3e8);
-        // await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        // // mint
-        // const [minted] = await minter.performMinting(agent.vaultAddress, 10);
-        // await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
-        // await context.assetManager.redeem(1, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
-        // // const res = context.assetManager.redeem(10, redeemer.underlyingAddress, { from: redeemer.address });
-        // // await expectRevert(res, "core vault not enabled");
     });
 });
