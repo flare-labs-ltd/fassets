@@ -427,9 +427,23 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             "invalid payment reference");
     });
 
+    async function testRedeemFromCV(redeemer: Redeemer, lots: number) {
+        const res = await context.assetManager.redeemFromCoreVault(lots, redeemer.underlyingAddress, { from: redeemer.address });
+        const redeem = requiredEventArgs(res, "CoreVaultRedemptionRequested");
+        assertWeb3Equal(redeem.redeemer, redeemer.address);
+        assertWeb3Equal(redeem.paymentAddress, redeemer.underlyingAddress);
+        assertWeb3Equal(redeem.valueUBA, context.convertLotsToUBA(lots));
+        assertWeb3Equal(redeem.feeUBA, toBN(redeem.valueUBA).mul(toBN(context.initSettings.coreVaultRedemptionFeeBIPS)).divn(MAX_BIPS));
+        assert.isTrue(PaymentReference.isValid(redeem.paymentReference));
+        assertWeb3Equal(PaymentReference.decodeType(redeem.paymentReference), PaymentReference.REDEMPTION_FROM_CORE_VAULT);
+        const paymentAmount = toBN(redeem.valueUBA).sub(toBN(redeem.feeUBA));
+        const paymentReference = redeem.paymentReference;
+        return [paymentAmount, paymentReference] as const;
+    }
+
     it("request direct redemption from core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
@@ -438,28 +452,27 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const fullAgentCollateral = toWei(3e8);
         await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
         // mint
-        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        const [minted] = await minter.performMinting(agent.vaultAddress, 100);
         await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
         // agent requests transfer for some backing to core vault
-        const transferAmount = context.convertLotsToUBA(10);
+        const transferAmount = context.convertLotsToUBA(100);
         await agent.transferToCoreVault(transferAmount);
         // redeemer requests direct redemption from CV
-        const res = await context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address });
-        const redeem = requiredEventArgs(res, "CoreVaultRedemptionRequested");
-        assertWeb3Equal(redeem.redeemer, redeemer.address);
-        assertWeb3Equal(redeem.paymentAddress, redeemer.underlyingAddress);
-        assertWeb3Equal(redeem.valueUBA, context.convertLotsToUBA(10));
-        assertWeb3Equal(redeem.feeUBA, toBN(redeem.valueUBA).mul(toBN(context.initSettings.coreVaultRedemptionFeeBIPS)).divn(MAX_BIPS));
-        assert.isTrue(PaymentReference.isValid(redeem.paymentReference));
-        assertWeb3Equal(PaymentReference.decodeType(redeem.paymentReference), PaymentReference.REDEMPTION_FROM_CORE_VAULT);
-        const redemptionPaymentAmount = toBN(redeem.valueUBA).sub(toBN(redeem.feeUBA));
-        // trigger CV requests
+        const [paymentAmount1, paymentReference1] = await testRedeemFromCV(redeemer, 50);
+        // second redemption request gets equal payment reference
+        const [paymentAmount2, paymentReference2] = await testRedeemFromCV(redeemer, 30);
+        assert.equal(paymentReference1, paymentReference2);
+        // trigger CV requests - there should be one with amount the sum of requests to the same redeemer
         const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
+        const redemptionPaymentAmount = paymentAmount1.add(paymentAmount2);
         assert.equal(paymentReqs.length, 1);
         assertWeb3Equal(paymentReqs[0].args.account, coreVaultUnderlyingAddress);
         assertWeb3Equal(paymentReqs[0].args.destination, redeemer.underlyingAddress);
         assertWeb3Equal(paymentReqs[0].args.amount, redemptionPaymentAmount);
+        // request after trigger gets different payment reference
+        const [paymentAmount3, paymentReference3] = await testRedeemFromCV(redeemer, 20);
+        assert.notEqual(paymentReference1, paymentReference3);
         // simulate transfer from CV
         const wallet = new MockChainWallet(mockChain);
         for (const req of paymentReqs) {
