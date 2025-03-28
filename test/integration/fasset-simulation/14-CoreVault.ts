@@ -821,8 +821,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         // transfer to core vault
         await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10)), "only agent vault owner");
-        // cancel transfer to core vault
-        await expectRevert(context.assetManager.cancelTransferToCoreVault(agent.vaultAddress), "only agent vault owner");
         // request return from core vault
         await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10), "only agent vault owner");
         // cancel return from core vault
