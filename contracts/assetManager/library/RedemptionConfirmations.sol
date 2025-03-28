@@ -56,7 +56,7 @@ library RedemptionConfirmations {
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
                 if (request.transferToCoreVault) {
-                    CoreVault.confirmTransferToCoreVault(_payment, request.agentVault, _redemptionRequestId);
+                    CoreVault.confirmTransferToCoreVault(_payment, agent, _redemptionRequestId);
                 }
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
@@ -66,16 +66,9 @@ library RedemptionConfirmations {
             // charge the redemption pool fee share by re-minting some fassets
             _mintPoolFee(agent, request);
         } else {
-            // We only need failure reports from agent's underlying address, so disallow others to
-            // lower the attack surface in case of report from other address.
             // We do not allow retrying failed payments, so just default or cancel here if not defaulted already.
             if (request.status == Redemption.Status.ACTIVE) {
-                if (request.transferToCoreVault) {
-                    Redemptions.reCreateRedemptionTicket(agent, request);
-                } else {
-                    // This will also release the remaining agent's collateral.
-                    RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
-                }
+                RedemptionFailures.executeDefaultOrCancel(agent, request, _redemptionRequestId);
             }
             // notify
             emit IAssetManagerEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
@@ -89,8 +82,7 @@ library RedemptionConfirmations {
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutFromVault(agent, msg.sender,
-                Agents.convertUSD5ToVaultCollateralWei(agent, Globals.getSettings().confirmationByOthersRewardUSD5));
+            Agents.payForConfirmationByOthers(agent, msg.sender);
         }
         // burn executor fee (or pay executor if the "other" that provided proof is the executor)
         // guarded against reentrancy in RedemptionConfirmationsFacet

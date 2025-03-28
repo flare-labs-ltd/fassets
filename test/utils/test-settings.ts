@@ -140,6 +140,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         transferFeeClaimMaxUnexpiredEpochs: 12,
         coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts [9]
         coreVaultTransferFeeBIPS: toBIPS("0.5%"),
+        coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultMinimumAmountLeftBIPS: 0,
         coreVaultMinimumRedeemLots: 10,

@@ -273,6 +273,17 @@ library Agents {
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
 
+    function payForConfirmationByOthers(
+        Agent.State storage _agent,
+        address _receiver
+    )
+        internal
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 amount = Agents.convertUSD5ToVaultCollateralWei(_agent, settings.confirmationByOthersRewardUSD5);
+        Agents.payoutFromVault(_agent, _receiver, amount);
+    }
+
     // We cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
     // at FTSO price multiplied by vaultCollateralBuyForFlareFactorBIPS and then we burn the NATs.
     function burnVaultCollateral(

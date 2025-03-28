@@ -26,7 +26,6 @@ library RedemptionFailures {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
-        require(!request.transferToCoreVault, "core vault transfer cannot default");
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
         // check non-payment proof
@@ -43,10 +42,16 @@ library RedemptionFailures {
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
-        require(msg.sender == request.redeemer || msg.sender == request.executor || Agents.isOwner(agent, msg.sender),
-            "only redeemer, executor or agent");
-        // pay redeemer in collateral
-        executeDefaultPayment(agent, request, _redemptionRequestId);
+        // The exception is transfer to core vault, where anybody can call default after enough time.
+        bool expectedSender = msg.sender == request.redeemer || msg.sender == request.executor ||
+            Agents.isOwner(agent, msg.sender);
+        require(expectedSender || _othersCanConfirmDefault(request), "only redeemer, executor or agent");
+        // pay redeemer in collateral / cancel transfer to core vault
+        executeDefaultOrCancel(agent, request, _redemptionRequestId);
+        // in case of confirmation by other for core vault transfer, pay the reward
+        if (!expectedSender) {
+            Agents.payForConfirmationByOthers(agent, msg.sender);
+        }
         // pay the executor if the executor called this
         // guarded against reentrancy in RedemptionDefaultsFacet
         Redemptions.payOrBurnExecutorFee(request);
@@ -63,7 +68,7 @@ library RedemptionFailures {
         Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
         require(request.rejectionTimestamp != 0, "only rejected redemption");
-        require(!request.transferToCoreVault, "core vault transfer cannot default");
+        assert(!request.transferToCoreVault);   // transfer to core vault cannot be rejected
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds <= block.timestamp,
             "rejected redemption default too early");
@@ -73,7 +78,7 @@ library RedemptionFailures {
         require(msg.sender == request.redeemer || msg.sender == request.executor || Agents.isOwner(agent, msg.sender),
             "only redeemer, executor or agent");
         // pay redeemer in collateral
-        executeDefaultPayment(agent, request, _redemptionRequestId);
+        executeDefaultOrCancel(agent, request, _redemptionRequestId);
         // pay the executor if the executor called this
         // guarded against reentrancy in RedemptionDefaultsFacet
         Redemptions.payOrBurnExecutorFee(request);
@@ -91,7 +96,6 @@ library RedemptionFailures {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
-        require(!request.transferToCoreVault, "core vault transfer cannot default");
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
         // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof
@@ -105,7 +109,7 @@ library RedemptionFailures {
                 && _proof.data.responseBody.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <=
                     _proof.data.responseBody.blockTimestamp,
                 "should default first");
-            executeDefaultPayment(agent, request, _redemptionRequestId);
+            executeDefaultOrCancel(agent, request, _redemptionRequestId);
             // burn the executor fee
             // guarded against reentrancy in RedemptionDefaultsFacet
             Redemptions.payOrBurnExecutorFee(request);
@@ -116,28 +120,45 @@ library RedemptionFailures {
         // so deleting the request could lead to successful challenge of the agent that paid, but the proof expired
     }
 
-    function executeDefaultPayment(
+    function executeDefaultOrCancel(
         Agent.State storage _agent,
         Redemption.Request storage _request,
         uint64 _redemptionRequestId
     )
         internal
     {
-        // should only be used for active redemptions and not for core vault transfers (should all be checked before)
+        // should only be used for active redemptions (should be checked before)
         assert(_request.status == Redemption.Status.ACTIVE);
-        assert(!_request.transferToCoreVault);
-        // pay redeemer in one or both collaterals
-        (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request);
-        Agents.payoutFromVault(_agent, _request.redeemer, paidC1Wei);
-        if (paidPoolWei > 0) {
-            Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
+        if (!_request.transferToCoreVault) {
+            // ordinary redemption default - pay redeemer in one or both collaterals
+            (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request);
+            Agents.payoutFromVault(_agent, _request.redeemer, paidC1Wei);
+            if (paidPoolWei > 0) {
+                Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
+            }
+            // release remaining agent collateral
+            Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
+            // underlying balance is not added to free balance yet, because we don't know if there was a late payment
+            // it will be (or was already) updated in call to confirmRedemptionPayment
+            emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
+                _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
+        } else {
+            // core vault transfer default - re-create tickets
+            Redemptions.reCreateRedemptionTicket(_agent, _request);
+            emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId);
         }
-        // release remaining agent collateral
-        Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
-        // underlying balance is not added to free balance yet, because we don't know if there was a late payment
-        // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
-            _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
+    }
+
+    function _othersCanConfirmDefault(
+        Redemption.Request storage _request
+    )
+        private view
+        returns (bool)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // others can confirm default only for core vault transfers and only after enough time
+        return _request.transferToCoreVault &&
+            block.timestamp > _request.timestamp + settings.confirmationByOthersAfterSeconds;
     }
 
     // payment calculation: pay redemptionDefaultFactorVaultCollateralBIPS (>= 1) from agent vault collateral and

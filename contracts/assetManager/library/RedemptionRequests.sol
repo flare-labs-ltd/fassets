@@ -140,7 +140,7 @@ library RedemptionRequests {
         // in case of pool self close, the only way to reject is to default
         if (request.poolSelfClose) {
             // release agent collateral
-            RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
+            RedemptionFailures.executeDefaultOrCancel(agent, request, _redemptionRequestId);
             // burn the executor fee
             // guarded against reentrancy in RedemptionRequestsFacet
             Redemptions.payOrBurnExecutorFee(request);

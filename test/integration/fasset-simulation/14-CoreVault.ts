@@ -1,8 +1,8 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BNish, DAYS, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -89,7 +89,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, info.mintedUBA);
         assertWeb3Equal(rdreqs[0].feeUBA, 0);
-        assert.isAbove(Number(rdreqs[0].lastUnderlyingTimestamp), mockChain.currentTimestamp() + 365 * DAYS);   // payment time should be huge (> 1 year)
         // wait 20 blocks and 1 hour - transfer can be defaulted without time extension
         context.skipToExpiration(currentBlock.addn(20), currentTimestamp.addn(1 * HOURS));
         await expectRevert(cv.redemptionPaymentDefault(rdreqs[0]), "overflow block not found");
@@ -101,7 +100,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         expectEvent(transferRes, "TransferToCoreVaultSuccessful");
         await expectEvent.inTransaction(transferRes.tx, context.coreVaultManager!, "PaymentConfirmed", { amount: transferAmount });
         // agent now has 0 backing
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: 0, redeemingUBA: 0, dustUBA: 0, requiredUnderlyingBalanceUBA: 0 }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: 0, redeemingUBA: 0, dustUBA: 0, requiredUnderlyingBalanceUBA: 0 });
         // all backing has been transferred from agent's underlying address
         assertWeb3Equal(await mockChain.getBalance(agent.underlyingAddress), minted.agentFeeUBA);
         assertWeb3Equal(await mockChain.getBalance(coreVaultUnderlyingAddress), toBN(minted.mintedAmountUBA).add(minted.poolFeeUBA));
@@ -132,7 +131,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await agent.performRedemptions(rdreqs);
         // agent now has approx half backing left
         const expectRemainingMinted = remainingTicketAmount.add(toBN(minted.poolFeeUBA));
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: 0 }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: 0 });
         // redemption requests are now partial
         const redemptionRes = await context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: remainingTicketAmount });
@@ -227,7 +226,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await expectRevert(res, "too little minting left after transfer");
     });
 
-    it("should cancel transfer to core vault", async () => {
+    it("should default transfer to core vault - by agent", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
@@ -240,6 +239,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // another mint, just to prevent merging tickets
         await minter.performMinting(agent2.vaultAddress, 1);
+        // update time
+        await context.updateUnderlyingBlock();
+        const { 0: currentBlock, 1: currentTimestamp } = await context.assetManager.currentUnderlyingBlock();
         // agent requests transfer for half backing to core vault
         const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
         const transferAmount = context.lotSize().muln(5);
@@ -249,14 +251,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(rdreqs.length, 1);
         // agent now has approx half backing in redeeming state
         const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount }, "reset");
-        // agent cancels transfer request
-        const cancelRes = await context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
-        expectEvent(cancelRes, "TransferToCoreVaultCancelled", { agentVault: agent.vaultAddress, transferRedemptionRequestId: rdreqs[0].requestId });
-        // proving transfer of underlying should fail
-        await expectRevert(agent.performRedemptions(rdreqs), "invalid request id");
-        // agent now has again full backing left
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount });
+        // time for payment is longer than normal
+        const expectedPaymentTime = currentTimestamp.add(toBN(context.settings.underlyingSecondsForPayment).add(toBN(context.initSettings.coreVaultTransferTimeExtensionSeconds)));
+        assert.isTrue(toBN(rdreqs[0].lastUnderlyingTimestamp).gte(expectedPaymentTime));
+        // cannot default immediatelly
+        await expectRevert(agent.transferToCoreVaultDefault(rdreqs[0]), "overflow block not found");
+        // skip until the payment time passes
+        context.skipToExpiration(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp);
+        // agent defaults transfer request
+        await agent.transferToCoreVaultDefault(rdreqs[0]);
+        // agent now has full backing left
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 });
         // redemption queue now has two tickets of 5 lots (and 1 by agent2)
         const queue = await context.getRedemptionQueue();
         assert.equal(queue.length, 3);
@@ -267,6 +273,46 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redemptionRes = await context.assetManager.redeem(11, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: minted.mintedAmountUBA });
         expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+    });
+
+    it("should default transfer to core vault - by others", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // another mint, just to prevent merging tickets
+        await minter.performMinting(agent2.vaultAddress, 1);
+        // update time
+        await context.updateUnderlyingBlock();
+        // agent requests transfer for half backing to core vault
+        const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
+        const transferAmount = context.lotSize().muln(5);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assertWeb3Equal(rdreqs.length, 1);
+        // agent now has approx half backing in redeeming state
+        const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount });
+        // cannot default immediatelly
+        await expectRevert(agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1), "overflow block not found");
+        // skip until the payment time passes
+        context.skipToExpiration(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp);
+        // others cannot default immediately when payment time ends
+        await expectRevert(agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1), "only redeemer, executor or agent");
+        // after confirmation by others time, the default will succeed and the challenger will get some reward
+        await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+        const challengerBalanceBefore = await context.usdc.balanceOf(challengerAddress1);
+        await agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1);
+        const challengerBalanceAfter = await context.usdc.balanceOf(challengerAddress1);
+        assert.isTrue(challengerBalanceAfter.gte(challengerBalanceBefore.addn(50e6)));
+        // agent now has full backing left
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 });
     });
 
     it("confirming failed transfer payment acts like cancel", async () => {
@@ -291,7 +337,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(rdreqs.length, 1);
         // agent now has approx half backing in redeeming state
         const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount });
         // agent makes and proves redemption payment with wrong amount
         const request = rdreqs[0];
         const txHash = await agent.performPayment(request.paymentAddress, 1, request.paymentReference);
@@ -299,7 +345,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const paymentRes = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
         expectEvent(paymentRes, "RedemptionPaymentFailed");
         // agent now has again full backing left
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 });
         // redemption queue now has two tickets of 5 lots (and 1 by agent2)
         const queue = await context.getRedemptionQueue();
         assert.equal(queue.length, 3);
@@ -345,12 +391,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const cbTransferFee2 = await context.assetManager.transferToCoreVaultFee(transferAmount);
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee2 });
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: transferAmount });
-    });
-
-    it("should revert canceling transfer to core vault if no active transfer", async () => {
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const res = context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
-        await expectRevert(res, "no active transfer");
     });
 
     async function prefundCoreVault(from: string, amount: BNish) {
@@ -410,9 +450,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         }
         // agent now has approx half backing left
         const expectRemainingMinted = remainingTicketAmount.add(toBN(minted.poolFeeUBA));
-        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: 0 }, "reset");
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: 0 });
         // second agent has approx the other half
-        await agent2.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: transferRequested.amount, redeemingUBA: 0 }, "reset");
+        await agent2.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: transferRequested.amount, redeemingUBA: 0 });
         // redemption requests are split over two agents
         const redemptionRes = await context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: remainingTicketAmount });
@@ -758,8 +798,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
         // transfer to core vault
         await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10), { from: agent.ownerWorkAddress }), "core vault not enabled");
-        // cancel transfer to core vault
-        await expectRevert(context.assetManager.cancelTransferToCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
         // request return from core vault
         await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "core vault not enabled");
         // cancel return from core vault

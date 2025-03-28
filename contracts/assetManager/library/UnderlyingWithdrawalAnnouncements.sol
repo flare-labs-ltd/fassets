@@ -63,8 +63,7 @@ library UnderlyingWithdrawalAnnouncements {
         UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutFromVault(agent, msg.sender,
-                Agents.convertUSD5ToVaultCollateralWei(agent, settings.confirmationByOthersRewardUSD5));
+            Agents.payForConfirmationByOthers(agent, msg.sender);
         }
         // send event
         emit IAssetManagerEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,

@@ -21,6 +21,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         IICoreVaultManager _coreVaultManager,
         address payable _nativeAddress,
         uint256 _transferFeeBIPS,
+        uint256 _transferTimeExtensionSeconds,
         uint256 _redemptionFeeBIPS,
         uint256 _minimumAmountLeftBIPS,
         uint256 _minimumRedeemLots
@@ -41,6 +42,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         state.coreVaultManager = _coreVaultManager;
         state.nativeAddress = _nativeAddress;
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
+        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint64();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
         state.minimumRedeemLots = _minimumRedeemLots.toUint64();
@@ -78,6 +80,16 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
+    }
+
+    function setCoreVaultTransferTimeExtensionSeconds(
+        uint256 _transferTimeExtensionSeconds
+    )
+        external
+        onlyImmediateGovernance
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint64();
     }
 
     function setCoreVaultRedemptionFeeBIPS(
@@ -134,6 +146,14 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         return state.transferFeeBIPS;
+    }
+
+    function getCoreVaultTransferTimeExtensionSeconds()
+        external view
+        returns (uint256)
+    {
+        CoreVault.State storage state = CoreVault.getState();
+        return state.transferTimeExtensionSeconds;
     }
 
     function getCoreVaultRedemptionFeeBIPS()

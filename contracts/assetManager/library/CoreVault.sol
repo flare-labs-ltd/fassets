@@ -23,6 +23,7 @@ library CoreVault {
     struct State {
         // settings
         IICoreVaultManager coreVaultManager;
+        uint64 transferTimeExtensionSeconds;
         address payable nativeAddress;
         uint16 transferFeeBIPS;
         uint16 redemptionFeeBIPS;
@@ -34,10 +35,6 @@ library CoreVault {
         uint64 newTransferFromCoreVaultId;
         uint64 newRedemptionFromCoreVaultId;
     }
-
-    // doesn't really matter in the contracts, but indicates to the bots that
-    // the payment time practically never expires (> 3 years)
-    uint64 internal constant TRANSFER_TIME_EXTENSION_SECONDS = 1e8;
 
     // core vault may not be enabled on all chains
     modifier onlyEnabled {
@@ -76,7 +73,7 @@ library CoreVault {
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
             RedemptionRequests.AgentRedemptionData(_agent.vaultAddress(), transferredAMG),
             state.nativeAddress, underlyingAddress, false, payable(address(0)), 0,
-            TRANSFER_TIME_EXTENSION_SECONDS, true);
+            state.transferTimeExtensionSeconds, true);
         // set the active request
         _agent.activeTransferToCoreVault = redemptionRequestId;
         // pay the transfer fee
@@ -86,24 +83,10 @@ library CoreVault {
         emit ICoreVault.TransferToCoreVaultStarted(agentVault, redemptionRequestId, transferredUBA);
     }
 
-    function cancelTransferToCoreVault(
-        Agent.State storage _agent
-    )
-        internal
-        onlyEnabled
-    {
-        uint64 requestId = _agent.activeTransferToCoreVault;
-        require(requestId != 0, "no active transfer");
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId);
-        Redemptions.reCreateRedemptionTicket(_agent, request);
-        Redemptions.deleteRedemptionRequest(requestId);
-        emit ICoreVault.TransferToCoreVaultCancelled(_agent.vaultAddress(), requestId);
-    }
-
     // only called by RedemptionConfirmations.confirmRedemptionPayment, so all checks are done there
     function confirmTransferToCoreVault(
         IPayment.Proof calldata _payment,
-        address _agentVault,
+        Agent.State storage _agent,
         uint64 _redemptionRequestId
     )
         internal
@@ -112,7 +95,7 @@ library CoreVault {
         State storage state = getState();
         state.coreVaultManager.confirmPayment(_payment);
         uint256 receivedAmount = _payment.data.responseBody.receivedAmount.toUint256();
-        emit ICoreVault.TransferToCoreVaultSuccessful(_agentVault, _redemptionRequestId, receivedAmount);
+        emit ICoreVault.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId, receivedAmount);
     }
 
     function requestReturnFromCoreVault(

@@ -19,7 +19,7 @@ interface ICoreVault {
     /**
      * Agent has cancelled transfer to the core vault without paying.
      */
-    event TransferToCoreVaultCancelled(
+    event TransferToCoreVaultDefaulted(
         address indexed agentVault,
         uint256 indexed transferRedemptionRequestId);
 
@@ -77,16 +77,6 @@ interface ICoreVault {
      */
     function transferToCoreVault(address _agentVault, uint256 _amountUBA)
         external payable;
-
-    /**
-     * Cancel a transfer to core vault.
-     * If the payment was not made, this is the only way to release agent's collateral,
-     * since redemption requests for transfer to core vault cannot default or expire.
-     * NOTE: only agent vault owner can call
-     * @param _agentVault the agent vault address
-     */
-    function cancelTransferToCoreVault(address _agentVault)
-        external;
 
     /**
      * Request that core vault transfers funds to the agent's underlying address,

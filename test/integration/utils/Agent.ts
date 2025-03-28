@@ -385,15 +385,24 @@ export class Agent extends AssetContextClient {
     }
 
     async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {
-        const proof = await this.attestationProvider.proveReferencedPaymentNonexistence(
+        const res = await Agent.executeRedemptionPaymentDefault(this.context, request, this.ownerWorkAddress);
+        return requiredEventArgs(res, 'RedemptionDefault');
+    }
+
+    async transferToCoreVaultDefault(request: EventArgs<RedemptionRequested>, from = this.ownerWorkAddress) {
+        const res = await Agent.executeRedemptionPaymentDefault(this.context, request, from);
+        return requiredEventArgs(res, 'TransferToCoreVaultDefaulted');
+    }
+
+    static async executeRedemptionPaymentDefault(context: AssetContext, request: EventArgs<RedemptionRequested>, from: string) {
+        const proof = await context.attestationProvider.proveReferencedPaymentNonexistence(
             request.paymentAddress,
             request.paymentReference,
             request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(),
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
-        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.ownerWorkAddress });
-        return requiredEventArgs(res, 'RedemptionDefault');
+        return await context.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: from });
     }
 
     async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault>> {

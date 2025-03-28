@@ -39,24 +39,6 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
     }
 
     /**
-     * Cancel a transfer to core vault.
-     * If the payment was not made, this is the only way to release agent's collateral,
-     * since redemption requests for transfer to core vault cannot default or expire.
-     * NOTE: only agent vault owner can call
-     * @param _agentVault the agent vault address
-     */
-    function cancelTransferToCoreVault(
-        address _agentVault
-    )
-        external
-        nonReentrant
-        onlyAgentVaultOwner(_agentVault)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        CoreVault.cancelTransferToCoreVault(agent);
-    }
-
-    /**
      * Request that core vault transfers funds to the agent's underlying address,
      * which makes them available for redemptions. This method reserves agent's collateral.
      * This may be sent by an agent when redemptions dominate mintings, so that the agents
