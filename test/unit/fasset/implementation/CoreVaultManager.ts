@@ -1301,6 +1301,81 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         assertWeb3Equal(await coreVaultManager.availableFunds(), 320 + 200);
       });
 
+      it("should trigger instructions (50 payment and 50 escrow instructions)", async () => {
+        // confirm payment (fund core vault)
+        const transactionId = web3.utils.keccak256("transactionId");
+        const amount = 16900;
+        const proof = createPaymentProof(transactionId, amount);
+        await coreVaultManager.confirmPayment(proof);
+        await coreVaultManager.removeUnusedPreimageHashes(2, { from: governance });
+
+        // request 50 cancelable transfers
+        const paymentReference = web3.utils.keccak256("ref");
+        for (let i = 0; i < 50; i++) {
+          const destinationAddress = web3.utils.keccak256("destinationAddress" + i);
+          await coreVaultManager.addAllowedDestinationAddresses([destinationAddress], {
+            from: governance,
+          });
+          const amount = "100";
+          await coreVaultManager.requestTransferFromCoreVault(
+            destinationAddress,
+            paymentReference,
+            amount,
+            true,
+            {
+              from: assetManager,
+            }
+          );
+          const preimageHash = web3.utils.keccak256("hash" + i);
+          await coreVaultManager.addPreimageHashes([preimageHash], {
+            from: governance,
+          });
+        }
+
+        // trigger instructions
+        const tx = await coreVaultManager.triggerInstructions({
+          from: accounts[1],
+        });
+        console.log("triggering 50 payment + 50 escrow instructions - gas used: ", tx.receipt.gasUsed);
+
+        const currentTimestamp = await time.latest();
+        const escrowEndTimestamp = currentTimestamp.addn(DAY);
+        let cancelAfterTs = escrowEndTimestamp.subn(escrowEndTimestamp.modn(DAY)).addn(escrowTimeSeconds);
+        for (let i = 0; i < 50; i++) {
+          const destinationAddress = web3.utils.keccak256("destinationAddress" + i);
+          const amount = "100";
+          expectEvent(tx, "PaymentInstructions", {
+            sequence: i.toString(),
+            account: coreVaultAddress,
+            destination: destinationAddress,
+            amount: amount,
+            fee: fee,
+            paymentReference: paymentReference,
+          });
+          const preimageHash = web3.utils.keccak256("hash" + i);
+          expectEvent(tx, "EscrowInstructions", {
+            sequence: (i + 50).toString(),
+            preimageHash: preimageHash,
+            account: coreVaultAddress,
+            destination: custodianAddress,
+            amount: "200",
+            cancelAfterTs: cancelAfterTs.addn(i * DAY)
+          });
+        }
+        assertWeb3Equal(await coreVaultManager.availableFunds(),
+          16900 - 50 * 100 - 50 * 200 - 100 * 15); // 400
+        assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 100);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 200 * 50);
+
+        // trigger instructions again. Nothing should happen as there are no new requests and escrows still didn't expire
+        const tx1 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
+        assertWeb3Equal(await coreVaultManager.nextSequenceNumber(), 100);
+        assertWeb3Equal(await coreVaultManager.escrowedFunds(), 10000);
+        assertWeb3Equal(await coreVaultManager.availableFunds(), 400);
+        expectEvent.notEmitted(tx1, "PaymentInstructions");
+        expectEvent.notEmitted(tx1, "EscrowInstructions");
+      });
+
       it("should not issue payment instructions if there are no funds", async () => {
         const transactionId = web3.utils.keccak256("transactionId");
         const proof = createPaymentProof(transactionId, 1080 + 225 * 2 + 300);
