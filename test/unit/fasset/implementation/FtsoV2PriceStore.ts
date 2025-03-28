@@ -4,6 +4,7 @@ import { FtsoV2PriceStoreInstance, MockContractInstance } from "../../../../type
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { ZERO_BYTES_20 } from "@flarenetwork/state-connector-protocol";
 
 const FtsoV2PriceStore = artifacts.require('FtsoV2PriceStore');
 const MockContract = artifacts.require('MockContract');
@@ -206,6 +207,10 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(decimals, feedDecimals[1]);
             assertWeb3Equal(decimals2, feedDecimals[1]);
             assertWeb3Equal(noOfSubmits, 4);
+        });
+
+        it("should revert if getting price from trusted providers with quality for unsupported symbol", async () => {
+            await expectRevert(priceStore.getPriceFromTrustedProvidersWithQuality(ZERO_BYTES_20), "symbol not supported");
         });
 
         it("should calculate median price from 1 trusted price", async () => {

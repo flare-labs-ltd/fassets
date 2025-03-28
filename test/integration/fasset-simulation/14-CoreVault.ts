@@ -748,6 +748,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(await context.assetManager.getCoreVaultMinimumRedeemLots(), 3);
     });
 
+    it("revert if modifying core vault settings with invalid values", async () => {
+        await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
+        await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
+        await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
+    });
+
     it("core vault setting modification requires governance call", async () => {
         await expectRevert(context.assetManager.setCoreVaultManager(accounts[31]), "only governance");
         await expectRevert(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "only governance");
@@ -810,4 +816,21 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // redeem return from core vault
         await expectRevert(context.assetManager.redeemFromCoreVault(10, agent.underlyingAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
     });
+
+    it("revert if not called from agent vault owner address", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // transfer to core vault
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10)), "only agent vault owner");
+        // cancel transfer to core vault
+        await expectRevert(context.assetManager.cancelTransferToCoreVault(agent.vaultAddress), "only agent vault owner");
+        // request return from core vault
+        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10), "only agent vault owner");
+        // cancel return from core vault
+        await expectRevert(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress), "only agent vault owner");
+        // confirm return from core vault
+        const wallet = new MockChainWallet(mockChain);
+        const rtx = await wallet.addTransaction(agent.underlyingAddress, coreVaultUnderlyingAddress, 10, null);
+        const proof = await context.attestationProvider.provePayment(rtx, agent.underlyingAddress, coreVaultUnderlyingAddress);
+        await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress), "only agent vault owner");
+    })
 });

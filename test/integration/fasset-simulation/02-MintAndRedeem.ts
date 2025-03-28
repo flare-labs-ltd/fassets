@@ -827,5 +827,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(poolBalanceAfter.sub(poolBalanceBefore), poolRedemptionFee);
             await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA).add(poolRedemptionFee), redeemingUBA: 0 });
         });
+
+        it("revert when adding and removing allowed minter for agent from wrong address", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const allowedMinter = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
+            await expectRevert(context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "only agent vault owner");
+            await expectRevert(context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "only agent vault owner");
+        });
     });
 });

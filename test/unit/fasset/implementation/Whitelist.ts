@@ -77,6 +77,11 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             assert.equal(isRevoked, false);
         });
 
+        it("should not revoke address from the whitelist if not governance or manager", async () => {
+            await whitelist.addAddressToWhitelist(whitelistedAddresses[0], {from: governance});
+            await expectRevert(whitelist.revokeAddress(whitelistedAddresses[0], {from: accounts[5]}), "only governance or manager");
+        });
+
         it('should not revoke addresses from the whitelist twice', async function () {
             let res = await whitelist.addAddressesToWhitelist(whitelistedAddresses, { from: governance });
             expectEvent(res, "Whitelisted");
