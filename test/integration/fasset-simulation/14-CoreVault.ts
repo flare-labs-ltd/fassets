@@ -737,6 +737,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // update transfer-to-vault fee
         await context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: context.governance });
         assertWeb3Equal(await context.assetManager.getCoreVaultTransferFeeBIPS(), 123);
+        // update transfer-to-vault payment time extension
+        await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: context.governance });
+        assertWeb3Equal(await context.assetManager.getCoreVaultTransferTimeExtensionSeconds(), 1800);
         // update minimum amount left after transfer to vault
         await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1234, { from: context.governance });
         assertWeb3Equal(await context.assetManager.getCoreVaultMinimumAmountLeftBIPS(), 1234);
@@ -758,6 +761,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await expectRevert(context.assetManager.setCoreVaultManager(accounts[31]), "only governance");
         await expectRevert(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "only governance");
         await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(123), "only governance");
+        await expectRevert(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800), "only governance");
         await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "only governance");
         await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1000), "only governance");
         await expectRevert(context.assetManager.setCoreVaultMinimumRedeemLots(3), "only governance");
@@ -777,6 +781,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: governance }));
+        assert.equal(timelocked, false);
+        //
+        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: governance }));
         assert.equal(timelocked, false);
         //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
