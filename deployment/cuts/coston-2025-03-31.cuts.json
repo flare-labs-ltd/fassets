@@ -1,0 +1,41 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestBTC", "AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"],
+    "deleteMethods": [
+        "cancelTransferToCoreVault(address)"
+    ],
+    "facets": [
+        {
+            "contract": "AvailableAgentsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "UnderlyingBalanceFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CoreVaultFacet",
+            "exposedInterfaces": ["ICoreVault"]
+        },
+        {
+            "contract": "CoreVaultSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultSettings"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionHandshakeFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

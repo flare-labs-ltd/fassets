@@ -9,7 +9,7 @@ import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
-import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
+import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, redeployFacet, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
@@ -84,6 +84,15 @@ task("verify-contract", "Verify a contract in contracts.json.")
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyContract(hre, contract, contracts, constructorArgs, force);
+    });
+
+task("redeploy-facet", "Redeploy a facet or proxy implementation and update contracts.json.")
+    .addPositionalParam("implementationName", "name of the implementation contract to redeploy")
+    .setAction(async ({ implementationName }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
+        await redeployFacet(hre, contracts, implementationName);
     });
 
 task("verify-asset-managers", "Verify deployed asset managers.")

@@ -180,6 +180,13 @@ export async function deployCoreVaultManager(hre: HardhatRuntimeEnvironment, con
     }
 }
 
+export async function redeployFacet(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, implementationName: string) {
+    const { deployer } = loadDeployAccounts(hre);
+    const implContract = contracts.getRequired(implementationName);
+    const facetName = implContract.contractName.replace(/\.sol$/, "");
+    await deployFacet(hre, implementationName, contracts, deployer, facetName);
+}
+
 export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
 
