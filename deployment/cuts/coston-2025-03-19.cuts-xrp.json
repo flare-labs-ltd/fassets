@@ -50,6 +50,6 @@
     "init": {
         "contract": "CoreVaultSettingsFacet",
         "method": "initCoreVaultFacet",
-        "args": ["0xCC9206d850fb9140019E78e6b2B309193a34DA3c", "0xfeC5BF0a64963E6b2EbA8153235E40f9e5a8c8Ae", 0, 2000, 0, 10]
+        "args": ["0xCC9206d850fb9140019E78e6b2B309193a34DA3c", "0xfeC5BF0a64963E6b2EbA8153235E40f9e5a8c8Ae", 0, 7200, 0, 2000, 10]
     }
 }
