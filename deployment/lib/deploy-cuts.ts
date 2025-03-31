@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DiamondSelectors } from "../../lib/utils/diamond";
+import { DiamondSelectors, toSelector } from "../../lib/utils/diamond";
 import { DiamondCutJson, DiamondCutJsonFacet, DiamondCutJsonInit } from "./DiamondCutJson";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { ContractStore } from "./contracts";
@@ -31,7 +31,8 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const deployedSelectors = await DiamondSelectors.fromLoupe(diamondLoupeInstance);
     // create cuts
     const newSelectors = await createNewSelectors(hre, contracts, cuts.facets, deployer);
-    const diamondCuts = deployedSelectors.createCuts(newSelectors);
+    const deletedSelectors = createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
+    const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
     // create init
     const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init);
     // perform or print cuts
@@ -101,6 +102,19 @@ async function createFacetSelectors(hre: HardhatRuntimeEnvironment, contracts: C
         facetSelectors = facetSelectors.restrict(filterSelectors);
     }
     return facetSelectors;
+}
+
+function createDeletedSelectors(deployedSelectors: DiamondSelectors, deleteMethods: string[]) {
+    const selectorMap: Map<string, string> = new Map();
+    for (const methodSig of deleteMethods) {
+        const selector = toSelector(methodSig);
+        const facet = deployedSelectors.selectorMap.get(selector);
+        if (facet == null) {
+            throw new Error(`Unknown method to delete '${methodSig}'`);
+        }
+        selectorMap.set(selector, ZERO_ADDRESS);    // diamondCut operation requires 0 facet address for deleted methods
+    }
+    return new DiamondSelectors(selectorMap);
 }
 
 async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: ContractStore, init?: DiamondCutJsonInit) {

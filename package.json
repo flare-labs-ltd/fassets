@@ -47,7 +47,7 @@
     "local": "yarn hardhat --network local",
     "full-deploy-hardhat": "yarn local deploy-price-reader-v2 && yarn local deploy-asset-manager-dependencies && yarn local deploy-asset-managers --deploy-controller --all",
     "full-deploy-hardhat-test": "yarn local test --no-compile deployment/test/test-deployed-contracts.ts",
-    "mock-deploy-hardhat": "rm -f deployment/deploys/hardhat.json && yarn local run deployment/test/scripts/mock-deploy-dependencies.ts && yarn local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test && yarn local switch-to-production",
+    "mock-deploy-hardhat": "rm -f deployment/deploys/hardhat.json && yarn local run deployment/test/scripts/mock-deploy-dependencies.ts && yarn local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",
     "flare-sc-deploy-hardhat": "yarn local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",
     "---------DEPLOY---SCRIPTS---COSTON": "",
     "coston": "yarn hardhat --network coston",
