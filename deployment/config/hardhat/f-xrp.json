@@ -101,6 +101,7 @@
     "transferFeeClaimMaxUnexpiredEpochs": 16,
     "coreVaultNativeAddress": "0xfeC5BF0a64963E6b2EbA8153235E40f9e5a8c8Ae",
     "coreVaultTransferFeeBIPS": 0,
+    "coreVaultTransferTimeExtensionSeconds": 7200,
     "coreVaultMinimumAmountLeftBIPS": 2000,
     "coreVaultRedemptionFeeBIPS": 0,
     "coreVaultMinimumRedeemLots": 10

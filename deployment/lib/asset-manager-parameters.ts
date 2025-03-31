@@ -563,6 +563,12 @@ export interface AssetManagerParameters {
     coreVaultTransferFeeBIPS: integer;
 
     /**
+     * Extra time that transfer to core vault redemption payments get compared
+     * to ordinary redemptions.
+     */
+    coreVaultTransferTimeExtensionSeconds: integer;
+
+    /**
      * The minimum amount that has to be left on agent's underlying address after the transfer to the core vault,
      * to make sure that the agent stays redeemable.
      *
