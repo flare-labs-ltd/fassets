@@ -729,25 +729,32 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     it("modify core vault settings", async () => {
         // update manager
-        await context.assetManager.setCoreVaultManager(accounts[31], { from: context.governance });
+        let res = await context.assetManager.setCoreVaultManager(accounts[31], { from: context.governance });
+        expectEvent(res, "ContractChanged", { name: "coreVaultManager", value: accounts[31] })
         assertWeb3Equal(await context.assetManager.getCoreVaultManager(), accounts[31]);
         // update vault native address (collects fees)
-        await context.assetManager.setCoreVaultNativeAddress(accounts[32], { from: context.governance });
+        res = await context.assetManager.setCoreVaultNativeAddress(accounts[32], { from: context.governance });
+        expectEvent(res, "ContractChanged", { name: "coreVaultNativeAddress", value: accounts[32] })
         assertWeb3Equal(await context.assetManager.getCoreVaultNativeAddress(), accounts[32]);
         // update transfer-to-vault fee
-        await context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: context.governance });
+        res = await context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: context.governance });
+        expectEvent(res, "SettingChanged", { name: "coreVaultTransferFeeBIPS", value: "123" })
         assertWeb3Equal(await context.assetManager.getCoreVaultTransferFeeBIPS(), 123);
         // update transfer-to-vault payment time extension
-        await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: context.governance });
+        res = await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: context.governance });
+        expectEvent(res, "SettingChanged", { name: "coreVaultTransferTimeExtensionSeconds", value: "1800" })
         assertWeb3Equal(await context.assetManager.getCoreVaultTransferTimeExtensionSeconds(), 1800);
         // update minimum amount left after transfer to vault
-        await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1234, { from: context.governance });
+        res = await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1234, { from: context.governance });
+        expectEvent(res, "SettingChanged", { name: "coreVaultMinimumAmountLeftBIPS", value: "1234" })
         assertWeb3Equal(await context.assetManager.getCoreVaultMinimumAmountLeftBIPS(), 1234);
         // update direct-redemption-from-vault fee
-        await context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: context.governance });
+        res = await context.assetManager.setCoreVaultRedemptionFeeBIPS(211, { from: context.governance });
+        expectEvent(res, "SettingChanged", { name: "coreVaultRedemptionFeeBIPS", value: "211" })
         assertWeb3Equal(await context.assetManager.getCoreVaultRedemptionFeeBIPS(), 211);
         // update minimum redem lots
-        await context.assetManager.setCoreVaultMinimumRedeemLots(3, { from: context.governance });
+        res = await context.assetManager.setCoreVaultMinimumRedeemLots(3, { from: context.governance });
+        expectEvent(res, "SettingChanged", { name: "coreVaultMinimumRedeemLots", value: "3" })
         assertWeb3Equal(await context.assetManager.getCoreVaultMinimumRedeemLots(), 3);
     });
 

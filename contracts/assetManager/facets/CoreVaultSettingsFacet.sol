@@ -59,6 +59,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         state.coreVaultManager = IICoreVaultManager(_coreVaultManager);
+        emit IAssetManagerEvents.ContractChanged("coreVaultManager", _coreVaultManager);
     }
 
     function setCoreVaultNativeAddress(
@@ -69,6 +70,9 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         state.nativeAddress = _nativeAddress;
+        // not really a contract, but works for any address - event name is a bit unfortunate
+        // but we don't want to change it now to keep backward compatibility
+        emit IAssetManagerEvents.ContractChanged("coreVaultNativeAddress", _nativeAddress);
     }
 
     function setCoreVaultTransferFeeBIPS(
@@ -80,6 +84,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         state.transferFeeBIPS = _transferFeeBIPS.toUint16();
+        emit IAssetManagerEvents.SettingChanged("coreVaultTransferFeeBIPS", _transferFeeBIPS);
     }
 
     function setCoreVaultTransferTimeExtensionSeconds(
@@ -90,6 +95,8 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint64();
+        emit IAssetManagerEvents.SettingChanged("coreVaultTransferTimeExtensionSeconds",
+            _transferTimeExtensionSeconds);
     }
 
     function setCoreVaultRedemptionFeeBIPS(
@@ -101,6 +108,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
+        emit IAssetManagerEvents.SettingChanged("coreVaultRedemptionFeeBIPS", _redemptionFeeBIPS);
     }
 
     function setCoreVaultMinimumAmountLeftBIPS(
@@ -112,6 +120,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
+        emit IAssetManagerEvents.SettingChanged("coreVaultMinimumAmountLeftBIPS", _minimumAmountLeftBIPS);
     }
 
     function setCoreVaultMinimumRedeemLots(
@@ -122,6 +131,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         state.minimumRedeemLots = _minimumRedeemLots.toUint64();
+        emit IAssetManagerEvents.SettingChanged("coreVaultMinimumRedeemLots", _minimumRedeemLots);
     }
 
     function getCoreVaultManager()
