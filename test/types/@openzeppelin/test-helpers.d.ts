@@ -1,10 +1,10 @@
-/// <reference types="../../../typechain-truffle/types" /> 
+/// <reference types="../../../typechain-truffle/types" />
 
 declare module "@openzeppelin/test-helpers" {
     import BN from "bn.js";
 
     export type BalanceUnit = 'wei' | 'gwei' | 'ether';
-    
+
     export type StringForBN<T> = { [K in keyof T]: T[K] extends BN ? BN | string : T[K] };
 
     export namespace constants {
@@ -78,7 +78,7 @@ declare module "@openzeppelin/test-helpers" {
 
     export namespace expectEvent {
         /**
-         * Same as expectEvent, but for events emitted in an arbitrary transaction (of hash txHash), by an arbitrary contract 
+         * Same as expectEvent, but for events emitted in an arbitrary transaction (of hash txHash), by an arbitrary contract
          * (emitter, the contract instance), even if it was indirectly called (i.e. if it was called by another smart contract and not an externally owned account).
          * Note: emitter must be the deployed contract instance emitting the expected event.
          * Note 2: unlike expectEvent, returns a Promise.
@@ -207,32 +207,32 @@ declare module "@openzeppelin/test-helpers" {
             /**
              * Convert to seconds (identity). For use as argument of `time.increase`.
              */
-            function seconds(seconds: number): number;
+            function seconds(seconds: BN | number | string): BN;
 
             /**
              * Convert minutes to seconds. For use as argument of `time.increase`.
              */
-            function minutes(minutes: number): number;
+            function minutes(minutes: BN | number | string): BN;
 
             /**
              * Convert hours to seconds. For use as argument of `time.increase`.
              */
-            function hours(hours: number): number;
+            function hours(hours: BN | number | string): BN;
 
             /**
              * Convert days to seconds. For use as argument of `time.increase`.
              */
-            function days(days: number): number;
+            function days(days: BN | number | string): BN;
 
             /**
              * Convert weeks to seconds. For use as argument of `time.increase`.
              */
-            function weeks(weeks: number): number;
+            function weeks(weeks: BN | number | string): BN;
 
             /**
              * Convert years to seconds. For use as argument of `time.increase`.
              */
-            function years(years: number): number;
+            function years(years: BN | number | string): BN;
         }
     }
 
