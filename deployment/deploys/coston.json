@@ -508,11 +508,11 @@
   {
     "name": "CoreVaultFacet",
     "contractName": "CoreVaultFacet.sol",
-    "address": "0x2b92F2eCd021d2D0ee595761ebdD71b2C61aE65f"
+    "address": "0xe1CE4dc78287c6D3251b69A7cC107dBdc9A04C50"
   },
   {
     "name": "CoreVaultSettingsFacet",
     "contractName": "CoreVaultSettingsFacet.sol",
-    "address": "0xE9cca5f6e70678E74860FdC238A6d865Fe24a332"
+    "address": "0xC8A63616886B570DbB3599A109e0b079BD49204a"
   }
 ]
