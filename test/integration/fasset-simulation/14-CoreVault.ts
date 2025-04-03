@@ -418,6 +418,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const transferAmount = context.lotSize().muln(5);
         const remainingTicketAmount = context.lotSize().muln(5);
         await agent.transferToCoreVault(transferAmount);
+        // check that available amount is enough for return of 5 lots
+        const { 0: immediatelyAvailable, 1: totalAvailable } = await context.assetManager.coreVaultAvailableAmount();
+        assert.isTrue(immediatelyAvailable.gte(context.convertLotsToUBA(5)));
+        assert.isTrue(totalAvailable.gte(context.convertLotsToUBA(5)));
         // second agent requests return from CV
         const rres = await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
         const returnReq = requiredEventArgs(rres, "ReturnFromCoreVaultRequested");

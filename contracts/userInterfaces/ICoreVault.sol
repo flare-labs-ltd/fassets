@@ -141,4 +141,15 @@ interface ICoreVault {
         address _agentVault
     ) external view
         returns (uint256 _maximumTransferUBA, uint256 _minimumLeftAmountUBA);
+
+    /**
+     * Returns the amount available on the core vault - this is the maximum amount that can be returned to agent or
+     * redeemed directly from the core vault.
+     * @return _immediatelyAvailableUBA the amount on the core vault operating account - returns and redemptions
+     * within this amount will be paid out quickly
+     * @return _totalAvailableUBA the total amount on the core vault, including all escrows
+     */
+    function coreVaultAvailableAmount()
+        external view
+        returns (uint256 _immediatelyAvailableUBA, uint256 _totalAvailableUBA);
 }

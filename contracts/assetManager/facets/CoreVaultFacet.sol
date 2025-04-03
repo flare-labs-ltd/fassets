@@ -139,4 +139,11 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         _maximumTransferUBA = Conversion.convertAmgToUBA(_maximumTransferAMG.toUint64());
         _minimumLeftAmountUBA = Conversion.convertAmgToUBA(_minimumLeftAmountAMG.toUint64());
     }
+
+    function coreVaultAvailableAmount()
+        external view
+        returns (uint256 _immediatelyAvailableUBA, uint256 _totalAvailableUBA)
+    {
+        return CoreVault.getCoreVaultAvailableAmount();
+    }
 }

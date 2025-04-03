@@ -234,15 +234,18 @@ library CoreVault {
         _maximumTransferAMG = MathUtils.subOrZero(_agent.mintedAMG, _minimumLeftAmountAMG);
     }
 
-    function getTotalCoreVaultAvailable()
+    function getCoreVaultAvailableAmount()
         internal view
-        returns (uint256)
+        returns (uint256 _immediatelyAvailableUBA, uint256 _totalAvailableUBA)
     {
         State storage state = getState();
-        uint256 allFunds = uint256(state.coreVaultManager.availableFunds() + state.coreVaultManager.escrowedFunds());
-        uint256 requestedAmount = uint256(state.coreVaultManager.totalRequestAmountWithFee()) +
-            getCoreVaultUnderlyingPaymentFee(); // extra fee for the upcoming request
-        return MathUtils.subOrZero(allFunds, requestedAmount);
+        uint256 availableFunds = state.coreVaultManager.availableFunds();
+        uint256 escrowedFunds = state.coreVaultManager.escrowedFunds();
+        // account for fee for one more request, because this much must remain available on any transfer
+        uint256 requestedAmountWithFee =
+            state.coreVaultManager.totalRequestAmountWithFee() + getCoreVaultUnderlyingPaymentFee();
+        _immediatelyAvailableUBA = MathUtils.subOrZero(availableFunds, requestedAmountWithFee);
+        _totalAvailableUBA = MathUtils.subOrZero(availableFunds + escrowedFunds, requestedAmountWithFee);
     }
 
     function getCoreVaultAmountLots()
@@ -250,8 +253,8 @@ library CoreVault {
         returns (uint64)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint64 totalAmountAMG = Conversion.convertUBAToAmg(getTotalCoreVaultAvailable());
-        return totalAmountAMG / settings.lotSizeAMG;
+        (, uint256 totalAmountUBA) = getCoreVaultAvailableAmount();
+        return Conversion.convertUBAToAmg(totalAmountUBA) / settings.lotSizeAMG;
     }
 
     function getCoreVaultUnderlyingPaymentFee()
