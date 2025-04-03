@@ -59,7 +59,8 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     await hre.run("verify:verify", {
         address: assetManagerAddress,
         constructorArguments: [diamondCuts, assetManagerInitAddress, initParameters],
-        contract: await qualifiedName(assetManagerContract)
+        contract: await qualifiedName(assetManagerContract),
+        force: true
     });
 
     const fAssetContract = contracts.getRequired(parameters.fAssetSymbol);
@@ -77,7 +78,8 @@ export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironmen
     await hre.run("verify:verify", {
         address: contracts.AssetManagerController!.address,
         constructorArguments: [contracts.getAddress('AssetManagerControllerImplementation'), contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address],
-        contract: await qualifiedName(contracts.AssetManagerController!)
+        contract: await qualifiedName(contracts.AssetManagerController!),
+        force: true
     });
 }
 
