@@ -1,6 +1,6 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, DAYS, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -46,19 +46,28 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
+    let coreVaultManager: NonNullable<AssetContext["coreVaultManager"]>;
+    let preimages: string[];
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+        // enable core vault
         await context.assignCoreVaultManager({
             triggeringAccounts: [triggeringAccount],
         });
-        return { commonContext, context };
+        // add escrow preimage hashes
+        preimages = Array.from({ length: 10 }, (_, i) => `PREIMAGE no. ${i + 1}`);
+        const preimageHashes = preimages.map(web3.utils.keccak256);
+        await context.coreVaultManager!.addPreimageHashes(preimageHashes, { from: context.governance });
+        //
+        return { commonContext, context, preimages };
     }
 
     beforeEach(async () => {
-        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
+        ({ commonContext, context, preimages } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
+        coreVaultManager = requireNotNull(context.coreVaultManager);
     });
 
     it("should transfer all backing to core vault", async () => {
@@ -98,7 +107,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const transferRes = resps[String(rdreqs[0].requestId)];
         assert(transferRes != null);
         expectEvent(transferRes, "TransferToCoreVaultSuccessful");
-        await expectEvent.inTransaction(transferRes.tx, context.coreVaultManager!, "PaymentConfirmed", { amount: transferAmount });
+        await expectEvent.inTransaction(transferRes.tx, coreVaultManager, "PaymentConfirmed", { amount: transferAmount });
         // agent now has 0 backing
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: 0, redeemingUBA: 0, dustUBA: 0, requiredUnderlyingBalanceUBA: 0 });
         // all backing has been transferred from agent's underlying address
@@ -389,7 +398,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const wallet = new MockChainWallet(mockChain);
         const rtx = await wallet.addTransaction(from, coreVaultUnderlyingAddress, amount, null);
         const proof = await context.attestationProvider.provePayment(rtx, from, coreVaultUnderlyingAddress);
-        await context.coreVaultManager!.confirmPayment(proof);
+        await coreVaultManager.confirmPayment(proof);
     }
 
     it("request return from core vault", async () => {
@@ -399,7 +408,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
@@ -422,13 +431,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assert.isTrue(PaymentReference.isValid(returnReq.paymentReference));
         assertWeb3Equal(PaymentReference.decodeType(returnReq.paymentReference), PaymentReference.RETURN_FROM_CORE_VAULT);
         // check transfer requested event from core vault
-        const transferRequested = requiredEventArgsFrom(rres, context.coreVaultManager!, "TransferRequested");
+        const transferRequested = requiredEventArgsFrom(rres, coreVaultManager, "TransferRequested");
         assert.equal(transferRequested.cancelable, true);
         assert.equal(transferRequested.destinationAddress, agent2.underlyingAddress);
         assert.equal(transferRequested.paymentReference, returnReq.paymentReference);
         assertWeb3Equal(transferRequested.amount, context.lotSize().muln(5));
         // trigger CV requests
-        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const trigRes = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
         assert.equal(paymentReqs.length, 1);
         assertWeb3Equal(paymentReqs[0].args.account, coreVaultUnderlyingAddress);
@@ -461,7 +470,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
@@ -477,7 +486,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const cres = await context.assetManager.cancelReturnFromCoreVault(agent2.vaultAddress, { from: agent2.ownerWorkAddress });
         expectEvent(cres, "ReturnFromCoreVaultCancelled", { agentVault: agent2.vaultAddress, requestId: returnReq.requestId });
         // trigger CV requests
-        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const trigRes = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
         assert.equal(paymentReqs.length, 0);
     });
@@ -494,7 +503,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
@@ -520,7 +529,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
@@ -542,7 +551,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
@@ -572,7 +581,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(9);
@@ -601,7 +610,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
@@ -615,7 +624,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // second agent requests return from CV
         const rres = await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
         // trigger CV requests
-        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const trigRes = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
         const req = requireNotNull(paymentReqs[0]);
         // agent must have active return request
@@ -652,7 +661,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
@@ -667,7 +676,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const [paymentAmount2, paymentReference2] = await testRedeemFromCV(redeemer, 30);
         assert.equal(paymentReference1, paymentReference2);
         // trigger CV requests - there should be one with amount the sum of requests to the same redeemer
-        const trigRes = await context.coreVaultManager!.triggerInstructions({ from: triggeringAccount });
+        const trigRes = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
         const redemptionPaymentAmount = paymentAmount1.add(paymentAmount2);
         assert.equal(paymentReqs.length, 1);
@@ -691,7 +700,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         await prefundCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
-        await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
@@ -833,4 +842,42 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const proof = await context.attestationProvider.provePayment(rtx, agent.underlyingAddress, coreVaultUnderlyingAddress);
         await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress), "only agent vault owner");
     })
+
+    async function timestampAfterDaysAt(days: number, daytime: number) {
+        const curtime = await time.latest();
+        const newtime = curtime.addn(days * DAYS); // skip some days
+        return newtime.subn(newtime.modn(1 * DAYS)).addn(daytime); // align to daytime
+    }
+
+    it("should trigger escrow instructions", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(1000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(200);
+        await agent2.depositCollateralLotsAndMakeAvailable(200);
+        // mint
+        const [minted1] = await minter.performMinting(agent.vaultAddress, 200);
+        const [minted2] = await minter.performMinting(agent2.vaultAddress, 200);
+        await minter.transferFAsset(redeemer.address, toBN(minted1.mintedAmountUBA).add(toBN(minted2.mintedAmountUBA)));
+        // skip time to 1am to make escrow time-based calclations deterministic
+        let newtime = await timestampAfterDaysAt(1, 1 * HOURS); // align to 1am
+        await time.increaseTo(newtime);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.convertLotsToUBA(151);
+        await agent.transferToCoreVault(transferAmount);
+        // trigger - no escrow should be created yet (escrow amount is 100 lots, minimum left is 100 lots)
+        const res = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
+        expectEvent.notEmitted(res, "EscrowInstructions");
+        // another transfer to core vault
+        await agent2.transferToCoreVault(transferAmount);
+        // trigger - now 200 lots should be escrowed (there should be 2 escrow requests, 100 lots each)
+        const res2 = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
+        expectEvent(res2, "EscrowInstructions", { sequence: "1", amount: context.convertLotsToUBA(100), cancelAfterTs: await timestampAfterDaysAt(1, 12 * HOURS) });
+        expectEvent(res2, "EscrowInstructions", { sequence: "2", amount: context.convertLotsToUBA(100), cancelAfterTs: await timestampAfterDaysAt(2, 12 * HOURS) });
+    });
 });
