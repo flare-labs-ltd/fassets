@@ -1,6 +1,6 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -49,9 +49,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
-        context = await AssetContext.createTest(commonContext, testChainInfo.xrp, { coreVaultUnderlyingAddress });
-        await context.coreVaultManager!.addTriggeringAccounts([triggeringAccount], { from: governance });
-        await context.coreVaultManager!.updateSettings(0, 0, 0, 50, { from: governance });
+        context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+        await context.assignCoreVaultManager({
+            triggeringAccounts: [triggeringAccount],
+        });
         return { commonContext, context };
     }
 
@@ -66,8 +67,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         const cv = await Redeemer.create(context, context.initSettings.coreVaultNativeAddress, coreVaultUnderlyingAddress);
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // minter2 also deposits to pool (so some fasset fees will go to them)
         await agent.collateralPool.enter(0, false, { from: minterAddress2, value: toWei(3e8) });
         // mint
@@ -114,8 +114,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for half backing to core vault
@@ -143,8 +142,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const lots = 10;
         const [minted, crt, txHash] = await minter.performMinting(agent.vaultAddress, lots);
@@ -172,8 +170,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const lots = 3;
         const [minted] = await minter.performMinting(agent.vaultAddress, lots);
@@ -195,8 +192,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for half backing to core vault
@@ -214,8 +210,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         await minter.performMinting(agent.vaultAddress, 5);
         const redemptionRes = await context.assetManager.redeem(5, minter.underlyingAddress, ZERO_ADDRESS, { from: minter.address });
@@ -232,9 +227,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // another mint, just to prevent merging tickets
@@ -280,9 +274,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // another mint, just to prevent merging tickets
@@ -321,9 +314,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // another mint, just to prevent merging tickets
@@ -409,9 +401,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -472,9 +463,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -506,9 +496,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -533,9 +522,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -556,9 +544,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted, crt, txHash] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -587,9 +574,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(toWei(3e5), toWei(3e5));
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(9);
         // mint
         const [minted, crt, txHash] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -617,9 +603,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for some backing to core vault
@@ -669,8 +654,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 100);
         await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
@@ -709,8 +693,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // allow CV manager addresses
         await context.coreVaultManager!.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);

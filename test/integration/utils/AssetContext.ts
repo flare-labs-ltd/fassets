@@ -16,7 +16,7 @@ import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, I
 import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { assignCoreVaultManager, createTestCollaterals, createTestSettings, TEST_CORE_VAULT_CUSTODIAN, TestSettingOptions } from "../../utils/test-settings";
+import { assignCoreVaultManager, CoreVaultManagerSettings, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -28,7 +28,6 @@ export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
     testSettings?: TestSettingOptions;
-    coreVaultUnderlyingAddress?: string;    // set address to enable core vault functionality
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
@@ -47,7 +46,6 @@ export class AssetContext implements IAssetContext {
         public attestationProvider: AttestationHelper,
         public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public agentOwnerRegistry: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>,
-        public coreVaultManager: ContractWithEvents<CoreVaultManagerInstance, CoreVaultManagerEvents> | undefined,
         public assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
@@ -77,6 +75,8 @@ export class AssetContext implements IAssetContext {
     usdt = this.stablecoins.USDT;
 
     chainId = this.chainInfo.chainId;
+
+    coreVaultManager: ContractWithEvents<CoreVaultManagerInstance, CoreVaultManagerEvents> | undefined;
 
     /**
      * Convert underlying amount to base units (e.g. eth to wei)
@@ -143,6 +143,11 @@ export class AssetContext implements IAssetContext {
         const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance, true);
         await agentOwnerRegistry.switchToProductionMode({ from: this.governance });
         await this.setAgentOwnerRegistry(agentOwnerRegistry);
+    }
+
+    async assignCoreVaultManager(options?: Partial<CoreVaultManagerSettings>) {
+        const settings = createTestCoreVaultManagerSettings(this.chainInfo, options);
+        this.coreVaultManager = await assignCoreVaultManager(this.assetManager, this.addressUpdater, settings);
     }
 
     async updateUnderlyingBlock() {
@@ -280,11 +285,9 @@ export class AssetContext implements IAssetContext {
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol,
             { governanceSettings: common.governanceSettings.address });
-        // create and assign core vault
-        const coreVaultManager = options.coreVaultUnderlyingAddress ? await assignCoreVaultManager(assetManager, common.addressUpdater, options.coreVaultUnderlyingAddress) : undefined;
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, flareDataConnectorClient, attestationProvider,
-            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, coreVaultManager, assetManager, fAsset, settings, collaterals);
+            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);
     }
 }
 

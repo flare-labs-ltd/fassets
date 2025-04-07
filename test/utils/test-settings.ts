@@ -18,8 +18,7 @@ import {
     WNatInstance,
     IFdcVerificationInstance,
     RelayMockInstance,
-    FdcHubMockInstance,
-    CoreVaultManagerInstance
+    FdcHubMockInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -47,8 +46,6 @@ const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
 
-export const TEST_CORE_VAULT_CUSTODIAN = "CORE_VAULT_CUSTODIAN";
-
 export interface TestSettingsCommonContracts {
     governanceSettings: GovernanceSettingsInstance;
     addressUpdater: AddressUpdaterInstance;
@@ -63,6 +60,17 @@ export interface TestSettingsCommonContracts {
     agentOwnerRegistry: AgentOwnerRegistryInstance;
     wNat: WNatInstance,
     stablecoins: Record<string, ERC20MockInstance>,
+}
+
+export interface CoreVaultManagerSettings {
+    underlyingAddress: string;
+    initialNonce: BNish;
+    custodianAddress: string;
+    escrowAmount: BNish;
+    escrowEndTimeSeconds: BNish;    // time of day in seconds
+    minimalAmountLeft: BNish;
+    chainPaymentFee: BNish;
+    triggeringAccounts: string[];
 }
 
 export interface TestSettingsContracts extends TestSettingsCommonContracts {
@@ -146,6 +154,21 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         coreVaultMinimumRedeemLots: 10,
     };
     return Object.assign(result, options ?? {});
+}
+
+export function createTestCoreVaultManagerSettings(ci: TestChainInfo, options?: Partial<CoreVaultManagerSettings>): CoreVaultManagerSettings {
+    const lotSize = toBNExp(ci.lotSize, ci.decimals);
+    const defaultTestSettings: CoreVaultManagerSettings = {
+        underlyingAddress: "CORE_VAULT_UNDERLYING",
+        initialNonce: 1,
+        custodianAddress: "CORE_VAULT_CUSTODIAN",
+        escrowAmount: lotSize.muln(100),
+        escrowEndTimeSeconds: 12 * HOURS,   // 12h noon
+        minimalAmountLeft: lotSize.muln(100),
+        chainPaymentFee: 50,
+        triggeringAccounts: [],
+    }
+    return { ...defaultTestSettings, ...options };
 }
 
 export function createTestCollaterals(contracts: TestSettingsCommonContracts, ci: ChainInfo): CollateralType[] {
@@ -273,17 +296,18 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
 }
 
-export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, coreVaultUnderlyingAddress: string, coreVaultCustodian?: string, initialNonce: BNish = 1)
+export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerSettings)
 {
     const coreVaultManagerImpl = await CoreVaultManager.new();
-    const settings = await assetManager.getSettings();
+    const assetManagerSettings = await assetManager.getSettings();
     const governanceSettings = await assetManager.governanceSettings();
     const governance = await assetManager.governance();
-    const coreVaultCustodianAddress = coreVaultCustodian ?? "TEST_CORE_VAULT_CUSTODIAN";
     const coreVaultManagerProxy = await CoreVaultManagerProxy.new(coreVaultManagerImpl.address, governanceSettings, governance, addressUpdater.address,
-        assetManager.address, settings.chainId, coreVaultCustodianAddress, coreVaultUnderlyingAddress, initialNonce);
+        assetManager.address, assetManagerSettings.chainId, settings.custodianAddress, settings.underlyingAddress, settings.initialNonce);
     const coreVaultManager = await CoreVaultManager.at(coreVaultManagerProxy.address);
     await addressUpdater.updateContractAddresses([coreVaultManager.address], { from: governance });
+    await coreVaultManager.updateSettings(settings.escrowEndTimeSeconds, settings.escrowAmount, settings.minimalAmountLeft, settings.chainPaymentFee, { from: governance });
+    await coreVaultManager.addTriggeringAccounts(settings.triggeringAccounts, { from: governance });
     await waitForTimelock(assetManager.setCoreVaultManager(coreVaultManager.address, { from: governance }), assetManager, governance);
     return coreVaultManager;
 }
