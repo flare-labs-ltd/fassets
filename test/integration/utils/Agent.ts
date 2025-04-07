@@ -530,6 +530,11 @@ export class Agent extends AssetContextClient {
         await this.performRedemptions(rdreqs);
     }
 
+    async confirmReturnFromCoreVault(txHash: string) {
+        const proof = await this.attestationProvider.provePayment(txHash, null, this.underlyingAddress);
+        await this.assetManager.confirmReturnFromCoreVault(proof, this.vaultAddress, { from: this.ownerWorkAddress });
+    }
+
     async getCurrentVaultCollateralRatioBIPS() {
         const agentInfo = await this.getAgentInfo();
         const fullCollateral = agentInfo.totalVaultCollateralWei;

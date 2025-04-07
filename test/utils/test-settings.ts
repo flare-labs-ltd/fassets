@@ -20,6 +20,7 @@ import {
     RelayMockInstance,
     FdcHubMockInstance
 } from "../../typechain-truffle";
+import { CoreVaultManagerSettings } from "../integration/utils/MockCoreVaultBot";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
 import { AssetManagerInitSettings, waitForTimelock } from "./fasset/CreateAssetManager";
@@ -62,14 +63,10 @@ export interface TestSettingsCommonContracts {
     stablecoins: Record<string, ERC20MockInstance>,
 }
 
-export interface CoreVaultManagerSettings {
+export interface CoreVaultManagerInitSettings extends CoreVaultManagerSettings {
     underlyingAddress: string;
     initialNonce: BNish;
     custodianAddress: string;
-    escrowAmount: BNish;
-    escrowEndTimeSeconds: BNish;    // time of day in seconds
-    minimalAmountLeft: BNish;
-    chainPaymentFee: BNish;
     triggeringAccounts: string[];
 }
 
@@ -156,9 +153,9 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
     return Object.assign(result, options ?? {});
 }
 
-export function createTestCoreVaultManagerSettings(ci: TestChainInfo, options?: Partial<CoreVaultManagerSettings>): CoreVaultManagerSettings {
+export function createTestCoreVaultManagerSettings(ci: TestChainInfo, options?: Partial<CoreVaultManagerInitSettings>): CoreVaultManagerInitSettings {
     const lotSize = toBNExp(ci.lotSize, ci.decimals);
-    const defaultTestSettings: CoreVaultManagerSettings = {
+    const defaultTestSettings: CoreVaultManagerInitSettings = {
         underlyingAddress: "CORE_VAULT_UNDERLYING",
         initialNonce: 1,
         custodianAddress: "CORE_VAULT_CUSTODIAN",
@@ -296,7 +293,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
 }
 
-export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerSettings)
+export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings)
 {
     const coreVaultManagerImpl = await CoreVaultManager.new();
     const assetManagerSettings = await assetManager.getSettings();

@@ -16,7 +16,7 @@ import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, I
 import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { assignCoreVaultManager, CoreVaultManagerSettings, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
+import { assignCoreVaultManager, CoreVaultManagerInitSettings, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -145,7 +145,7 @@ export class AssetContext implements IAssetContext {
         await this.setAgentOwnerRegistry(agentOwnerRegistry);
     }
 
-    async assignCoreVaultManager(options?: Partial<CoreVaultManagerSettings>) {
+    async assignCoreVaultManager(options?: Partial<CoreVaultManagerInitSettings>) {
         const settings = createTestCoreVaultManagerSettings(this.chainInfo, options);
         this.coreVaultManager = await assignCoreVaultManager(this.assetManager, this.addressUpdater, settings);
     }
