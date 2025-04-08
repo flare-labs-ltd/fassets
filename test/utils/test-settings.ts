@@ -156,9 +156,9 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
 export function createTestCoreVaultManagerSettings(ci: TestChainInfo, options?: Partial<CoreVaultManagerInitSettings>): CoreVaultManagerInitSettings {
     const lotSize = toBNExp(ci.lotSize, ci.decimals);
     const defaultTestSettings: CoreVaultManagerInitSettings = {
-        underlyingAddress: "CORE_VAULT_UNDERLYING",
+        underlyingAddress: "TEST_CORE_VAULT_UNDERLYING",
         initialNonce: 1,
-        custodianAddress: "CORE_VAULT_CUSTODIAN",
+        custodianAddress: "TEST_CORE_VAULT_CUSTODIAN",
         escrowAmount: lotSize.muln(100),
         escrowEndTimeSeconds: 12 * HOURS,   // 12h noon
         minimalAmountLeft: lotSize.muln(100),

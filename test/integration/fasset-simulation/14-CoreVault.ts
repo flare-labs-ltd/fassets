@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, DAYS, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -15,6 +15,7 @@ import { executeTimelockedGovernanceCall } from "../../utils/contract-test-helpe
 import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { MockCoreVaultBot } from "../utils/MockCoreVaultBot";
+import { assertApproximatelyEqual } from "../../utils/approximation";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -43,6 +44,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const underlyingRedeemer2 = "Redeemer2";
     const underlyingRedeemer3 = "Redeemer3";
     const coreVaultUnderlyingAddress = "CORE_VAULT_UNDERLYING";
+    const coreVaultCustodianAddress = "CORE_VAULT_CUSTODIAN";
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -55,6 +57,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
         // enable core vault
         await context.assignCoreVaultManager({
+            underlyingAddress: coreVaultUnderlyingAddress,
+            custodianAddress: coreVaultCustodianAddress,
             triggeringAccounts: [triggeringAccount],
         });
         // add escrow preimage hashes
@@ -850,6 +854,16 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         return newtime.subn(newtime.modn(1 * DAYS)).addn(daytime); // align to daytime
     }
 
+    async function increaseTime(seconds: BNish) {
+        await deterministicTimeIncrease(seconds);
+        mockChain.skipTime(Number(seconds));
+    }
+
+    async function increaseTimeTo(timestamp: BNish) {
+        await time.increaseTo(timestamp);
+        mockChain.skipTimeTo(Number(timestamp));
+    }
+
     it("should trigger escrow instructions", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
@@ -867,7 +881,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await minter.transferFAsset(redeemer.address, toBN(minted1.mintedAmountUBA).add(toBN(minted2.mintedAmountUBA)));
         // skip time to 1am to make escrow time-based calclations deterministic
         let newtime = await timestampAfterDaysAt(1, 1 * HOURS); // align to 1am
-        await time.increaseTo(newtime);
+        await increaseTimeTo(newtime);
         // agent requests transfer for some backing to core vault
         const transferAmount = context.convertLotsToUBA(151);
         await agent.transferToCoreVault(transferAmount);
@@ -881,11 +895,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         expectEvent(res2, "EscrowInstructions", { sequence: "1", amount: context.convertLotsToUBA(100), cancelAfterTs: await timestampAfterDaysAt(1, 12 * HOURS) });
         expectEvent(res2, "EscrowInstructions", { sequence: "2", amount: context.convertLotsToUBA(100), cancelAfterTs: await timestampAfterDaysAt(2, 12 * HOURS) });
     });
-
-    async function increaseTime(seconds: BNish) {
-        await deterministicTimeIncrease(seconds);
-        mockChain.skipTime(Number(seconds));
-    }
 
     it("perform core vault transfer, return and escrow", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -905,8 +914,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await minter.transferFAsset(redeemer.address, toBN(minted1.mintedAmountUBA).add(toBN(minted2.mintedAmountUBA)));
         // skip time to 1am to make escrow time-based calclations deterministic
         const newtime = await timestampAfterDaysAt(1, 1 * HOURS); // align to 1am
-        await time.increaseTo(newtime);
-        mockChain.skipTimeTo(Number(newtime));
+        await increaseTimeTo(newtime);
         // agent requests transfer for some backing to core vault
         const transferLots = 151;
         const transferAmount = context.convertLotsToUBA(transferLots);
@@ -952,5 +960,68 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const pmt2 = handled6.payments[0];
         await agent2.confirmReturnFromCoreVault(pmt2.txHash);
         await agent2.checkAgentInfo({ mintedUBA: context.convertLotsToUBA(200).add(toBN(minted2.poolFeeUBA)) });
+    });
+
+    it("perform core vault transfer, return, large redemption and release escrows", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(1000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        const coreVaultBot = new MockCoreVaultBot(context, triggeringAccount);
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await coreVaultManager.addAllowedDestinationAddresses([agent.underlyingAddress, redeemer.underlyingAddress], { from: governance });
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(400);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 400);
+        await minter.transferFAsset(redeemer.address, toBN(minted.mintedAmountUBA));
+        // skip time to 1am to make escrow time-based calclations deterministic
+        const newtime = await timestampAfterDaysAt(1, 1 * HOURS); // align to 1am
+        await increaseTimeTo(newtime);
+        // agent requests transfer for some backing to core vault
+        const transferLots = 400;
+        const transferAmount = context.convertLotsToUBA(transferLots);
+        await agent.transferToCoreVault(transferAmount);
+        // trigger - 300 lots should be escrowed (escrow amont is 100 lots, minimum left is 100 lots)
+        const handled2 = await coreVaultBot.triggerAndPerformActions();
+        assert.equal(handled2.createdEscrows.length, 3);
+        // trigger expiration - there should be no change
+        await coreVaultBot.escrow.expireEscrows();
+        assert.equal(coreVaultBot.escrow.escrows.size, 3);
+        // agent requests for return, redeemer tries to redeem the rest
+        await context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 50, { from: agent.ownerWorkAddress });
+        await context.assetManager.redeemFromCoreVault(350, redeemer.underlyingAddress, { from: redeemer.address });
+        // agent's request is within daily amount, so it is handled immediately; the redeemer's isn't
+        const handled3 = await coreVaultBot.triggerAndPerformActions();
+        assert.equal(handled3.createdEscrows.length, 0);
+        assert.equal(handled3.expiredEscrows.length, 0);
+        assert.equal(handled3.payments.length, 1);
+        // agent must confirm payment to have minted amount back
+        const pmt1 = handled3.payments[0];
+        assert.equal(pmt1.to, agent.underlyingAddress);
+        assertWeb3Equal(pmt1.amount, context.convertLotsToUBA(50));
+        await agent.confirmReturnFromCoreVault(pmt1.txHash);
+        await agent.checkAgentInfo({ mintedUBA: context.convertLotsToUBA(50).add(toBN(minted.poolFeeUBA)) });
+        // trigger release of two escrows so that the redeemer can be paid
+        const releasedHashes: string[] = [];
+        for (let i = 2; i >= 0; i--) {
+            const escrow = await coreVaultBot.escrow.releaseEscrow(preimages[i]);
+            assert.isTrue(escrow != null);
+            releasedHashes.push(escrow.preimageHash);
+        }
+        // console.log(deepFormat({ available: await coreVaultManager.availableFunds(), escrowed: await coreVaultManager.escrowedFunds() }));
+        await coreVaultManager.setEscrowsFinished(releasedHashes, { from: governance });
+        // transfer from custodian address to core vault and prove the transfer
+        const wallet = new MockChainWallet(mockChain);
+        assertWeb3Equal(await mockChain.getBalance(coreVaultCustodianAddress), context.convertLotsToUBA(300));
+        const txHash = await wallet.addTransaction(coreVaultCustodianAddress, coreVaultUnderlyingAddress, context.convertLotsToUBA(300), null);
+        const proof = await context.attestationProvider.provePayment(txHash, coreVaultCustodianAddress, coreVaultUnderlyingAddress);
+        await coreVaultManager.confirmPayment(proof);
+        // redeemer can now be paid
+        const handled4 = await coreVaultBot.triggerAndPerformActions();
+        assert.equal(handled4.createdEscrows.length, 0);
+        assert.equal(handled4.expiredEscrows.length, 0);
+        assert.equal(handled4.payments.length, 1);
+        assertApproximatelyEqual(await mockChain.getBalance(redeemer.underlyingAddress), context.convertLotsToUBA(350), 'relative', 0.01);
     });
 });
