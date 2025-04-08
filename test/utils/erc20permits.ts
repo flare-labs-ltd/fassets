@@ -27,7 +27,7 @@ export async function buildPermitData(contract: IERC5267Instance, permit: Permit
     };
 }
 
-export async function signPermit(contract: IERC5267Instance, wallet: { privateKey: string }, permit: Permit) {
+export async function signPermit(contract: IERC5267Instance, privateKey: string, permit: Permit) {
     const data = await buildPermitData(contract, permit);
-    return signTypedMessageData(wallet.privateKey, data);
+    return signTypedMessageData(privateKey, data);
 }

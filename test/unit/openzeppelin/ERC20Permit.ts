@@ -49,7 +49,7 @@ contract('ERC20Permit', function (accounts) {
         });
 
         it('accepts owner signature', async function () {
-            const { v, r, s } = await signPermit(token, wallet, testPermit);
+            const { v, r, s } = await signPermit(token, wallet.privateKey, testPermit);
 
             await token.permit(owner, spender, value, maxDeadline, v, r, s);
 
@@ -58,7 +58,7 @@ contract('ERC20Permit', function (accounts) {
         });
 
         it('rejects reused signature', async function () {
-            const { v, r, s } = await signPermit(token, wallet, testPermit);
+            const { v, r, s } = await signPermit(token, wallet.privateKey, testPermit);
 
             await token.permit(owner, spender, value, maxDeadline, v, r, s);
 
@@ -71,7 +71,7 @@ contract('ERC20Permit', function (accounts) {
         it('rejects other signature', async function () {
             const otherWallet = web3.eth.accounts.create();
 
-            const { v, r, s } = await signPermit(token, otherWallet, testPermit);
+            const { v, r, s } = await signPermit(token, otherWallet.privateKey, testPermit);
 
             await expectRevert(
                 token.permit(owner, spender, value, maxDeadline, v, r, s),
@@ -82,7 +82,7 @@ contract('ERC20Permit', function (accounts) {
         it('rejects expired permit', async function () {
             const deadline = (await time.latest()).sub(time.duration.weeks(1));
 
-            const { v, r, s } = await signPermit(token, wallet, { ...testPermit, deadline });
+            const { v, r, s } = await signPermit(token, wallet.privateKey, { ...testPermit, deadline });
 
             // check that deadline is the signed one
             await expectRevert(token.permit(owner, spender, value, maxDeadline, v, r, s),
@@ -110,7 +110,7 @@ contract('ERC20Permit', function (accounts) {
             // erc20 permit is not enabled now
             const value = toBN(200);
             const permit: Permit = { owner: wallet.address, spender, value, nonce: toBN(0), deadline: constants.MAX_UINT256 };
-            await expectRevert(signPermit(token, wallet, permit), "function selector was not recognized and there's no fallback function");
+            await expectRevert(signPermit(token, wallet.privateKey, permit), "function selector was not recognized and there's no fallback function");
             // upgrade to ERC20Permit
             const tokenImpl2 = await ERC20PermitToken.new("", "");
             await token.upgradeToAndCall(tokenImpl2.address, abiEncodeCall(tokenImpl2, tok => tok.initializeV1r1()));
@@ -118,7 +118,7 @@ contract('ERC20Permit', function (accounts) {
             const amounts2new = { initialHolder: await token.balanceOf(initialHolder), wallet: await token.balanceOf(wallet.address), supply: await token.totalSupply() };
             assertWeb3DeepEqual(amounts2, amounts2new);
             // permit works now
-            const { v, r, s } = await signPermit(token, wallet, permit);
+            const { v, r, s } = await signPermit(token, wallet.privateKey, permit);
             await token.permit(wallet.address, spender, value, permit.deadline, v, r, s, { from: spender });
             await token.transferFrom(wallet.address, receiver, value, { from: spender });
             assertWeb3Equal(await token.balanceOf(wallet.address), 300);
