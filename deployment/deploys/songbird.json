@@ -15,6 +15,11 @@
     "address": "0x02f0826ef6aD107Cfc861152B32B52fD11BaB9ED"
   },
   {
+    "name": "WSGB",
+    "contractName": "WNat.sol",
+    "address": "0x02f0826ef6aD107Cfc861152B32B52fD11BaB9ED"
+  },
+  {
     "name": "Relay",
     "contractName": "Relay.sol",
     "address": "0x67a916E175a2aF01369294739AA60dDdE1Fad189"

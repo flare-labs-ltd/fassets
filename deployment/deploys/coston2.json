@@ -120,6 +120,11 @@
     "address": "0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273"
   },
   {
+    "name": "WC2FLR",
+    "contractName": "WNat.sol",
+    "address": "0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273"
+  },
+  {
     "name": "CombinedNat",
     "contractName": "CombinedNat.sol",
     "address": "0xa9ef58F5CFf9e282d759e36b249011729a74E7dd"
