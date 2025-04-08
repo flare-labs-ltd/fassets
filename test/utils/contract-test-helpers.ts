@@ -74,3 +74,8 @@ export async function testDeployGovernanceSettings(governance: string, timelock:
     await governanceSettings.initialise(governance, timelock, executors, { from: GENESIS_GOVERNANCE_ADDRESS });
     return governanceSettings;
 }
+
+export async function getChainId() {
+    const chainIdHex = await network.provider.send('eth_chainId', []);
+    return Number(chainIdHex);
+}

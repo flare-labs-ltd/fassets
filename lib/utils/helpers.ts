@@ -541,3 +541,14 @@ export function contractMetadata(contract: Truffle.Contract<any>): { contractNam
 export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any): string {
     return call(instance.contract.methods).encodeABI();
 }
+
+/**
+ * Calculate ERC-7201 slot number from namespace, as in https://eips.ethereum.org/EIPS/eip-7201.
+ * @param namespace the namespace, e.g. 'fasset.utils.Something'
+ * @returns 0x-prefixed 32-byte hex encoded string
+ */
+export function erc7201slot(namespace: string): string {
+    const inner = toHex(toBN(Web3.utils.keccak256(Web3.utils.asciiToHex(namespace))).subn(1), 32);
+    const mask = toBN(0xff).notn(256);
+    return toHex(toBN(Web3.utils.keccak256(inner)).and(mask), 32);
+}
