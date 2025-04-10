@@ -13,6 +13,7 @@ import { testChainInfo } from "../utils/TestChainInfo";
 import { filterEvents } from "../../../lib/utils/events/truffle";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Challenger } from "../utils/Challenger";
+import { Liquidator } from "../utils/Liquidator";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -624,5 +625,37 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
         // but the new transaction can be challenged since the redemption request was deleted
         await challenger.illegalPaymentChallenge(agent, tx2Hash);
+    });
+
+    it("vault CR too low but cannot liquidate", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const liquidator = await Liquidator.create(context, liquidatorAddress1);
+        const fullAgentCollateral = toWei(3e8);
+        const fullPoolCollateral = toWei(3e9);
+        await agent.depositVaultCollateral(fullAgentCollateral);
+        // Agent deposits 1e18 of wNat via enter method
+        await agent.buyCollateralPoolTokens(toBNExp(1, 18));
+        // Agent directly transfers wNat to collateral pool (large portion)
+        await context.wNat.deposit({value: fullPoolCollateral.sub(toBNExp(1,18)), from: agentOwner1});
+        await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1,18)), {from: agentOwner1});
+
+        await agent.makeAvailable();
+        await context.updateUnderlyingBlock();
+
+        // Perform some minting on phantom collateral (not tracked by totalCollteral)
+        const lots = 6;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        // Simulate price change -> agent becomes liquidatable
+        await agent.setVaultCollateralRatioByChangingAssetPrice(12000);
+        // Get some f-assets for liquidator to perform liquidation
+        await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
+
+        // Liquidator performs liquidation but fails due to artithmetic overflow
+        const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
+        await liquidator.liquidate(agent, liquidateMaxUBA1);
     });
 });
