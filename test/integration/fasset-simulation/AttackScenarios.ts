@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, deepFormat, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -14,6 +14,7 @@ import { filterEvents } from "../../../lib/utils/events/truffle";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Challenger } from "../utils/Challenger";
 import { Liquidator } from "../utils/Liquidator";
+import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -657,5 +658,32 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // Liquidator performs liquidation but fails due to artithmetic overflow
         const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
         await liquidator.liquidate(agent, liquidateMaxUBA1);
+    });
+
+    it("agent can set very high buyFAssetByAgentFactorBIPS to remove all collateral from the pool while still backing FAssets", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // buy half pool collateral as agent vault and the rest from agent's owner address
+        const requiredCollateral = await agent.requiredCollateralForLots(10);
+        await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool.divn(2));
+        await agent.collateralPool.enter(0, false, { from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
+        //
+        await minter.performMinting(agent.vaultAddress, 10);
+        // agent buys 5 lots
+        await minter.transferFAsset(agent.ownerWorkAddress, context.convertLotsToUBA(5));
+        // agent changes buyFAssetByAgentFactorBIPS and poolExitCollateralRatioBIPS (to be able to do selfCloseExit)
+        await agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(6.4), poolExitCollateralRatioBIPS: toBIPS(3.5) });
+        console.log(deepFormat(await agent.getAgentInfo()));
+        // calculate how much to close
+        const agentFAssets = await context.fAsset.balanceOf(agent.ownerWorkAddress);
+        const agentPoolTokens = await agent.collateralPoolToken.balanceOf(agent.ownerWorkAddress);
+        const requiredFAssets = await agent.collateralPool.fAssetRequiredForSelfCloseExit(agentPoolTokens);
+        const toCloseTokens = agentPoolTokens.mul(agentFAssets).div(requiredFAssets)
+        console.log(deepFormat({ agentFAssets, requiredFAssets, agentPoolTokens, toCloseTokens }));
+        // do self close exit
+        await context.fAsset.approve(agent.collateralPool.address, agentFAssets, { from: agent.ownerWorkAddress });
+        await agent.collateralPool.selfCloseExit(toCloseTokens, true, "agent_owner_underlying", ZERO_ADDRESS, { from: agent.ownerWorkAddress });
+        //context.priceStore.setCurrentPrice("")
+        console.log(deepFormat(await agent.getAgentInfo()));
     });
 });

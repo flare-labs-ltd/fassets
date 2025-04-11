@@ -46,7 +46,7 @@ contract SettingsReaderFacet is AssetManagerBase {
         returns (uint256 _lotSizeUBA)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        return settings.lotSizeAMG * settings.assetMintingGranularityUBA;
+        return uint256(settings.lotSizeAMG) * settings.assetMintingGranularityUBA;
     }
 
     /**
