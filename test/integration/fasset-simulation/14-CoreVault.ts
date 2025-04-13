@@ -1024,4 +1024,31 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assert.equal(handled4.payments.length, 1);
         assertApproximatelyEqual(await mockChain.getBalance(redeemer.underlyingAddress), context.convertLotsToUBA(350), 'relative', 0.01);
     });
+
+    it("let the agent transfer to core vault after after failure to perform or default the previous transfer", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // request transfer to core vault
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // mint
+        await minter.performMinting(agent.vaultAddress, 10);
+        // update time
+        await context.updateUnderlyingBlock();
+        // agent requests transfer for all backing to core vault
+        const info = await agent.getAgentInfo();
+        const transferAmount = info.mintedUBA;
+        // transfer to core vault
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        // wait for proof unavailability
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        context.skipToProofUnavailability(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp)
+        // finish redemption without payment
+        const { 0: currentBlock } = await context.assetManager.currentUnderlyingBlock();
+        const proof = await context.attestationProvider.proveConfirmedBlockHeightExists(currentBlock.toNumber())
+        await context.assetManager.finishRedemptionWithoutPayment(proof, rdreqs[0].requestId, { from: agent.ownerWorkAddress })
+        // request transfer to core vault again
+        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+    })
 });
