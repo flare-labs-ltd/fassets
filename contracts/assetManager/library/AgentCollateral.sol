@@ -69,7 +69,7 @@ library AgentCollateral {
         CollateralTypeInt.Data storage collateral = _agent.getPoolCollateral();
         return Collateral.Data({
             kind: Collateral.Kind.POOL,
-            fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
+            fullCollateral: _agent.collateralPool.totalCollateral(),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
         });
     }

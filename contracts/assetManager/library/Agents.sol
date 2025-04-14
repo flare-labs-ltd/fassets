@@ -252,7 +252,7 @@ library Agents {
         returns (uint256 _amountPaid)
     {
         // don't want the calling method to fail due to too small balance for payout
-        uint256 poolBalance = Globals.getWNat().balanceOf(address(_agent.collateralPool));
+        uint256 poolBalance = _agent.collateralPool.totalCollateral();
         _amountPaid = Math.min(_amountWei, poolBalance);
         _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
@@ -443,13 +443,6 @@ library Agents {
         } else {
             return state.collateralTokens[_agent.poolCollateralIndex];
         }
-    }
-
-    function getCollateralOwner(Agent.State storage _agent, Collateral.Kind _kind)
-        internal view
-        returns (address)
-    {
-        return _kind == Collateral.Kind.POOL ? address(_agent.collateralPool): _agent.vaultAddress();
     }
 
     function collateralUnderwater(Agent.State storage _agent, Collateral.Kind _kind)

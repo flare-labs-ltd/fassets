@@ -628,7 +628,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await challenger.illegalPaymentChallenge(agent, tx2Hash);
     });
 
-    it("vault CR too low but cannot liquidate", async () => {
+    it.skip("vault CR too low but cannot liquidate", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
         const liquidator = await Liquidator.create(context, liquidatorAddress1);
@@ -658,6 +658,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // Liquidator performs liquidation but fails due to artithmetic overflow
         const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
         await liquidator.liquidate(agent, liquidateMaxUBA1);
+    });
+
+    it("solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for entering", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const liquidator = await Liquidator.create(context, liquidatorAddress1);
+        const fullAgentCollateral = toWei(3e8);
+        const fullPoolCollateral = toWei(3e9);
+        await agent.depositVaultCollateral(fullAgentCollateral);
+        // Agent deposits 1e18 of wNat via enter method
+        await agent.buyCollateralPoolTokens(toBNExp(1, 18));
+        // Agent directly transfers wNat to collateral pool (large portion)
+        await context.wNat.deposit({ value: fullPoolCollateral.sub(toBNExp(1, 18)), from: agentOwner1 });
+        await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1, 18)), { from: agentOwner1 });
+        await expectRevert(agent.makeAvailable(), "not enough free collateral");
+    });
+
+    it("solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for minting", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const liquidator = await Liquidator.create(context, liquidatorAddress1);
+        const requiredCollateral = await agent.requiredCollateralForLots(1);
+        await agent.depositVaultCollateral(requiredCollateral.vault.muln(10));
+        // Agent correctly deposits enough to cover the pool token requirement, but not for collateral pool requirement
+        await agent.buyCollateralPoolTokens(requiredCollateral.pool.muln(3));
+        // Agent directly transfers wNat to collateral pool (large portion)
+        await context.wNat.deposit({ value: requiredCollateral.pool.muln(10), from: agentOwner1 });
+        await context.wNat.transfer(agent.collateralPool.address, requiredCollateral.pool.muln(10), { from: agentOwner1 });
+        //
+        await agent.makeAvailable();
+        await context.updateUnderlyingBlock();
+        // Perform some minting on phantom collateral (not tracked by totalCollteral)
+        const lots = 6;
+        await expectRevert(minter.reserveCollateral(agent.vaultAddress, lots), "not enough free collateral");
     });
 
     it.skip("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS to remove all collateral from the pool while still backing FAssets", async () => {
