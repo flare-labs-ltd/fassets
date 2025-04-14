@@ -423,13 +423,31 @@ library Liquidation {
         returns (Collateral.Data memory _data, Collateral.Data memory _trustedData)
     {
         CollateralTypeInt.Data storage collateral = _agent.getCollateral(_kind);
-        address owner = _agent.getCollateralOwner(_kind);
-        // A simple way to force agents still holding expired collateral tokens into liquidation is just to
-        // set fullCollateral for expired types to 0.
-        // This will also make all liquidation payments in the other collateral type.
-        uint256 fullCollateral = CollateralTypes.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
+        uint256 fullCollateral = _getCollateralAmount(_agent, _kind, collateral);
         (uint256 price, uint256 trusted) = Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
         _data = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: price });
         _trustedData = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: trusted });
+    }
+
+    function _getCollateralAmount(
+        Agent.State storage _agent,
+        Collateral.Kind _kind,
+        CollateralTypeInt.Data storage collateral
+    )
+        private view
+        returns (uint256)
+    {
+        if (!CollateralTypes.isValid(collateral)) {
+            // A simple way to force agents still holding expired collateral tokens into liquidation is just to
+            // set fullCollateral for expired types to 0.
+            // This will also make sure all liquidation payments are in the other collateral type.
+            return 0;
+        } else if (_kind == Collateral.Kind.POOL) {
+            // Return tracked collateral amount in the pool.
+            return _agent.collateralPool.totalCollateral();
+        } else {
+            // Return amount of vault collateral.
+            return collateral.token.balanceOf(_agent.vaultAddress());
+        }
     }
 }

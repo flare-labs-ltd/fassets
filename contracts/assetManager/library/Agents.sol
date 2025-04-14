@@ -80,6 +80,12 @@ library Agents {
     )
         internal
     {
+        // This factor's function is to compensate agent in case of price fluctuations, so allowing it
+        // above 100% doesn't make sense - it is only good for exploits.
+        require(_buyFAssetByAgentFactorBIPS <= SafePct.MAX_BIPS, "value too high");
+        // We also don't want to allow it to be too low as this allows agents to underpay
+        // the exiting collateral providers.
+        require(_buyFAssetByAgentFactorBIPS >= 9000, "value too low");
         _agent.buyFAssetByAgentFactorBIPS = _buyFAssetByAgentFactorBIPS.toUint16();
     }
 
@@ -267,7 +273,7 @@ library Agents {
         returns (uint256 _amountPaid)
     {
         // don't want the calling method to fail due to too small balance for payout
-        uint256 poolBalance = Globals.getWNat().balanceOf(address(_agent.collateralPool));
+        uint256 poolBalance = _agent.collateralPool.totalCollateral();
         _amountPaid = Math.min(_amountWei, poolBalance);
         _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
@@ -469,13 +475,6 @@ library Agents {
         } else {
             return state.collateralTokens[_agent.poolCollateralIndex];
         }
-    }
-
-    function getCollateralOwner(Agent.State storage _agent, Collateral.Kind _kind)
-        internal view
-        returns (address)
-    {
-        return _kind == Collateral.Kind.POOL ? address(_agent.collateralPool): _agent.vaultAddress();
     }
 
     function collateralUnderwater(Agent.State storage _agent, Collateral.Kind _kind)

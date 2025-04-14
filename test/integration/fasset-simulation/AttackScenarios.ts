@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, deepFormat, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -13,6 +13,8 @@ import { testChainInfo } from "../utils/TestChainInfo";
 import { filterEvents } from "../../../lib/utils/events/truffle";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Challenger } from "../utils/Challenger";
+import { Liquidator } from "../utils/Liquidator";
+import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -624,5 +626,113 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
         // but the new transaction can be challenged since the redemption request was deleted
         await challenger.illegalPaymentChallenge(agent, tx2Hash);
+    });
+
+    it.skip("vault CR too low but cannot liquidate", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const liquidator = await Liquidator.create(context, liquidatorAddress1);
+        const fullAgentCollateral = toWei(3e8);
+        const fullPoolCollateral = toWei(3e9);
+        await agent.depositVaultCollateral(fullAgentCollateral);
+        // Agent deposits 1e18 of wNat via enter method
+        await agent.buyCollateralPoolTokens(toBNExp(1, 18));
+        // Agent directly transfers wNat to collateral pool (large portion)
+        await context.wNat.deposit({value: fullPoolCollateral.sub(toBNExp(1,18)), from: agentOwner1});
+        await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1,18)), {from: agentOwner1});
+
+        await agent.makeAvailable();
+        await context.updateUnderlyingBlock();
+
+        // Perform some minting on phantom collateral (not tracked by totalCollteral)
+        const lots = 6;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        // Simulate price change -> agent becomes liquidatable
+        await agent.setVaultCollateralRatioByChangingAssetPrice(12000);
+        // Get some f-assets for liquidator to perform liquidation
+        await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
+
+        // Liquidator performs liquidation but fails due to artithmetic overflow
+        const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
+        await liquidator.liquidate(agent, liquidateMaxUBA1);
+    });
+
+    it("solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for entering", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const liquidator = await Liquidator.create(context, liquidatorAddress1);
+        const fullAgentCollateral = toWei(3e8);
+        const fullPoolCollateral = toWei(3e9);
+        await agent.depositVaultCollateral(fullAgentCollateral);
+        // Agent deposits 1e18 of wNat via enter method
+        await agent.buyCollateralPoolTokens(toBNExp(1, 18));
+        // Agent directly transfers wNat to collateral pool (large portion)
+        await context.wNat.deposit({ value: fullPoolCollateral.sub(toBNExp(1, 18)), from: agentOwner1 });
+        await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1, 18)), { from: agentOwner1 });
+        await expectRevert(agent.makeAvailable(), "not enough free collateral");
+    });
+
+    it("solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for minting", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const liquidator = await Liquidator.create(context, liquidatorAddress1);
+        const requiredCollateral = await agent.requiredCollateralForLots(1);
+        await agent.depositVaultCollateral(requiredCollateral.vault.muln(10));
+        // Agent correctly deposits enough to cover the pool token requirement, but not for collateral pool requirement
+        await agent.buyCollateralPoolTokens(requiredCollateral.pool.muln(3));
+        // Agent directly transfers wNat to collateral pool (large portion)
+        await context.wNat.deposit({ value: requiredCollateral.pool.muln(10), from: agentOwner1 });
+        await context.wNat.transfer(agent.collateralPool.address, requiredCollateral.pool.muln(10), { from: agentOwner1 });
+        //
+        await agent.makeAvailable();
+        await context.updateUnderlyingBlock();
+        // Perform some minting on phantom collateral (not tracked by totalCollteral)
+        const lots = 6;
+        await expectRevert(minter.reserveCollateral(agent.vaultAddress, lots), "not enough free collateral");
+    });
+
+    it.skip("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS to remove all collateral from the pool while still backing FAssets", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // buy half pool collateral as agent vault and the rest from agent's owner address
+        const requiredCollateral = await agent.requiredCollateralForLots(10);
+        await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool.divn(2));
+        await agent.collateralPool.enter(0, false, { from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
+        //
+        await minter.performMinting(agent.vaultAddress, 10);
+        // agent buys 5 lots
+        await minter.transferFAsset(agent.ownerWorkAddress, context.convertLotsToUBA(5));
+        // agent changes buyFAssetByAgentFactorBIPS and poolExitCollateralRatioBIPS (to be able to do selfCloseExit)
+        await agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(6.4), poolExitCollateralRatioBIPS: toBIPS(3.5) });
+        console.log(deepFormat(await agent.getAgentInfo()));
+        // calculate how much to close
+        const agentFAssets = await context.fAsset.balanceOf(agent.ownerWorkAddress);
+        const agentPoolTokens = await agent.collateralPoolToken.balanceOf(agent.ownerWorkAddress);
+        const requiredFAssets = await agent.collateralPool.fAssetRequiredForSelfCloseExit(agentPoolTokens);
+        const toCloseTokens = agentPoolTokens.mul(agentFAssets).div(requiredFAssets)
+        console.log(deepFormat({ agentFAssets, requiredFAssets, agentPoolTokens, toCloseTokens }));
+        // do self close exit
+        await context.fAsset.approve(agent.collateralPool.address, agentFAssets, { from: agent.ownerWorkAddress });
+        await agent.collateralPool.selfCloseExit(toCloseTokens, true, "agent_owner_underlying", ZERO_ADDRESS, { from: agent.ownerWorkAddress });
+        //context.priceStore.setCurrentPrice("")
+        console.log(deepFormat(await agent.getAgentInfo()));
+    });
+
+    it("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS - fixed", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // buy half pool collateral as agent vault and the rest from agent's owner address
+        const requiredCollateral = await agent.requiredCollateralForLots(10);
+        await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool.divn(2));
+        await agent.collateralPool.enter(0, false, { from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
+        //
+        await minter.performMinting(agent.vaultAddress, 10);
+        // agent buys 5 lots
+        await minter.transferFAsset(agent.ownerWorkAddress, context.convertLotsToUBA(5));
+        // agent changes buyFAssetByAgentFactorBIPS and poolExitCollateralRatioBIPS (to be able to do selfCloseExit)
+        await expectRevert(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "value too high");
     });
 });
