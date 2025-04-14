@@ -144,6 +144,7 @@ library RedemptionFailures {
                 _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
         } else {
             // core vault transfer default - re-create tickets
+            Redemptions.releaseTransferToCoreVault(_redemptionRequestId);
             Redemptions.reCreateRedemptionTicket(_agent, _request);
             emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId);
         }
