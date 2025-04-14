@@ -373,11 +373,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should correctly update agent setting buy fasset by agent factor BIPS", async () => {
             const agentBuyFactorChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            await assetManager.announceAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", 25000, { from: agentOwner1 });
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", 9300, { from: agentOwner1 });
             await deterministicTimeIncrease(agentBuyFactorChangeTimelock);
             await assetManager.executeAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assert.equal(agentInfo.buyFAssetByAgentFactorBIPS.toString(), "25000");
+            assert.equal(agentInfo.buyFAssetByAgentFactorBIPS.toString(), "9300");
+        });
+
+        it("should not update agent setting buy fasset by agent factor BIPS if value is too low or too high", async () => {
+            const agentBuyFactorChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", 10100, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentBuyFactorChangeTimelock);
+            await expectRevert(assetManager.executeAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", { from: agentOwner1 }), "value too high");
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", 8000, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentBuyFactorChangeTimelock);
+            await expectRevert(assetManager.executeAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", { from: agentOwner1 }), "value too low");
         });
 
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {

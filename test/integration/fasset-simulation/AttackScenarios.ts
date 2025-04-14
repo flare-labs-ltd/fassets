@@ -660,7 +660,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await liquidator.liquidate(agent, liquidateMaxUBA1);
     });
 
-    it("agent can set very high buyFAssetByAgentFactorBIPS to remove all collateral from the pool while still backing FAssets", async () => {
+    it.skip("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS to remove all collateral from the pool while still backing FAssets", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         // buy half pool collateral as agent vault and the rest from agent's owner address
@@ -685,5 +685,20 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await agent.collateralPool.selfCloseExit(toCloseTokens, true, "agent_owner_underlying", ZERO_ADDRESS, { from: agent.ownerWorkAddress });
         //context.priceStore.setCurrentPrice("")
         console.log(deepFormat(await agent.getAgentInfo()));
+    });
+
+    it("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS - fixed", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // buy half pool collateral as agent vault and the rest from agent's owner address
+        const requiredCollateral = await agent.requiredCollateralForLots(10);
+        await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool.divn(2));
+        await agent.collateralPool.enter(0, false, { from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
+        //
+        await minter.performMinting(agent.vaultAddress, 10);
+        // agent buys 5 lots
+        await minter.transferFAsset(agent.ownerWorkAddress, context.convertLotsToUBA(5));
+        // agent changes buyFAssetByAgentFactorBIPS and poolExitCollateralRatioBIPS (to be able to do selfCloseExit)
+        await expectRevert(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "value too high");
     });
 });

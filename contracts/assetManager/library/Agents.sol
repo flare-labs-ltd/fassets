@@ -50,7 +50,7 @@ library Agents {
     )
         internal
     {
-        require(_feeBIPS < SafePct.MAX_BIPS, "fee too high");
+        require(_feeBIPS <= SafePct.MAX_BIPS, "fee too high");
         _agent.feeBIPS = _feeBIPS.toUint16();
     }
 
@@ -60,7 +60,7 @@ library Agents {
     )
         internal
     {
-        require(_poolFeeShareBIPS < SafePct.MAX_BIPS, "value too high");
+        require(_poolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
@@ -70,6 +70,12 @@ library Agents {
     )
         internal
     {
+        // This factor's function is to compensate agent in case of price fluctuations, so allowing it
+        // above 100% doesn't make sense - it is only good for exploits.
+        require(_buyFAssetByAgentFactorBIPS <= SafePct.MAX_BIPS, "value too high");
+        // We also don't want to allow it to be too low as this allows agents to underpay
+        // the exiting collateral providers.
+        require(_buyFAssetByAgentFactorBIPS >= 9000, "value too low");
         _agent.buyFAssetByAgentFactorBIPS = _buyFAssetByAgentFactorBIPS.toUint16();
     }
 
