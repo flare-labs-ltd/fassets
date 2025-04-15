@@ -11,6 +11,7 @@ library CollateralReservation {
         uint128 underlyingFeeUBA;
         uint128 reservationFeeNatWei;
         address agentVault;
+        uint16 poolFeeShareBIPS;
         address minter;
         address payable executor;
         uint64 executorFeeNatGWei;
