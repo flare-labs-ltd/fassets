@@ -10,11 +10,12 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
-import { filterEvents } from "../../../lib/utils/events/truffle";
+import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Challenger } from "../utils/Challenger";
 import { Liquidator } from "../utils/Liquidator";
 import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -734,5 +735,76 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await minter.transferFAsset(agent.ownerWorkAddress, context.convertLotsToUBA(5));
         // agent changes buyFAssetByAgentFactorBIPS and poolExitCollateralRatioBIPS (to be able to do selfCloseExit)
         await expectRevert(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "value too high");
+    });
+
+    it("tenxhash - mint from free underlying of 0 lots fill redemption queue", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // fill with empty tickets
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
+        for (let i = 0; i < 30; i++) {
+            await agent.mintFromFreeUnderlying(0);
+            await agent2.mintFromFreeUnderlying(0);
+        }
+        // serious mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        //
+        // console.log(deepFormat(await context.getRedemptionQueue()));
+        for (let i = 0; i < 4; i++) {
+            const [rdreqs, remaining] = await redeemer.requestRedemption(1);
+            console.log(deepFormat({ rdreqs, remaining }));
+        }
+    });
+
+    it.only("fixed - tenxhash - increasing pool fee share during minting can make minter lose deposit", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        // announce fee change
+        const info = await agent.checkAgentInfo({});
+        console.log(deepFormat(info.poolFeeShareBIPS));
+        const newFeeShare = toBN(info.poolFeeShareBIPS).muln(11).divn(10);
+        const res = await context.assetManager.announceAgentSettingUpdate(agent.vaultAddress, "poolFeeShareBIPS", newFeeShare, { from: agent.ownerWorkAddress });
+        const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
+        await time.increaseTo(announcement.validAt);
+        // reserve collateral and pay
+        const crt = await minter.reserveCollateral(agent.vaultAddress, 10);
+        const txHash = await minter.performMintingPayment(crt);
+        // execute fee change
+        await context.assetManager.executeAgentSettingUpdate(agent.vaultAddress, "poolFeeShareBIPS", { from: agent.ownerWorkAddress });
+        // cannot execute minting
+        const info2 = await agent.getAgentInfo();
+        console.log(deepFormat(info2.poolFeeShareBIPS));
+        const minted = await minter.executeMinting(crt, txHash);
+        console.log(deepFormat(minted));
+        await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)), reservedUBA: 0 });
+    });
+
+    it.only("fixed - tenxhash - decreasing pool fee share during minting can create stuck reserved amount", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        // announce fee change
+        const info = await agent.checkAgentInfo({});
+        console.log(deepFormat(info.poolFeeShareBIPS));
+        const newFeeShare = toBN(info.poolFeeShareBIPS).muln(9).divn(10);
+        const res = await context.assetManager.announceAgentSettingUpdate(agent.vaultAddress, "poolFeeShareBIPS", newFeeShare, { from: agent.ownerWorkAddress });
+        const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
+        await time.increaseTo(announcement.validAt);
+        // reserve collateral and pay
+        const crt = await minter.reserveCollateral(agent.vaultAddress, 10);
+        const txHash = await minter.performMintingPayment(crt);
+        // execute fee change
+        await context.assetManager.executeAgentSettingUpdate(agent.vaultAddress, "poolFeeShareBIPS", { from: agent.ownerWorkAddress });
+        // cannot execute minting
+        const info2 = await agent.getAgentInfo();
+        console.log(deepFormat(info2.poolFeeShareBIPS));
+        const minted = await minter.executeMinting(crt, txHash);
+        console.log(deepFormat(minted));
+        await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)), reservedUBA: 0 });
     });
 });
