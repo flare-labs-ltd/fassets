@@ -180,6 +180,7 @@ library Agents {
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        if (_ticketValueAMG == 0) return;
         address vaultAddress = _agent.vaultAddress();
         uint64 lastTicketId = state.redemptionQueue.lastTicketId;
         RedemptionQueue.Ticket storage lastTicket = state.redemptionQueue.getTicket(lastTicketId);
@@ -192,7 +193,7 @@ library Agents {
             // either queue is empty or the last ticket belongs to another agent - create new ticket
             uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
             uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
-        emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
+            emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
         }
     }
 

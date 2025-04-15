@@ -737,7 +737,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await expectRevert(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "value too high");
     });
 
-    it("tenxhash - mint from free underlying of 0 lots fill redemption queue", async () => {
+    it("fixed - tenxhash - mint from free underlying of 0 lots fill redemption queue", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
@@ -754,10 +754,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
         //
         // console.log(deepFormat(await context.getRedemptionQueue()));
-        for (let i = 0; i < 4; i++) {
-            const [rdreqs, remaining] = await redeemer.requestRedemption(1);
-            console.log(deepFormat({ rdreqs, remaining }));
-        }
+        // for (let i = 0; i < 4; i++) {
+        //     const [rdreqs, remaining] = await redeemer.requestRedemption(1);
+        //     console.log(deepFormat({ rdreqs, remaining }));
+        // }
+        const [rdreqs, remaining] = await redeemer.requestRedemption(1);
+        assertWeb3Equal(rdreqs.length, 1);
+        assertWeb3Equal(remaining, 0);
     });
 
     it("fixed - tenxhash - increasing pool fee share during minting can make minter lose deposit", async () => {
