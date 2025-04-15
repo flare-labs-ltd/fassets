@@ -55,7 +55,7 @@ library Minting {
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // execute minting
         _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
-            uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt.underlyingFeeUBA));
+            uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt));
         // pay to executor if they called this method
         uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
         if (msg.sender == crt.executor) {
@@ -89,7 +89,7 @@ library Minting {
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
+        uint256 poolFeeUBA = calculateCurrentPoolFee(agent, mintValueUBA);
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
@@ -127,7 +127,7 @@ library Minting {
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
+        uint256 poolFeeUBA = calculateCurrentPoolFee(agent, mintValueUBA);
         uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
         require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
         _performMinting(agent, MintingType.FROM_FREE_UNDERLYING, 0, msg.sender, valueAMG, 0, poolFeeUBA);
@@ -149,13 +149,38 @@ library Minting {
 
     function calculatePoolFee(
         Agent.State storage _agent,
-        uint256 _mintingFee
+        CollateralReservation.Data storage _crt
     )
         internal view
         returns (uint256)
     {
+        // After an upgrade, poolFeeShareBIPS is stored in the collateral reservation.
+        // To allow for backward compatibility, value 0 in this field indicates use of old _agent.poolFeeShareBIPS.
+        uint16 storedPoolFeeShareBIPS = _crt.poolFeeShareBIPS;
+        uint16 poolFeeShareBIPS = storedPoolFeeShareBIPS > 0 ? storedPoolFeeShareBIPS - 1 : _agent.poolFeeShareBIPS;
+        return _calculatePoolFee(_crt.underlyingFeeUBA, poolFeeShareBIPS);
+    }
+
+    function calculateCurrentPoolFee(
+        Agent.State storage _agent,
+        uint256 _mintingValueUBA
+    )
+        internal view
+        returns (uint256)
+    {
+        uint256 mintingFeeUBA = _mintingValueUBA.mulBips(_agent.feeBIPS);
+        return _calculatePoolFee(mintingFeeUBA, _agent.poolFeeShareBIPS);
+    }
+
+    function _calculatePoolFee(
+        uint256 _mintingFee,
+        uint16 _poolFeeShareBIPS
+    )
+        private view
+        returns (uint256)
+    {
         // round to whole number of amg's to avoid rounding errors after minting (minted amount is in amg)
-        return Conversion.roundUBAToAmg(_mintingFee.mulBips(_agent.poolFeeShareBIPS));
+        return Conversion.roundUBAToAmg(_mintingFee.mulBips(_poolFeeShareBIPS));
     }
 
     function _performMinting(

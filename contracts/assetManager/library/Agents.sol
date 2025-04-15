@@ -210,6 +210,7 @@ library Agents {
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        if (_ticketValueAMG == 0) return;
         address vaultAddress = _agent.vaultAddress();
         uint64 lastTicketId = state.redemptionQueue.lastTicketId;
         RedemptionQueue.Ticket storage lastTicket = state.redemptionQueue.getTicket(lastTicketId);

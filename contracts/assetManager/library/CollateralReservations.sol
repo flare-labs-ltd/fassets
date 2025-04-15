@@ -50,7 +50,7 @@ library CollateralReservations {
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        _reserveCollateral(agent, valueAMG, underlyingFeeUBA);
+        _reserveCollateral(agent, valueAMG, Minting.calculateCurrentPoolFee(agent, underlyingValueUBA));
         // - only charge reservation fee for public minting, not for alwaysAllowedMinters on non-public agent
         // - poolCollateral is WNat, so we can use its price for calculation of CR fee
         uint256 reservationFee = agent.availableAgentsPos != 0
@@ -65,6 +65,7 @@ library CollateralReservations {
         cr.valueAMG = valueAMG;
         cr.underlyingFeeUBA = underlyingFeeUBA.toUint128();
         cr.reservationFeeNatWei = reservationFee.toUint128();
+        cr.poolFeeShareBIPS = agent.poolFeeShareBIPS + 1;
         cr.agentVault = _agentVault;
         cr.minter = _minter;
         cr.executor = _executor;
@@ -169,7 +170,7 @@ library CollateralReservations {
             "minting non-payment proof window too short");
 
         // send event
-        uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
+        uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt);
         emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // share collateral reservation fee between the agent's vault and pool
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
@@ -204,8 +205,7 @@ library CollateralReservations {
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnVaultCollateral(agent, reservedCollateral);
         // send event
-        uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) +
-            Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
+        uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFee(agent, crt);
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
@@ -243,7 +243,7 @@ library CollateralReservations {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(crt.agentVault);
-        uint64 reservationAMG = _reservationAMG(agent, crt.valueAMG, crt.underlyingFeeUBA);
+        uint64 reservationAMG = crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFee(agent, crt));
         agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, reservationAMG, "invalid reservation");
         state.totalReservedCollateralAMG -= reservationAMG;
         delete state.crts[_crtId];
@@ -263,12 +263,12 @@ library CollateralReservations {
     function _reserveCollateral(
         Agent.State storage _agent,
         uint64 _valueAMG,
-        uint256 _underlyingFeeUBA
+        uint256 _poolFeeUBA
     )
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint64 reservationAMG = _reservationAMG(_agent, _valueAMG, _underlyingFeeUBA);
+        uint64 reservationAMG = _valueAMG + Conversion.convertUBAToAmg(_poolFeeUBA);
         Minting.checkMintingCap(reservationAMG);
         _agent.reservedAMG += reservationAMG;
         state.totalReservedCollateralAMG += reservationAMG;
@@ -335,18 +335,6 @@ library CollateralReservations {
         } else if (totalFee > returnFee) {
             Agents.burnDirectNAT(totalFee - returnFee);
         }
-    }
-
-    function _reservationAMG(
-        Agent.State storage _agent,
-        uint64 _valueAMG,
-        uint256 _underlyingFeeUBA
-    )
-        private view
-        returns (uint64)
-    {
-        uint256 poolFeeUBA = _underlyingFeeUBA.mulBips(_agent.poolFeeShareBIPS);
-        return _valueAMG + Conversion.convertUBAToAmg(poolFeeUBA);
     }
 
     function _lastPaymentBlock()
