@@ -1893,7 +1893,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("ERC-165 interface identification", () => {
-        it("should properly respond to supportsInterface", async () => {
+        async function checkSupportInterfaceWorks() {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAssetManager = artifacts.require("IAssetManager");
             const IIAssetManager = artifacts.require("IIAssetManager");
@@ -1919,7 +1919,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager,
                 [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IIAssetManager, [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
-            assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+            assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));     // must not support invalid interface
+        }
+
+        it("should properly respond to supportsInterface", async () => {
+            await checkSupportInterfaceWorks();
+        });
+
+        it("calling AssetManagerInit.upgradeERC165Identifiers on initialized asset manager should work", async () => {
+            const AssetManagerInit = artifacts.require("AssetManagerInit");
+            const assetManagerInit = await AssetManagerInit.new();
+            // upgrade should fail if called directly
+            await expectRevert(assetManagerInit.upgradeERC165Identifiers(), "not initialized");
+            // but it should work in diamond cut on existing asset manager
+            await assetManager.diamondCut([], assetManagerInit.address, abiEncodeCall(assetManagerInit, (c) => c.upgradeERC165Identifiers()), { from: governance });
+            // supportInterface should work as before
+            await checkSupportInterfaceWorks();
         });
     });
 

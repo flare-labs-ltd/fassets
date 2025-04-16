@@ -34,7 +34,7 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const deletedSelectors = createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
     const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
     // create init
-    const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init);
+    const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init, deployer);
     // perform or print cuts
     const IDiamondCut = artifacts.require("DiamondCutFacet");
     const diamondCutInstance = await IDiamondCut.at(diamondAddress);
@@ -117,10 +117,10 @@ function createDeletedSelectors(deployedSelectors: DiamondSelectors, deleteMetho
     return new DiamondSelectors(selectorMap);
 }
 
-async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: ContractStore, init?: DiamondCutJsonInit) {
+async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: ContractStore, init: DiamondCutJsonInit | undefined, deployer: string) {
     if (!init) return [ZERO_ADDRESS, "0x00000000"];
     const contract = hre.artifacts.require(init.contract) as Truffle.Contract<Truffle.ContractInstance>;
-    const address = contracts.getAddress(init.contract);
+    const address = await deployFacet(hre, init.contract, contracts, deployer);
     const instance = await contract.at(address);
     const args = init.args ?? [];
     const encodedCall = await instance.contract.methods[init.method](...args).encodeABI() as string;
