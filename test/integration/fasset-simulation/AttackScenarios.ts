@@ -55,7 +55,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
-    it("nnez-default-reentrancy - fixed", async () => {
+    it("40199: default reentrancy", async () => {
         // Create all essential actors
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -133,7 +133,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         assertWeb3Equal(vaultCollateralBalanceAfter, 0);
     });
 
-    it.skip("HaliPot-force-default", async () => {
+    it.skip("40203: force redemption default by redeeming to agent's underlying address - original", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -171,7 +171,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await agent.confirmFailedRedemptionPayment(request, tx1Hash);
     });
 
-    it("HaliPot-force-default - fixed", async () => {
+    it("40203: force redemption default by redeeming to agent's underlying address", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
 
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -201,7 +201,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             "cannot redeem to agent's address");
     });
 
-    it("attacker can prevent agent from calling destroy by depositing malcious token to vault", async () => {
+    it("39933: attacker can prevent agent from calling destroy by depositing malcious token to vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
@@ -216,7 +216,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await agent.exitAndDestroy();
     });
 
-    it.skip("nnez-force-liquidation", async () => {
+    it.skip("40499: force agent liquidation by reentering `liquidate` from `executeMinting`", async () => {
         // Vault collateral is USDC, 18 decimals
         // USDC price - 1.01
         // NAT price - 0.42
@@ -285,7 +285,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log("poolCR after exploit: ", agentInfo.poolCollateralRatioBIPS);
     });
 
-    it("nnez-double-redemption", async() => {
+    it("40760: agent frees collateral by double processing one redemption - original", async() => {
         // prepare an agent with collateral
         console.log(">> Prepare an agent with collateral");
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -391,7 +391,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("nnez-double-redemption with confirmation after finish doesn't work", async () => {
+    it("40760: agent frees collateral by double processing one redemption", async () => {
         // prepare an agent with collateral
         console.log(">> Prepare an agent with collateral");
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -501,7 +501,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("nnez-negative-spent-amount-from-another-source - must fail", async() => {
+    it("41079: agent can increase underlying balance by constructing a negative-value redemption payment UTXO", async() => {
 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -568,7 +568,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("nnez-circumventing-challenges - fixed", async () => {
+    it("41764: agent can circumvent double payment challenge by reusing rejected redemption's payment reference", async () => {
         // Prelim setup
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -629,7 +629,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await challenger.illegalPaymentChallenge(agent, tx2Hash);
     });
 
-    it.skip("vault CR too low but cannot liquidate", async () => {
+    it.skip("43711: vault CR too low but cannot liquidate", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
         const liquidator = await Liquidator.create(context, liquidatorAddress1);
@@ -661,7 +661,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await liquidator.liquidate(agent, liquidateMaxUBA1);
     });
 
-    it("solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for entering", async () => {
+    it("43711: solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for entering", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
         const liquidator = await Liquidator.create(context, liquidatorAddress1);
@@ -676,7 +676,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await expectRevert(agent.makeAvailable(), "not enough free collateral");
     });
 
-    it("solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for minting", async () => {
+    it("43711: solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for minting", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
         const liquidator = await Liquidator.create(context, liquidatorAddress1);
@@ -695,7 +695,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await expectRevert(minter.reserveCollateral(agent.vaultAddress, lots), "not enough free collateral");
     });
 
-    it.skip("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS to remove all collateral from the pool while still backing FAssets", async () => {
+    it.skip("43753: agent can set very high buyFAssetByAgentFactorBIPS - original", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         // buy half pool collateral as agent vault and the rest from agent's owner address
@@ -722,7 +722,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log(deepFormat(await agent.getAgentInfo()));
     });
 
-    it("tenxhash - agent can set very high buyFAssetByAgentFactorBIPS - fixed", async () => {
+    it("43753: agent can set very high buyFAssetByAgentFactorBIPS - fixed", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         // buy half pool collateral as agent vault and the rest from agent's owner address
@@ -737,7 +737,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await expectRevert(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "value too high");
     });
 
-    it("fixed - tenxhash - mint from free underlying of 0 lots fill redemption queue", async () => {
+    it("43877: mint from free underlying of 0 lots fill redemption queue", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
@@ -763,7 +763,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         assertWeb3Equal(remaining, 0);
     });
 
-    it("fixed - tenxhash - increasing pool fee share during minting can make minter lose deposit", async () => {
+    it("43879: increasing pool fee share during minting can make minter lose deposit", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
         await agent.depositCollateralLotsAndMakeAvailable(100);
@@ -786,7 +786,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)), reservedUBA: 0 });
     });
 
-    it("fixed - tenxhash - decreasing pool fee share during minting can create stuck reserved amount", async () => {
+    it("43879: decreasing pool fee share during minting can create stuck reserved amount", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
         await agent.depositCollateralLotsAndMakeAvailable(100);
