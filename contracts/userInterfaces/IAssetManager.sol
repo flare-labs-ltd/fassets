@@ -10,6 +10,8 @@ import "./data/AgentInfo.sol";
 import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
 import "./data/RedemptionTicketInfo.sol";
+import "./data/RedemptionRequestInfo.sol";
+import "./data/CollateralReservationInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
@@ -673,6 +675,15 @@ interface IAssetManager is
         returns (uint256 _reservationFeeNATWei);
 
     /**
+     * Returns the data about the collateral reservation for an ongoing minting.
+     * Note: once the minting is executed or defaulted, the collateral reservation is deleted and this method fails.
+     * @param _collateralReservationId the collateral reservation id, as used for executing or defaulting the minting
+     */
+    function collateralReservationInfo(uint256 _collateralReservationId)
+        external view
+        returns (CollateralReservationInfo.Data memory);
+
+    /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
      * NOTE: In case handshake was required, the payment must be done using only all provided addresses,
@@ -883,6 +894,16 @@ interface IAssetManager is
     ) external;
 
     /**
+     * Returns the data about an ongoing redemption request.
+     * Note: once the redemptions is confirmed, the request is deleted and this method fails.
+     * However, if there is no payment and the redemption defaults, the method works and returns status DEFAULTED.
+     * @param _redemptionRequestId the redemption request id, as used for confirming or defaulting the redemption
+     */
+    function redemptionRequestInfo(uint256 _redemptionRequestId)
+        external view
+        returns (RedemptionRequestInfo.Data memory);
+
+    /**
      * Agent can "redeem against himself" by calling `selfClose`, which burns agent's own f-assets
      * and unlocks agent's collateral. The underlying funds backing the f-assets are released
      * as agent's free underlying funds and can be later withdrawn after announcement.
@@ -899,7 +920,7 @@ interface IAssetManager is
         returns (uint256 _closedAmountUBA);
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Redemption info
+    // Redemption queue info
 
     /**
      * Return (part of) the redemption queue.

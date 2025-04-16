@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ZERO, deepFormat, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -26,6 +26,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const redeemerAddress1 = accounts[40];
     const redeemerAddress2 = accounts[41];
     const redeemerAddress3 = accounts[42];
+    const executorAddress1 = accounts[45];
     const challengerAddress1 = accounts[50];
     const challengerAddress2 = accounts[51];
     const liquidatorAddress1 = accounts[60];
@@ -833,6 +834,70 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const allowedMinter = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
             await expectRevert(context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "only agent vault owner");
             await expectRevert(context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "only agent vault owner");
+        });
+
+        it("obtain collateral reservation and redemption request info", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(10));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.updateUnderlyingBlock();
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            // mint
+            const mintReq = await minter.reserveCollateral(agent.vaultAddress, 5, executorAddress1, toWei("0.01"));
+            const crInfo = await context.assetManager.collateralReservationInfo(mintReq.collateralReservationId);
+            // console.log(deepFormat(crInfo));
+            assertWeb3Equal(crInfo.collateralReservationId, mintReq.collateralReservationId);
+            assertWeb3Equal(crInfo.agentVault, mintReq.agentVault);
+            assertWeb3Equal(crInfo.minter, mintReq.minter);
+            assertWeb3Equal(crInfo.paymentAddress, mintReq.paymentAddress);
+            assertWeb3Equal(crInfo.paymentReference, mintReq.paymentReference);
+            assertWeb3Equal(crInfo.valueUBA, mintReq.valueUBA);
+            assertWeb3Equal(crInfo.mintingFeeUBA, mintReq.feeUBA);
+            assertWeb3Equal(crInfo.firstUnderlyingBlock, mintReq.firstUnderlyingBlock);
+            assertWeb3Equal(crInfo.lastUnderlyingBlock, mintReq.lastUnderlyingBlock);
+            assertWeb3Equal(crInfo.lastUnderlyingTimestamp, mintReq.lastUnderlyingTimestamp);
+            assertWeb3Equal(crInfo.executor, mintReq.executor);
+            assertWeb3Equal(crInfo.executorFeeNatWei, mintReq.executorFeeNatWei);
+            assertWeb3Equal(crInfo.handshakeStartTimestamp, 0);
+            assertWeb3Equal(crInfo.sourceAddressesRoot, ZERO_BYTES32);
+            // execute mint
+            const mintTxHash = await minter.performMintingPayment(mintReq);
+            const minted = await minter.executeMinting(mintReq, mintTxHash);
+            // now the info will fail
+            await expectRevert(context.assetManager.collateralReservationInfo(mintReq.collateralReservationId), "invalid crt id");
+            // redeem
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(5));
+            const [[redeemReq]] = await redeemer.requestRedemption(5, executorAddress1, toWei("0.02"));
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(redeemReq.requestId);
+            // console.log(deepFormat(redeemInfo));
+            assertWeb3Equal(redeemInfo.redemptionRequestId, redeemReq.requestId);
+            assertWeb3Equal(redeemInfo.agentVault, redeemReq.agentVault);
+            assertWeb3Equal(redeemInfo.redeemer, redeemReq.redeemer);
+            assertWeb3Equal(redeemInfo.valueUBA, redeemReq.valueUBA);
+            assertWeb3Equal(redeemInfo.feeUBA, redeemReq.feeUBA);
+            assertWeb3Equal(redeemInfo.paymentAddress, redeemReq.paymentAddress);
+            assertWeb3Equal(redeemInfo.paymentReference, redeemReq.paymentReference);
+            assertWeb3Equal(redeemInfo.firstUnderlyingBlock, redeemReq.firstUnderlyingBlock);
+            assertWeb3Equal(redeemInfo.lastUnderlyingBlock, redeemReq.lastUnderlyingBlock);
+            assertWeb3Equal(redeemInfo.lastUnderlyingTimestamp, redeemReq.lastUnderlyingTimestamp);
+            assertWeb3Equal(redeemInfo.executor, redeemReq.executor);
+            assertWeb3Equal(redeemInfo.executorFeeNatWei, redeemReq.executorFeeNatWei);
+            assertWeb3Equal(redeemInfo.status, 0);
+            assertWeb3Equal(redeemInfo.poolSelfClose, false);
+            assertWeb3Equal(redeemInfo.transferToCoreVault, false);
+            assertWeb3Equal(redeemInfo.rejectionTimestamp, 0);
+            assertWeb3Equal(redeemInfo.takeOverTimestamp, 0);
+            // default
+            context.skipToExpiration(redeemReq.lastUnderlyingBlock, redeemReq.lastUnderlyingTimestamp);
+            await redeemer.redemptionPaymentDefault(redeemReq);
+            // info should still return, but status is now DEFAULTED
+            const redeemInfo2 = await context.assetManager.redemptionRequestInfo(redeemReq.requestId);
+            assertWeb3Equal(redeemInfo2.redemptionRequestId, redeemReq.requestId);
+            assertWeb3Equal(redeemInfo2.status, 1);
+            // now pay too late and confirm payment
+            await agent.performRedemptions([redeemReq]);
+            // now info should fail, because the redemption request has been deleted
+            await expectRevert(context.assetManager.redemptionRequestInfo(redeemReq.requestId), "invalid request id");
         });
     });
 });
