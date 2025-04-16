@@ -88,7 +88,7 @@ abstract contract ERC20Permit is IERC20Permit, EIP712 {
     }
 
     // keccak256(abi.encode(uint256(keccak256("fasset.openzeppelin.ERC20Permit")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant _STORAGE_LOCATION = 0x361beb44631d074062265988ad0b416453c05cfc27148633e5eff4da54187b00;
+    bytes32 private constant ERC20PERMIT_STORAGE = 0x361beb44631d074062265988ad0b416453c05cfc27148633e5eff4da54187b00;
 
     function _getERC20PermitState()
         private pure
@@ -96,7 +96,7 @@ abstract contract ERC20Permit is IERC20Permit, EIP712 {
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            _state.slot := _STORAGE_LOCATION
+            _state.slot := ERC20PERMIT_STORAGE
         }
     }
 }
