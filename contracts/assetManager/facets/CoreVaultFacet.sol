@@ -30,6 +30,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         uint256 _amountUBA
     )
         external payable
+        notEmergencyPaused
         nonReentrant
         onlyAgentVaultOwner(_agentVault)
     {
@@ -53,6 +54,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         uint64 _lots
     )
         external
+        notEmergencyPaused
         nonReentrant
         onlyAgentVaultOwner(_agentVault)
     {
@@ -107,6 +109,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         string memory _redeemerUnderlyingAddress
     )
         external
+        notEmergencyPaused
         nonReentrant
     {
         CoreVault.redeemFromCoreVault(_lots, _redeemerUnderlyingAddress);
