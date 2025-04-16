@@ -157,12 +157,12 @@
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0x483cB718025cC01b0008679E6520A91A06D3125A"
+    "address": "0xB4462688e6061C843Fe365b6fa386Fb37aa5B740"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x34B8Eb0DD928146F973CAb6E7b3b8C28F9833Ef4"
+    "address": "0x7b043ABeE86bCA54Db4616FE488871D64a7e14A5"
   },
   {
     "name": "RedemptionRequestsFacet",
