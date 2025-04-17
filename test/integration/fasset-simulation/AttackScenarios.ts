@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { DAYS, deepFormat, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, deepFormat, MAX_BIPS, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -807,5 +807,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log('poolFeeShareBIPS after:', deepFormat(info2.poolFeeShareBIPS));
         const minted = await minter.executeMinting(crt, txHash);
         await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)), reservedUBA: 0 });
+    });
+
+    it("agent can mint unbacked fassets by increasing fee and poolFeeShare", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(10));
+        await agent.depositCollateralLotsAndMakeAvailable(10, 1);
+        await agent.changeSettings({ feeBIPS: 10000, poolFeeShareBIPS: 10000 });
+        await agent.selfMint(context.convertLotsToUBA(20), 10);
+        const info = await agent.getAgentInfo();
+        assert.isTrue(toBN(info.vaultCollateralRatioBIPS).ltn(MAX_BIPS));
+        assertWeb3Equal(info.vaultCollateralRatioBIPS, toBN(info.mintingVaultCollateralRatioBIPS).divn(2));
+        // console.log(deepFormat(info));
     });
 });
