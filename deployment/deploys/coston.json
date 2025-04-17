@@ -347,7 +347,7 @@
   {
     "name": "AssetManagerInit",
     "contractName": "AssetManagerInit.sol",
-    "address": "0xc493D857F43756bc44872ECc979a927996862dff"
+    "address": "0x0CFA76DCCBefFe906fBf6C29d0C80159234e9835"
   },
   {
     "name": "AssetManagerDiamondCutFacet",
@@ -462,7 +462,7 @@
   {
     "name": "SystemInfoFacet",
     "contractName": "SystemInfoFacet.sol",
-    "address": "0x6204D457e77c40Fa43f8460336B592627d79B5E8"
+    "address": "0xB14bCB564B7c593F8DDb25F53eADF1FcB20b8fa2"
   },
   {
     "name": "EmergencyPauseFacet",

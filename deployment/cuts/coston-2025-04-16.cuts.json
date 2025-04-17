@@ -1,0 +1,14 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestBTC", "AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"],
+    "facets": [
+        {
+            "contract": "SystemInfoFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ],
+    "init": {
+        "contract": "AssetManagerInit",
+        "method": "upgradeERC165Identifiers"
+    }
+}

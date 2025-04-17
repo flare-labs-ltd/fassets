@@ -1868,10 +1868,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agents[0][1], agentVault2.address);
             assert.equal(agents[1].toString(), "2");
         });
+
         it("should announce and destroy agent", async () => {
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
-            await deterministicTimeIncrease(2 * time.duration.hours(2));
+            await deterministicTimeIncrease(time.duration.hours(3));
             await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
             const tx = assetManager.getAgentInfo(agentVault.address);
             await expectRevert(tx, "invalid agent vault address");
@@ -1893,7 +1894,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("ERC-165 interface identification", () => {
-        async function checkSupportInterfaceWorks() {
+        function erc165InterfaceIdLog(verbose: boolean, mainInterface: Truffle.Contract<any>, inheritedInterfaces: Truffle.Contract<any>[] = []) {
+            const interfaceId = erc165InterfaceId(mainInterface, inheritedInterfaces);
+            if (verbose) {
+                console.log(`${(mainInterface as any)._json?.contractName}: ${interfaceId}`);
+            }
+            return interfaceId;
+        }
+
+        async function checkSupportInterfaceWorks(verbose: boolean) {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAssetManager = artifacts.require("IAssetManager");
             const IIAssetManager = artifacts.require("IIAssetManager");
@@ -1907,23 +1916,24 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const ICoreVaultSettings = artifacts.require("ICoreVaultSettings");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
             const IAgentAlwaysAllowedMinters = artifacts.require("IAgentAlwaysAllowedMinters");
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IERC165)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondLoupe)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondCut)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IGoverned)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAgentPing)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IRedemptionTimeExtension)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ITransferFees)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ICoreVault)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ICoreVaultSettings)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager,
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IERC165)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDiamondLoupe)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDiamondCut)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IGoverned)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAgentPing)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionTimeExtension)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ITransferFees)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVault)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultSettings)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager,
                 [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IIAssetManager, [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IIAssetManager,
+                [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));     // must not support invalid interface
         }
 
         it("should properly respond to supportsInterface", async () => {
-            await checkSupportInterfaceWorks();
+            await checkSupportInterfaceWorks(true);
         });
 
         it("calling AssetManagerInit.upgradeERC165Identifiers on initialized asset manager should work", async () => {
@@ -1934,7 +1944,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // but it should work in diamond cut on existing asset manager
             await assetManager.diamondCut([], assetManagerInit.address, abiEncodeCall(assetManagerInit, (c) => c.upgradeERC165Identifiers()), { from: governance });
             // supportInterface should work as before
-            await checkSupportInterfaceWorks();
+            await checkSupportInterfaceWorks(false);
         });
     });
 
