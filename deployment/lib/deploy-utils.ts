@@ -92,3 +92,12 @@ export function encodeContractNames(names: string[]): string[] {
 export function encodeContractName(text: string): string {
     return web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [text]));
 }
+
+/**
+ * Run async main function and wait for exit.
+ */
+export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitCode: number = 123) {
+    void func(process.argv.slice(2))
+        .then(() => { process.exit(0); })
+        .catch(e => { console.error(e); process.exit(errorExitCode); });
+}

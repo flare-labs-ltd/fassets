@@ -212,15 +212,6 @@ export function runAsync(func: () => Promise<void>) {
 }
 
 /**
- * Run async main function and wait for exit.
- */
-export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitCode: number = 123) {
-    void func(process.argv.slice(2))
-        .then(() => { process.exit(0); })
-        .catch(e => { console.error(e); process.exit(errorExitCode); });
-}
-
-/**
  * Get value of key `key` for map. If it doesn't exists, create new value, add it to the map and return it.
  */
 export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V {

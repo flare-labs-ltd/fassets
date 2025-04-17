@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { runAsyncMain } from "../../../lib/utils/helpers";
+import { runAsyncMain } from "../../lib/deploy-utils";
 import { FAssetContractStore } from "../../lib/contracts";
 import { loadDeployAccounts, networkConfigName } from "../../lib/deploy-utils";
 
