@@ -140,6 +140,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, transferAmount);
         assertWeb3Equal(rdreqs[0].feeUBA, 0);
+        // however, cannot transfer 0
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 0, { from: agent.ownerWorkAddress, value: cbTransferFee }),
+            "zero transfer not allowed");
         // perform transfer of underlying
         await agent.performRedemptions(rdreqs);
         // agent now has approx half backing left

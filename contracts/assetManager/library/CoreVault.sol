@@ -53,6 +53,8 @@ library CoreVault {
         address agentVault = _agent.vaultAddress();
         // for agent in full liquidation, the system cannot know if there is enough underlying for the transfer
         require(_agent.status != Agent.Status.FULL_LIQUIDATION, "invalid agent status");
+        // forbid 0 transfer
+        require(_amountAMG > 0, "zero transfer not allowed");
         // agent must have enough underlying for the transfer (if the required backing < 100%, they may have less)
         require(Conversion.convertAmgToUBA(_amountAMG).toInt256() <= _agent.underlyingBalanceUBA,
             "not enough underlying");
