@@ -65,6 +65,11 @@
     "address": "0x767b25A658E8FC8ab6eBbd52043495dB61b4ea91"
   },
   {
+    "name": "WCFLR",
+    "contractName": "WNat.sol",
+    "address": "0x767b25A658E8FC8ab6eBbd52043495dB61b4ea91"
+  },
+  {
     "name": "FtsoWnat",
     "contractName": "Ftso.sol",
     "address": "0xaD256562ed63ABD503935CbEE276a72160d200e8"
