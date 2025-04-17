@@ -372,6 +372,8 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IERC20).interfaceId
             || _interfaceId == type(IERC20Metadata).interfaceId
+            || _interfaceId == type(IERC5267).interfaceId
+            || _interfaceId == type(IERC20Permit).interfaceId
             || _interfaceId == type(ICheckPointable).interfaceId
             || _interfaceId == type(IFAsset).interfaceId
             || _interfaceId == type(IIFAsset).interfaceId
