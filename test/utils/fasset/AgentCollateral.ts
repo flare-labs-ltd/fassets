@@ -73,9 +73,17 @@ export class AgentCollateral {
     }
 
     mintingLotCollateralWei(data: CollateralData): BN {
-        const [mintingBIPS] = this.mintingCollateralRatio(data.kind());
-        const lotSizeWei = data.convertAmgToTokenWei(this.settings.lotSizeAMG);
-        return lotSizeWei.mul(mintingBIPS).divn(MAX_BIPS);
+        return this.collateralRequiredToMintAmountAMG(data, toBN(this.settings.lotSizeAMG));
+    }
+
+    collateralRequiredToMintAmountAMG(data: CollateralData, amountAMG: BN) {
+        const amountPoolFeeAMG = amountAMG
+            .mul(toBN(this.agentInfo.feeBIPS)).divn(MAX_BIPS)
+            .mul(toBN(this.agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
+        const totalMintAmountAMG = amountAMG.add(amountPoolFeeAMG);
+        const totalMintAmountWei = data.convertAmgToTokenWei(totalMintAmountAMG);
+        const [mintingMinCollateralRatio] = this.mintingCollateralRatio(data.kind());
+        return totalMintAmountWei.mul(mintingMinCollateralRatio).divn(MAX_BIPS);
     }
 
     mintingCollateralRatio(kind: CollateralKind): [mintingBIPS: BN, systemBIPS: BN] {

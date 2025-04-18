@@ -707,7 +707,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo1 = await assetManager.getAgentInfo(agentVault.address);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "MY_INVALID_ADDRESS", redeemerAddress1, true);
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
-        assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
+        assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 2);
         const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
         assert.isFalse(proof.data.responseBody.isValid);
         const res = await assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 });
@@ -722,7 +722,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo1 = await assetManager.getAgentInfo(agentVault.address);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "  NOT_NORMALIZED_ADDRESS  ", redeemerAddress1, true);
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
-        assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
+        assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 2);
         const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
         assert.isTrue(proof.data.responseBody.isValid);
         const res = await assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 });
@@ -737,13 +737,13 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo1 = await assetManager.getAgentInfo(agentVault.address);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "AGENT_ADDRESS", redeemerAddress1, true);
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
-        assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
+        assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 2);
         const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
         assert.isTrue(proof.data.responseBody.isValid);
         const promise = assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 });
         await expectRevert(promise, "address valid");
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
-        assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
+        assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 2);
     });
 
     it("mint and redeem with address validation - only owner", async () => {

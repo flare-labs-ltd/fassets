@@ -742,25 +742,27 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        // fill with empty tickets
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
-        for (let i = 0; i < 30; i++) {
-            await agent.mintFromFreeUnderlying(0);
-            await agent2.mintFromFreeUnderlying(0);
-        }
-        // serious mint
-        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
-        await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
-        //
-        // console.log(deepFormat(await context.getRedemptionQueue()));
-        // for (let i = 0; i < 4; i++) {
-        //     const [rdreqs, remaining] = await redeemer.requestRedemption(1);
-        //     console.log(deepFormat({ rdreqs, remaining }));
+        // mint 0 lots is now forbidden in mintFromFreeUnderlying (it is still allowed in selfMint, but it doesn't create tickets there)
+        await expectRevert(agent.mintFromFreeUnderlying(0), "cannot mint 0 lots");
+        // // fill with empty tickets
+        // for (let i = 0; i < 30; i++) {
+        //     await agent.mintFromFreeUnderlying(0);
+        //     await agent2.mintFromFreeUnderlying(0);
         // }
-        const [rdreqs, remaining] = await redeemer.requestRedemption(1);
-        assertWeb3Equal(rdreqs.length, 1);
-        assertWeb3Equal(remaining, 0);
+        // // serious mint
+        // const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // //
+        // // console.log(deepFormat(await context.getRedemptionQueue()));
+        // // for (let i = 0; i < 4; i++) {
+        // //     const [rdreqs, remaining] = await redeemer.requestRedemption(1);
+        // //     console.log(deepFormat({ rdreqs, remaining }));
+        // // }
+        // const [rdreqs, remaining] = await redeemer.requestRedemption(1);
+        // assertWeb3Equal(rdreqs.length, 1);
+        // assertWeb3Equal(remaining, 0);
     });
 
     it("43879: increasing pool fee share during minting can make minter lose deposit", async () => {
@@ -809,15 +811,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)), reservedUBA: 0 });
     });
 
-    it("agent can mint unbacked fassets by increasing fee and poolFeeShare", async () => {
+    it("43753: agent can mint unbacked fassets by increasing fee and poolFeeShare", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(10));
-        await agent.depositCollateralLotsAndMakeAvailable(10, 1);
+        await agent.depositCollateralLotsAndMakeAvailable(20, 1);
         await agent.changeSettings({ feeBIPS: 10000, poolFeeShareBIPS: 10000 });
         await agent.selfMint(context.convertLotsToUBA(20), 10);
         const info = await agent.getAgentInfo();
-        assert.isTrue(toBN(info.vaultCollateralRatioBIPS).ltn(MAX_BIPS));
-        assertWeb3Equal(info.vaultCollateralRatioBIPS, toBN(info.mintingVaultCollateralRatioBIPS).divn(2));
+        // ATTACK result:
+        // assert.isTrue(toBN(info.vaultCollateralRatioBIPS).ltn(MAX_BIPS));
+        // assertWeb3Equal(info.vaultCollateralRatioBIPS, toBN(info.mintingVaultCollateralRatioBIPS).divn(2));
+        // FIXED:
+        assert.isTrue(toBN(info.vaultCollateralRatioBIPS).gte(toBN(info.mintingVaultCollateralRatioBIPS)));
+        // console.log(deepFormat(info));
+    });
+
+    it("43753: others can mint unbacked fassets if agent increases fee and poolFeeShare", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
+        await agent.depositCollateralLotsAndMakeAvailable(20, 1);
+        await agent.changeSettings({ feeBIPS: 10000, poolFeeShareBIPS: 10000 });
+        await minter.performMinting(agent.vaultAddress, 10);
+        const info = await agent.getAgentInfo();
+        // ATTACK result:
+        // assert.isTrue(toBN(info.vaultCollateralRatioBIPS).ltn(MAX_BIPS));
+        // assertWeb3Equal(info.vaultCollateralRatioBIPS, toBN(info.mintingVaultCollateralRatioBIPS).divn(2));
+        // FIXED:
+        assert.isTrue(toBN(info.vaultCollateralRatioBIPS).gte(toBN(info.mintingVaultCollateralRatioBIPS)));
+        // console.log(deepFormat({ balance: await context.chain.getBalance(minter.underlyingAddress) }));
         // console.log(deepFormat(info));
     });
 });
