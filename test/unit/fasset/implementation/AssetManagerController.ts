@@ -183,8 +183,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert setting lot size when increase or decrease is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const lotSizeAMG = toBN(currentSettings.lotSizeAMG);
-            let lotSizeAMG_big = lotSizeAMG.muln(5);
-            let lotSizeAMG_small = lotSizeAMG.divn(5);
+            let lotSizeAMG_big = lotSizeAMG.muln(11);
+            let lotSizeAMG_small = lotSizeAMG.divn(11);
 
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_big, { from: governance }), assetManagerController, updateExecutor), "lot size increase too big");
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_small, { from: governance }), assetManagerController, updateExecutor), "lot size decrease too big");
