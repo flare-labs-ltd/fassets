@@ -7,10 +7,10 @@ import { assetManagerParameters, convertCollateralType, createAssetManagerSettin
 import { assetManagerFacets, assetManagerFacetsDeployedByDiamondCut, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
 
-export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[], force: boolean) {
+export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[] = [], force: boolean = false) {
     const contract = contracts.get(contractNameOrAddress) ?? contracts.list().find(c => c.address === contractNameOrAddress);
     if (contract == null) {
-        throw new Error(`Unknow contract ${contractNameOrAddress}`);
+        throw new Error(`Unknown contract ${contractNameOrAddress}`);
     }
     constructorArgs = constructorArgs.map(arg => {
         if (arg.startsWith('@')) return contracts.getAddress(arg.slice(1));
