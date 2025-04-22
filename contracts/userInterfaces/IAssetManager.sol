@@ -663,10 +663,10 @@ interface IAssetManager is
 
     /**
      * Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
-     * NOTE: the *exact* amount of the collateral fee must be paid. Even if the amount paid in `reserveCollateral` is
-     * more than required, the transaction will revert. This is intentional to protect the minter from accidentally
-     * overpaying, but may cause unexpected reverts if the FTSO prices get published between calls to
-     * `collateralReservationFee` and `reserveCollateral`.
+     * NOTE: the amount paid may be larger than the required amount, but the difference is not returned.
+     * It is advised that the minter pays the exact amount, but when the amount is so small that the revert
+     * would cost more than the lost difference, the minter may want to send a slightly larger amount to compensate
+     * for the possibility of a FTSO price change between obtaining this value and calling `reserveCollateral`.
      * @param _lots the number of lots for which to reserve collateral
      * @return _reservationFeeNATWei the amount of reservation fee in NAT wei
      */
