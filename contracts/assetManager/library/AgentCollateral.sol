@@ -84,8 +84,9 @@ library AgentCollateral {
         IERC20 poolToken = _agent.collateralPool.poolToken();
         uint256 agentPoolTokens = poolToken.balanceOf(_agent.vaultAddress());
         uint256 totalPoolTokens = poolToken.totalSupply();
-        uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0 ?
-            _poolCollateral.amgToTokenWeiPrice.mulDiv(totalPoolTokens, _poolCollateral.fullCollateral) : 0;
+        uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0
+            ? _poolCollateral.amgToTokenWeiPrice.mulDiv(totalPoolTokens, _poolCollateral.fullCollateral)
+            : _poolCollateral.amgToTokenWeiPrice;   // price for empty pool is 1 token/NAT
         return Collateral.Data({
             kind: Collateral.Kind.AGENT_POOL,
             fullCollateral: agentPoolTokens,

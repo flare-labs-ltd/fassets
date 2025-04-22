@@ -2,7 +2,6 @@ import { AssetManagerSettings, CollateralType, CollateralClass } from "../../../
 import { amgToTokenWeiPrice } from "../../../lib/fasset/Conversions";
 import { AMGPrice, AMGPriceConverter, CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { TokenPrice, TokenPriceReader, tokenBalance } from "../../../lib/state/TokenPrice";
-import { exp10 } from "../../../lib/utils/helpers";
 import { CollateralPoolTokenInstance } from "../../../typechain-truffle";
 
 export const POOL_TOKEN_DECIMALS = 18;
@@ -74,7 +73,7 @@ export class CollateralDataFactory {
         const assetPrice = poolCollateral.collateral!.directPricePair ? poolCollateral.assetPrice : poolCollateral.assetPrice.priceInToken(poolCollateral.tokenPrice!, 18);
         const tokenPrice = TokenPrice.fromFraction(poolCollateral.balance, totalPoolTokens, poolCollateral.assetPrice.timestamp, 18);
         const amgToTokenWei = tokenPrice.price.isZero()
-            ? exp10(100)    // artificial price, shouldn't be used
+            ? assetPrice.price
             : amgToTokenWeiPrice(this.settings, POOL_TOKEN_DECIMALS, tokenPrice.price, tokenPrice.decimals, assetPrice.price, assetPrice.decimals);
         const amgPrice = AMGPrice.forAmgPrice(this.settings, amgToTokenWei);
         return new CollateralData(null, agentPoolTokens, assetPrice, tokenPrice, amgPrice);

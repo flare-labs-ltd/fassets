@@ -126,12 +126,15 @@ export function toWei(amount: number | string) {
  * Format large number in more readable format, using 'fixed-exponential' format, with 'e+18' suffix for very large numbers.
  * (This makes them easy to visually detect bigger/smaller numbers.)
  */
-export function formatBN(x: BN | string | number) {
+export function formatBN(x: BN | string | number, maxDecimals: number = 3) {
     const xs = x.toString();
     if (xs.length >= 18) {
-        const dec = Math.max(0, 22 - xs.length);
-        const xm = (Number(xs) / 1e18).toFixed(dec);
-        return groupIntegerDigits(xm) + 'e+18';
+        const decpos = xs.length - 18;
+        let xint = xs.slice(0, decpos);
+        if (xint === '') xint = '0';
+        let xfrac = xs.slice(decpos).replace(/0+$/, '').slice(0, maxDecimals);
+        if (xfrac != '') xfrac = '.' + xfrac;
+        return groupIntegerDigits(xint) + xfrac + 'e+18';
     } else {
         return groupIntegerDigits(xs);
     }
@@ -145,7 +148,7 @@ export function groupIntegerDigits(x: string) {
     if (startp < 0) startp = x.length;
     const endp = x[0] === '-' ? 1 : 0;
     for (let p = startp - 3; p > endp; p -= 3) {
-        x = x.slice(0, p) + '_' + x.slice(p); x
+        x = x.slice(0, p) + '_' + x.slice(p);
     }
     return x;
 }
@@ -441,25 +444,26 @@ export function isBNLike(value: any) {
  * Some Web3 results are union of array and struct so console.log prints them as array.
  * This function converts it to struct nad also formats values.
  */
-export function deepFormat(value: any, allowNumericKeys: boolean = false): any {
+export function deepFormat(value: any, options?: { allowNumericKeys?: boolean, maxDecimals?: number }): any {
+    const opts = { allowNumericKeys: false, maxDecimals: 3, ...options };
     function isNumberLike(key: any) {
         return typeof key === 'number' || /^\d+$/.test(key);
     }
     if (isBNLike(value)) {
-        return formatBN(value);
+        return formatBN(value, opts.maxDecimals);
     } else if (Array.isArray(value)) {
         const structEntries = Object.entries(value)
             .filter(([key, val]) => !isNumberLike(key));
         if (structEntries.length > 0 && structEntries.length >= value.length) {
-            const formattedEntries = structEntries.map(([key, val]) => [key, deepFormat(val)]);
+            const formattedEntries = structEntries.map(([key, val]) => [key, deepFormat(val, opts)]);
             return Object.fromEntries(formattedEntries);
         } else {
-            return value.map(v => deepFormat(v));
+            return value.map(v => deepFormat(v, opts));
         }
     } else if (typeof value === 'object' && value != null) {
         const formattedEntries = Object.entries(value)
-            .filter(([key, val]) => allowNumericKeys || !isNumberLike(key))
-            .map(([key, val]) => [key, deepFormat(val)]);
+            .filter(([key, val]) => opts.allowNumericKeys || !isNumberLike(key))
+            .map(([key, val]) => [key, deepFormat(val, opts)]);
         return Object.fromEntries(formattedEntries);
     } else {
         return value;
