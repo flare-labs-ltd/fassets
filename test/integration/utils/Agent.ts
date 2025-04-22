@@ -169,16 +169,15 @@ export class Agent extends AssetContextClient {
         await this.makeAvailable();
     }
 
-    async depositCollateralLotsAndMakeAvailable(lots: BNish, multiplier: number = 1.05) {
+    async depositCollateralLotsAndMakeAvailable(lots: BNish, multiplier: number = 1) {
         const requiredCollateral = await this.requiredCollateralForLots(lots, multiplier);
         await this.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool);
     }
 
-    async requiredCollateralForLots(lots: BNish, multiplier: number = 1.05) {   // factor 1.05 added for pool fee
+    async requiredCollateralForLots(lots: BNish, multiplier: number = 1) {
         const ac = await this.getAgentCollateral();
-        const amountUBA = this.context.convertLotsToUBA(lots);
-        const vaultCollateralReq = ac.vault.convertUBAToTokenWei(amountUBA).mul(toBN(ac.agentInfo.mintingVaultCollateralRatioBIPS)).divn(MAX_BIPS);
-        const poolCollateralReq = ac.pool.convertUBAToTokenWei(amountUBA).mul(toBN(ac.agentInfo.mintingPoolCollateralRatioBIPS)).divn(MAX_BIPS);
+        const vaultCollateralReq = ac.mintingLotCollateralWei(ac.vault).mul(toBN(lots));
+        const poolCollateralReq = ac.mintingLotCollateralWei(ac.pool).mul(toBN(lots));
         const vaultCollateral = vaultCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
         const poolCollateral = poolCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
         return { vault: vaultCollateral, pool: poolCollateral  };

@@ -161,9 +161,22 @@ library AgentCollateral {
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _data.kind);
-        return Conversion.convertAmgToTokenWei(settings.lotSizeAMG, _data.amgToTokenWeiPrice)
-            .mulBips(minCollateralRatio);
+        return collateralRequiredToMintAmount(_data, _agent, settings.lotSizeAMG);
+    }
+
+    function collateralRequiredToMintAmount(
+        Collateral.Data memory _data,
+        Agent.State storage _agent,
+        uint256 _amountAMG
+    )
+        internal view
+        returns (uint256)
+    {
+        uint256 amountPoolFeeAMG = _amountAMG.mulBips(_agent.feeBIPS).mulBips(_agent.poolFeeShareBIPS);
+        uint256 totalMintAmountAMG = _amountAMG + amountPoolFeeAMG;
+        uint256 totalMintAmountWei = Conversion.convertAmgToTokenWei(totalMintAmountAMG, _data.amgToTokenWeiPrice);
+        (uint256 mintingCollateralRatio,) = mintingMinCollateralRatio(_agent, _data.kind);
+        return totalMintAmountWei.mulBips(mintingCollateralRatio);
     }
 
     function mintingMinCollateralRatio(

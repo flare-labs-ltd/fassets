@@ -59,7 +59,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
         // depositCollateral
         const agentPoolTokens = toWei(3e8);
-        const vaultCollateral = toBNExp(240_000, 18);
+        const vaultCollateral = toBNExp(250_000, 18);
         await usdc.mintAmount(owner, vaultCollateral);
         await usdc.increaseAllowance(agentVault.address, vaultCollateral, { from: owner });
         await agentVault.depositCollateral(usdc.address, vaultCollateral, { from: owner });

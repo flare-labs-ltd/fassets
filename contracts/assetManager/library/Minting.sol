@@ -122,6 +122,7 @@ library Minting {
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         require(state.mintingPausedAt == 0, "minting paused");
+        require(_lots > 0, "cannot mint 0 lots");
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
