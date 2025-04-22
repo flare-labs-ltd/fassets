@@ -623,6 +623,19 @@ contract CoreVaultManager is
     }
 
     /**
+     * Triggers custom instructions, which are not related to payment or escrow but increases the sequence number.
+     * @param _instructionsHash Hash of the instructions send off-chain.
+     * NOTE: may only be called by the governance.
+     */
+    function triggerCustomInstructions(bytes32 _instructionsHash) external onlyImmediateGovernance {
+        emit CustomInstructions(
+            nextSequenceNumber++,
+            coreVaultAddress,
+            _instructionsHash
+        );
+    }
+
+    /**
      * @inheritdoc ICoreVaultManager
      */
     function getSettings()

@@ -48,6 +48,12 @@ interface ICoreVaultManager {
         uint256 cancelAfterTs
     );
 
+    event CustomInstructions(
+        uint256 indexed sequence,
+        string account,
+        bytes32 instructionsHash
+    );
+
     event TransferRequested(
         string destinationAddress,
         bytes32 paymentReference,

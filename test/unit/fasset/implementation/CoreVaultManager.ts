@@ -516,6 +516,34 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       await expectRevert(tx, "only governance");
     });
 
+    it("should triggering custom instructions", async () => {
+      const instructionsHash = web3.utils.keccak256("custom instructions");
+      const tx = await coreVaultManager.triggerCustomInstructions(instructionsHash, {
+        from: governance,
+      });
+      expectEvent(tx, "CustomInstructions", {
+        sequence: "0",
+        account: coreVaultAddress,
+        instructionsHash: instructionsHash
+      });
+      const tx2 = await coreVaultManager.triggerCustomInstructions(instructionsHash, {
+        from: governance,
+      });
+      expectEvent(tx2, "CustomInstructions", {
+        sequence: "1",
+        account: coreVaultAddress,
+        instructionsHash: instructionsHash
+      });
+    });
+
+    it("should revert triggering custom instructions if not from governance", async () => {
+      const instructionsHash = web3.utils.keccak256("custom instructions");
+      const tx = coreVaultManager.triggerCustomInstructions(instructionsHash, {
+        from: accounts[2],
+      });
+      await expectRevert(tx, "only governance");
+    });
+
     describe("confirm payment", () => {
       it("should confirm payment", async () => {
         const transactionId = web3.utils.keccak256("transactionId");
