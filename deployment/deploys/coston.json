@@ -367,22 +367,22 @@
   {
     "name": "AgentInfoFacet",
     "contractName": "AgentInfoFacet.sol",
-    "address": "0x6F771Bf7b5Df33eb6aFb0d7034a1d09A5a914897"
+    "address": "0x559cFFd5e5314b0e005e47Dc7A918f15Efa3B17a"
   },
   {
     "name": "AvailableAgentsFacet",
     "contractName": "AvailableAgentsFacet.sol",
-    "address": "0xD5aFEE037859B46Eb1C1a986d4023660060679a1"
+    "address": "0x43b1C9540066c96da586c2B2666850321e2F8940"
   },
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0xb913e01f950d83689C0cd3252C86eb42a11bB9Bf"
+    "address": "0x19F1e5b2880f28e590894526593d7798c44C87AB"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x82E5fF18fa638491AFFc6B5Ada3d3F1426001D7c"
+    "address": "0xeC8C14F5E9200e7346252bd02c4A54F4fFa04811"
   },
   {
     "name": "RedemptionRequestsFacet",
@@ -513,7 +513,7 @@
   {
     "name": "CoreVaultFacet",
     "contractName": "CoreVaultFacet.sol",
-    "address": "0xe1CE4dc78287c6D3251b69A7cC107dBdc9A04C50"
+    "address": "0x5252e7aFdB5338E2719200bB8D104B35fA4beeEF"
   },
   {
     "name": "CoreVaultSettingsFacet",
