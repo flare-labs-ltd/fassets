@@ -239,8 +239,8 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // huge lot size increase is very dangerous, because it breaks redemption
         // (converts all tickets to dust)
         require(_value > 0, "cannot be zero");
-        require(_value <= settings.lotSizeAMG * 4, "lot size increase too big");
-        require(_value >= settings.lotSizeAMG / 4, "lot size decrease too big");
+        require(_value <= settings.lotSizeAMG * 10, "lot size increase too big");
+        require(_value >= settings.lotSizeAMG / 10, "lot size decrease too big");
         require(settings.mintingCapAMG == 0 || settings.mintingCapAMG >= _value,
             "lot size bigger than minting cap");
         // update
