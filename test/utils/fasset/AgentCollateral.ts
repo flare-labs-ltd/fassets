@@ -42,15 +42,19 @@ export class AgentCollateral {
     }
 
     freeCollateralLots() {
-        const vaultCollateralLots = this.freeSingleCollateralLots(this.vault);
-        const poolLots = this.freeSingleCollateralLots(this.pool);
-        const agentPoolLots = this.freeSingleCollateralLots(this.agentPoolTokens);
+        return this.freeCollateralLotsOptionalFee(true);
+    }
+
+    freeCollateralLotsOptionalFee(chargePoolFee: boolean) {
+        const vaultCollateralLots = this.freeSingleCollateralLots(this.vault, chargePoolFee);
+        const poolLots = this.freeSingleCollateralLots(this.pool, chargePoolFee);
+        const agentPoolLots = this.freeSingleCollateralLots(this.agentPoolTokens, chargePoolFee);
         return minBN(vaultCollateralLots, poolLots, agentPoolLots);
     }
 
-    freeSingleCollateralLots(data: CollateralData): BN {
+    freeSingleCollateralLots(data: CollateralData, chargePoolFee: boolean): BN {
         const collateralWei = this.freeCollateralWei(data);
-        const lotWei = this.mintingLotCollateralWei(data);
+        const lotWei = this.mintingLotCollateralWei(data, chargePoolFee);
         return collateralWei.div(lotWei);
     }
 
@@ -72,15 +76,15 @@ export class AgentCollateral {
         return mintingCollateral.add(redeemingCollateral).add(announcedWithdrawal);
     }
 
-    mintingLotCollateralWei(data: CollateralData): BN {
-        return this.collateralRequiredToMintAmountAMG(data, toBN(this.settings.lotSizeAMG));
+    mintingLotCollateralWei(data: CollateralData, chargePoolFee: boolean): BN {
+        return this.collateralRequiredToMintAmountAMG(data, toBN(this.settings.lotSizeAMG), chargePoolFee);
     }
 
-    collateralRequiredToMintAmountAMG(data: CollateralData, amountAMG: BN) {
+    collateralRequiredToMintAmountAMG(data: CollateralData, amountAMG: BN, chargePoolFee: boolean) {
         const amountPoolFeeAMG = amountAMG
             .mul(toBN(this.agentInfo.feeBIPS)).divn(MAX_BIPS)
             .mul(toBN(this.agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
-        const totalMintAmountAMG = amountAMG.add(amountPoolFeeAMG);
+        const totalMintAmountAMG = chargePoolFee ? amountAMG.add(amountPoolFeeAMG) : amountAMG;
         const totalMintAmountWei = data.convertAmgToTokenWei(totalMintAmountAMG);
         const [mintingMinCollateralRatio] = this.mintingCollateralRatio(data.kind());
         return totalMintAmountWei.mul(mintingMinCollateralRatio).divn(MAX_BIPS);

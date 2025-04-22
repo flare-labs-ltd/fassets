@@ -101,21 +101,33 @@ library AgentCollateral {
         internal view
         returns (uint256 _lots)
     {
-        uint256 agentLots = freeSingleCollateralLots(_data.agentCollateral, _agent);
-        uint256 poolLots = freeSingleCollateralLots(_data.poolCollateral, _agent);
-        uint256 agentPoolTokenLots = freeSingleCollateralLots(_data.agentPoolTokens, _agent);
+        return freeCollateralLotsOptionalFee(_data, _agent, true);
+    }
+
+    function freeCollateralLotsOptionalFee(
+        Collateral.CombinedData memory _data,
+        Agent.State storage _agent,
+        bool _chargePoolFee
+    )
+        internal view
+        returns (uint256 _lots)
+    {
+        uint256 agentLots = freeSingleCollateralLots(_data.agentCollateral, _agent, _chargePoolFee);
+        uint256 poolLots = freeSingleCollateralLots(_data.poolCollateral, _agent, _chargePoolFee);
+        uint256 agentPoolTokenLots = freeSingleCollateralLots(_data.agentPoolTokens, _agent, _chargePoolFee);
         return Math.min(agentLots, Math.min(poolLots, agentPoolTokenLots));
     }
 
     function freeSingleCollateralLots(
         Collateral.Data memory _data,
-        Agent.State storage _agent
+        Agent.State storage _agent,
+        bool _chargePoolFee
     )
         internal view
         returns (uint256)
     {
         uint256 collateralWei = freeCollateralWei(_data, _agent);
-        uint256 lotWei = mintingLotCollateralWei(_data, _agent);
+        uint256 lotWei = mintingLotCollateralWei(_data, _agent, _chargePoolFee);
         // lotWei=0 is possible only for agent's pool token collateral if pool balance in NAT is 0
         // so then we can safely return 0 here, since minting is impossible
         return lotWei != 0 ? collateralWei / lotWei : 0;
@@ -155,24 +167,27 @@ library AgentCollateral {
 
     function mintingLotCollateralWei(
         Collateral.Data memory _data,
-        Agent.State storage _agent
+        Agent.State storage _agent,
+        bool _chargePoolFee
     )
         internal view
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        return collateralRequiredToMintAmount(_data, _agent, settings.lotSizeAMG);
+        return collateralRequiredToMintAmount(_data, _agent, settings.lotSizeAMG, _chargePoolFee);
     }
 
     function collateralRequiredToMintAmount(
         Collateral.Data memory _data,
         Agent.State storage _agent,
-        uint256 _amountAMG
+        uint256 _amountAMG,
+        bool _chargePoolFee
     )
         internal view
         returns (uint256)
     {
-        uint256 amountPoolFeeAMG = _amountAMG.mulBips(_agent.feeBIPS).mulBips(_agent.poolFeeShareBIPS);
+        uint256 amountPoolFeeAMG =
+            _chargePoolFee ? _amountAMG.mulBips(_agent.feeBIPS).mulBips(_agent.poolFeeShareBIPS) : 0;
         uint256 totalMintAmountAMG = _amountAMG + amountPoolFeeAMG;
         uint256 totalMintAmountWei = Conversion.convertAmgToTokenWei(totalMintAmountAMG, _data.amgToTokenWeiPrice);
         (uint256 mintingCollateralRatio,) = mintingMinCollateralRatio(_agent, _data.kind);

@@ -176,8 +176,8 @@ export class Agent extends AssetContextClient {
 
     async requiredCollateralForLots(lots: BNish, multiplier: number = 1) {
         const ac = await this.getAgentCollateral();
-        const vaultCollateralReq = ac.mintingLotCollateralWei(ac.vault).mul(toBN(lots));
-        const poolCollateralReq = ac.mintingLotCollateralWei(ac.pool).mul(toBN(lots));
+        const vaultCollateralReq = ac.mintingLotCollateralWei(ac.vault, true).mul(toBN(lots));
+        const poolCollateralReq = ac.mintingLotCollateralWei(ac.pool, true).mul(toBN(lots));
         const vaultCollateral = vaultCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
         const poolCollateral = poolCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
         return { vault: vaultCollateral, pool: poolCollateral  };

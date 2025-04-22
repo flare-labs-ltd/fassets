@@ -114,7 +114,7 @@ library CoreVault {
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_agent);
         require(_lots > 0, "cannot return 0 lots");
         require(_agent.status == Agent.Status.NORMAL, "invalid agent status");
-        require(collateralData.freeCollateralLots(_agent) >= _lots, "not enough free collateral");
+        require(collateralData.freeCollateralLotsOptionalFee(_agent, false) >= _lots, "not enough free collateral");
         uint64 availableLots = getCoreVaultAmountLots();
         require(_lots <= availableLots, "not enough available on core vault");
         // create new request id

@@ -934,6 +934,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await coreVaultBot.escrow.expireEscrows();
         assert.equal(coreVaultBot.escrow.escrows.size, 2);
         // request for return
+        // const ac = await agent.getAgentCollateral();
+        // console.log(deepFormat({ freeLots: ac.freeCollateralLots(), freeLotsNF: ac.freeCollateralLotsOptionalFee(false) }));
         await context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, transferLots, { from: agent.ownerWorkAddress });
         await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, transferLots, { from: agent2.ownerWorkAddress });
         // it won't get fulfilled immediately
