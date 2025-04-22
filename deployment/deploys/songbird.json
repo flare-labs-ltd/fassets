@@ -152,22 +152,22 @@
   {
     "name": "AgentInfoFacet",
     "contractName": "AgentInfoFacet.sol",
-    "address": "0x8a97cfDb732c8D214eD6C3F8352Ef270955428f6"
+    "address": "0xdd99Bf51957a3b479445ea95F01a4d4eb663B7a2"
   },
   {
     "name": "AvailableAgentsFacet",
     "contractName": "AvailableAgentsFacet.sol",
-    "address": "0xadCe6A1E925590A497c12aC934F900CEe32a7E96"
+    "address": "0xE6eFe5119576289073ce8425cF39256aDC16880B"
   },
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0xB4462688e6061C843Fe365b6fa386Fb37aa5B740"
+    "address": "0x32726aD6932eD37c7Adc1115903Bc3B6476146f7"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x7b043ABeE86bCA54Db4616FE488871D64a7e14A5"
+    "address": "0x3F042f092092Ea52169e8d79A39B65f147Be2983"
   },
   {
     "name": "RedemptionRequestsFacet",
@@ -237,7 +237,7 @@
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0xef8a9DFa12913E3b0549E1e2ac7F5e21363a5a01"
+    "address": "0x5eC27837a5C4d678F138B1610e091e37E989433D"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",
