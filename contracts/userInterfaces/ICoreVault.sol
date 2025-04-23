@@ -18,10 +18,12 @@ interface ICoreVault {
 
     /**
      * Agent has cancelled transfer to the core vault without paying.
+     * The amount of `valueUBA` has been re-minted./
      */
     event TransferToCoreVaultDefaulted(
         address indexed agentVault,
-        uint256 indexed transferRedemptionRequestId);
+        uint256 indexed transferRedemptionRequestId,
+        uint256 valueUBA);
 
     /**
      * The transfer of underlying to the core vault was successfully completed.

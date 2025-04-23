@@ -146,7 +146,8 @@ library RedemptionFailures {
             // core vault transfer default - re-create tickets
             Redemptions.releaseTransferToCoreVault(_redemptionRequestId);
             Redemptions.reCreateRedemptionTicket(_agent, _request);
-            emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId);
+            emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId,
+                _request.underlyingValueUBA);
         }
     }
 
