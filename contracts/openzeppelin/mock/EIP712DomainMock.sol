@@ -3,12 +3,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "../utils/EIP712.sol";
 
 contract EIP712DomainMock is EIP712 {
-    constructor(string memory name, string memory version)
-        EIP712(name, version)
-    {
+    constructor(string memory name, string memory version) {
+        initializeEIP712(name, version);
     }
 
     function domainSeparatorV4() external view returns (bytes32) {
