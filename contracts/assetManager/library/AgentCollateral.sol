@@ -203,10 +203,9 @@ library AgentCollateral {
         returns (uint256 _mintingMinCollateralRatioBIPS, uint256 _systemMinCollateralRatioBIPS)
     {
         if (_kind == Collateral.Kind.AGENT_POOL) {
-            (uint256 mintingPoolMin, uint256 systemPoolMin) = mintingMinCollateralRatio(_agent, Collateral.Kind.POOL);
             uint256 mintingPoolHoldingsRequiredBIPS = Globals.getSettings().mintingPoolHoldingsRequiredBIPS;
-            _systemMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS.mulBips(systemPoolMin);
-            _mintingMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS.mulBips(mintingPoolMin);
+            _systemMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS;
+            _mintingMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS;
         } else if (_kind == Collateral.Kind.POOL) {
             _systemMinCollateralRatioBIPS = _agent.getPoolCollateral().minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS =

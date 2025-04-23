@@ -1,5 +1,5 @@
-import { AgentInfo, AgentStatus, AssetManagerSettings, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
-import { BN_ZERO, MAX_BIPS, exp10, formatBN, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
+import { AgentInfo, AssetManagerSettings, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
+import { BN_ZERO, MAX_BIPS, exp10, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
 import { IIAssetManagerInstance } from "../../../typechain-truffle";
 import { CollateralData, CollateralDataFactory, CollateralKind } from "./CollateralData";
 
@@ -41,18 +41,14 @@ export class AgentCollateral {
         }
     }
 
-    freeCollateralLots() {
-        return this.freeCollateralLotsOptionalFee(true);
-    }
-
-    freeCollateralLotsOptionalFee(chargePoolFee: boolean) {
+    freeCollateralLots(chargePoolFee: boolean = true) {
         const vaultCollateralLots = this.freeSingleCollateralLots(this.vault, chargePoolFee);
         const poolLots = this.freeSingleCollateralLots(this.pool, chargePoolFee);
         const agentPoolLots = this.freeSingleCollateralLots(this.agentPoolTokens, chargePoolFee);
         return minBN(vaultCollateralLots, poolLots, agentPoolLots);
     }
 
-    freeSingleCollateralLots(data: CollateralData, chargePoolFee: boolean): BN {
+    freeSingleCollateralLots(data: CollateralData, chargePoolFee: boolean = true): BN {
         const collateralWei = this.freeCollateralWei(data);
         const lotWei = this.mintingLotCollateralWei(data, chargePoolFee);
         return collateralWei.div(lotWei);
@@ -76,11 +72,11 @@ export class AgentCollateral {
         return mintingCollateral.add(redeemingCollateral).add(announcedWithdrawal);
     }
 
-    mintingLotCollateralWei(data: CollateralData, chargePoolFee: boolean): BN {
+    mintingLotCollateralWei(data: CollateralData, chargePoolFee: boolean = true): BN {
         return this.collateralRequiredToMintAmountAMG(data, toBN(this.settings.lotSizeAMG), chargePoolFee);
     }
 
-    collateralRequiredToMintAmountAMG(data: CollateralData, amountAMG: BN, chargePoolFee: boolean) {
+    collateralRequiredToMintAmountAMG(data: CollateralData, amountAMG: BN, chargePoolFee: boolean = true) {
         const amountPoolFeeAMG = amountAMG
             .mul(toBN(this.agentInfo.feeBIPS)).divn(MAX_BIPS)
             .mul(toBN(this.agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
@@ -103,9 +99,8 @@ export class AgentCollateral {
                 return [mintingBIPS, systemBIPS];
             }
             case CollateralKind.AGENT_POOL_TOKENS: {
-                const [poolMintingBIPS, poolSystemBIPS] = this.mintingCollateralRatio(CollateralKind.POOL);
-                const systemBIPS = toBN(this.settings.mintingPoolHoldingsRequiredBIPS).mul(poolSystemBIPS).divn(MAX_BIPS);
-                const mintingBIPS = toBN(this.settings.mintingPoolHoldingsRequiredBIPS).mul(poolMintingBIPS).divn(MAX_BIPS);
+                const systemBIPS = toBN(this.settings.mintingPoolHoldingsRequiredBIPS);
+                const mintingBIPS = toBN(this.settings.mintingPoolHoldingsRequiredBIPS);
                 return [mintingBIPS, systemBIPS];
             }
         }
