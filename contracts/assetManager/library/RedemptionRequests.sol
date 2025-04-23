@@ -12,7 +12,6 @@ import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
 import "./Liquidation.sol";
 import "./TransactionAttestation.sol";
-import "./CoreVault.sol";
 
 
 library RedemptionRequests {

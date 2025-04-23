@@ -23,7 +23,7 @@ interface ICoreVault {
     event TransferToCoreVaultDefaulted(
         address indexed agentVault,
         uint256 indexed transferRedemptionRequestId,
-        uint256 valueUBA);
+        uint256 remintedUBA);
 
     /**
      * The transfer of underlying to the core vault was successfully completed.

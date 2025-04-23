@@ -9,6 +9,7 @@ import "./Redemptions.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
+import "./CoreVault.sol";
 
 
 library RedemptionFailures {
@@ -143,11 +144,12 @@ library RedemptionFailures {
             emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
                 _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
         } else {
+            // default can be handled as ordinary default by bots, but nothing is paid out - instead
+            // FAssets are re-minted (which can be detected in trackers by TransferToCoreVaultDefaulted event)
+            emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
+                _request.underlyingValueUBA, 0, 0);
             // core vault transfer default - re-create tickets
-            Redemptions.releaseTransferToCoreVault(_redemptionRequestId);
-            Redemptions.reCreateRedemptionTicket(_agent, _request);
-            emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId,
-                _request.underlyingValueUBA);
+            CoreVault.cancelTransferToCoreVault(_agent, _request, _redemptionRequestId);
         }
     }
 

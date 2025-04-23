@@ -100,6 +100,22 @@ library CoreVault {
         emit ICoreVault.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId, receivedAmount);
     }
 
+    // only called by RedemptionFailures, RedemptionConfirmations etc., so all checks are done there
+    function cancelTransferToCoreVault(
+        Agent.State storage _agent,
+        Redemption.Request storage _request,
+        uint64 _redemptionRequestId
+    )
+        internal
+        onlyEnabled
+    {
+        // core vault transfer default - re-create tickets
+        Redemptions.releaseTransferToCoreVault(_redemptionRequestId);
+        Redemptions.reCreateRedemptionTicket(_agent, _request);
+        emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId,
+            _request.underlyingValueUBA);
+    }
+
     function requestReturnFromCoreVault(
         Agent.State storage _agent,
         uint64 _lots
