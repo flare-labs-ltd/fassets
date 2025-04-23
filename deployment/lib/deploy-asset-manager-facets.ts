@@ -39,7 +39,9 @@ export const assetManagerFacets = [
 
 export const assetManagerFacetsDeployedByDiamondCut = [
     'RedemptionTimeExtensionFacet',
-    'TransferFeeFacet'
+    'TransferFeeFacet',
+    'CoreVaultFacet',
+    'CoreVaultSettingsFacet',
 ]
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {
