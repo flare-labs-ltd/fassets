@@ -1,4 +1,4 @@
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentSetting, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { isVaultCollateral } from "../../../lib/state/CollateralIndexedList";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -263,6 +263,13 @@ export class FuzzingAgent extends FuzzingActor {
         const amount = redemption.valueUBA;
         this.comment(`Making double payment of ${formatBN(amount)} from ${agent.underlyingAddress}`);
         await agent.wallet.addTransaction(agent.underlyingAddress, this.ownerUnderlyingAddress, amount, redemption.paymentReference);
+    }
+
+    async changeSetting(scope: EventScope, name: AgentSetting, value: BN) {
+        const res = await this.context.assetManager.announceAgentSettingUpdate(this.agent.vaultAddress, name, value, { from: this.ownerWorkAddress });
+        const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
+        await this.timeline.flareTimestamp(announcement.validAt).wait(scope);
+        await this.context.assetManager.executeAgentSettingUpdate(this.agent.vaultAddress, name, { from: this.ownerWorkAddress });
     }
 
     checkForFullLiquidationEnd(): void {

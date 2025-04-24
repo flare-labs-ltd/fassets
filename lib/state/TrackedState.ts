@@ -1,7 +1,6 @@
 import { AgentStatus, AssetManagerSettings, CollateralType } from "../fasset/AssetManagerTypes";
 import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
-import { deepCopy } from "../utils/deepCopy";
 import { EventFormatter } from "../utils/events/EventFormatter";
 import { IEvmEvents } from "../utils/events/IEvmEvents";
 import { EventExecutionQueue, TriggerableEvent } from "../utils/events/ScopedEvents";
@@ -13,7 +12,7 @@ import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
 import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
-import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
+import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
 export class TrackedState {
     constructor(
@@ -79,6 +78,9 @@ export class TrackedState {
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+        });
+        this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.add(toBN(args.poolFeeUBA));
         });
         this.assetManagerEvent('RedeemedInCollateral').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.redemptionAmountUBA));
@@ -153,6 +155,7 @@ export class TrackedState {
         this.assetManagerEvent('RedemptionDefault').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionDefault(args));
         this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentBlocked(args));
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentFailed(args));
+        this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPoolFeeMinted(args));
         this.assetManagerEvent('RedeemedInCollateral').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedeemedInCollateral(args));
         this.assetManagerEvent('SelfClose').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSelfClose(args));
         // underlying topup and withdrawal
@@ -211,7 +214,7 @@ export class TrackedState {
     }
 
     async createAgentVaultWithCurrentState(address: string) {
-        const agentInfo = await this.context.assetManager.getAgentInfo(address);
+        const agentInfo = await this.getExtendedAgentInfo(address);
         const agent = this.createAgentVault({
             agentVault: address,
             owner: agentInfo.ownerManagementAddress,
@@ -257,6 +260,13 @@ export class TrackedState {
     }
 
     // helpers
+
+    async getExtendedAgentInfo(vaultAddress: string): Promise<ExtendedAgentInfo> {
+        return {
+            ...await this.context.assetManager.getAgentInfo(vaultAddress),
+            redemptionPoolFeeShareBIPS: await this.context.assetManager.getAgentSetting(vaultAddress, "redemptionPoolFeeShareBIPS"),
+        }
+    }
 
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         const emitter = this.truffleEvents.event(this.context.assetManager, event, filter).immediate();

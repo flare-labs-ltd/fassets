@@ -126,6 +126,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     it("f-asset fuzzing test", async () => {
         // create agents
         const firstAgentAddress = 10;
+        const settingThreads: number[] = [];
+        runner.comment(`Initializing ${N_AGENTS} agents`);
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
             const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
@@ -137,11 +139,17 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             const options = createAgentVaultOptions();
             const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
             const fuzzingAgent = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
+            settingThreads.push(
+                runner.startThread(scope => fuzzingAgent.changeSetting(scope, "redemptionPoolFeeShareBIPS", options.redemptionPoolFeeShareBIPS))
+            );
             fuzzingAgent.capturePerAgentContractEvents(`AGENT_${i}`);
             await fuzzingAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
             agents.push(fuzzingAgent);
         }
+        runner.comment(`Waiting for setting threads to finish`);
+        await runner.waitForThreadsToFinish(settingThreads, 1000, true);
         // create customers
+        runner.comment(`Initializing ${N_CUSTOMERS} customers`);
         const firstCustomerAddress = firstAgentAddress + 3 * N_AGENTS;
         for (let i = 0; i < N_CUSTOMERS; i++) {
             const underlyingAddress = "underlying_customer_" + i;
@@ -153,6 +161,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             runner.fAssetMarketplace.addSeller(customer);
         }
         // create liquidators
+        runner.comment(`Initializing ${N_KEEPERS} system keepers / liquidators`);
         const firstKeeperAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS;
         for (let i = 0; i < N_KEEPERS; i++) {
             const keeper = new FuzzingKeeper(runner, accounts[firstKeeperAddress + i]);
@@ -160,10 +169,12 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventDecoder.addAddress(`KEEPER_${i}`, keeper.address);
         }
         // create challenger
+        runner.comment(`Initializing challenger`);
         const challengerAddress = accounts[firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS];
         challenger = new Challenger(runner, fuzzingState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // create pool token holders
+        runner.comment(`Initializing ${N_POOL_TOKEN_HOLDERS} pool token holders`);
         const firstPoolTokenHolderAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS + 1;
         for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
             const underlyingAddress = "underlying_pool_token_holder_" + i;
@@ -242,9 +253,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             }
         }
         // wait for all threads to finish
-        interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
+        interceptor.comment(`Remaining threads: ${runner.runningThreadCount}`);
         runner.waitingToFinish = true;
-        while (runner.runningThreads > 0) {
+        let count = 0;
+        while (runner.runningThreadCount > 0 && ++count < LOOPS) {
             await sleep(200);
             await timeline.skipTime(100);
             interceptor.comment(`-----  WAITING  ${await timeInfo()}  -----`);
@@ -259,13 +271,16 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         if (runner.uncaughtErrors.length > 0) {
             throw runner.uncaughtErrors[0];
         }
-        interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
+        interceptor.comment(`Remaining threads: ${runner.runningThreadCount}`);
+        for (const [id, func] of runner.runningThreads) {
+            interceptor.comment(`    thread ${id}: ${func.toString()}`);
+        }
         checkedInvariants = true;
         await checkInvariants(true);  // all events are flushed, state must match
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });
 
-    function createAgentVaultOptions(): AgentCreateOptions {
+    function createAgentVaultOptions(): AgentCreateOptions & { redemptionPoolFeeShareBIPS: BN } {
         const vaultCollateral = randomChoice(context.collaterals.filter(isVaultCollateral));
         const poolCollateral = context.collaterals.filter(isPoolCollateral)[0];
         const mintingVaultCollateralRatioBIPS = mulDecimal(toBN(vaultCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));
@@ -274,6 +289,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             vaultCollateralToken: vaultCollateral.token,
             feeBIPS: toBIPS("5%"),
             poolFeeShareBIPS: toBIPS("40%"),
+            redemptionPoolFeeShareBIPS: toBIPS("30%"),
             mintingVaultCollateralRatioBIPS: mintingVaultCollateralRatioBIPS,
             mintingPoolCollateralRatioBIPS: mintingPoolCollateralRatioBIPS,
             poolExitCollateralRatioBIPS: mulDecimal(mintingPoolCollateralRatioBIPS, randomNum(1, 1.25)),

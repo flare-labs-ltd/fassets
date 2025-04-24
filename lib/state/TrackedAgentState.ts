@@ -1,6 +1,6 @@
 import {
     AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
+    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
     RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
@@ -11,6 +11,10 @@ import { BN_ONE, BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../util
 import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
 import { TrackedState } from "./TrackedState";
+
+export interface ExtendedAgentInfo extends AgentInfo {
+    redemptionPoolFeeShareBIPS: BN;
+}
 
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
@@ -93,9 +97,10 @@ export class TrackedAgentState {
 
     // init
 
-    initializeState(agentInfo: AgentInfo) {
+    initializeState(agentInfo: ExtendedAgentInfo) {
         this.status = Number(agentInfo.status);
         this.publiclyAvailable = agentInfo.publiclyAvailable;
+        this.redemptionPoolFeeShareBIPS = toBN(agentInfo.redemptionPoolFeeShareBIPS);
         this.totalVaultCollateralWei = toBN(agentInfo.totalVaultCollateralWei);
         this.totalPoolCollateralNATWei = toBN(agentInfo.totalPoolCollateralNATWei);
         this.ccbStartTimestamp = toBN(agentInfo.ccbStartTimestamp);
@@ -192,6 +197,10 @@ export class TrackedAgentState {
 
     handleRedemptionDefault(args: EvmEventArgs<RedemptionDefault>): void {
         this.updateRedeemingUBA(args.requestId, toBN(args.redemptionAmountUBA).neg());
+    }
+
+    handleRedemptionPoolFeeMinted(args: EvmEventArgs<RedemptionPoolFeeMinted>): void {
+        this.mintedUBA = this.mintedUBA.add(toBN(args.poolFeeUBA));
     }
 
     handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {

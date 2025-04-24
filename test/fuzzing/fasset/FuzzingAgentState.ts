@@ -1,11 +1,11 @@
 import BN from "bn.js";
 import { closeSync } from "fs";
-import { AgentInfo, AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Prices } from "../../../lib/state/Prices";
-import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
+import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
@@ -17,7 +17,7 @@ import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../ty
 import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated,
+    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
     RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
 import { SparseArray } from "../../utils/SparseMatrix";
@@ -105,7 +105,7 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     // init
 
-    override initializeState(agentInfo: AgentInfo) {
+    override initializeState(agentInfo: ExtendedAgentInfo) {
         super.initializeState(agentInfo);
         this.poolTokenBalances.set(this.address, agentInfo.totalAgentPoolTokensWei);
     }
@@ -213,6 +213,11 @@ export class FuzzingAgentState extends TrackedAgentState {
         // update balance tracking
         this.addBalanceTrackingRow(args.$event, { requestId: args.requestId, redeeming: toBN(args.redemptionAmountUBA).neg() });
         this.releaseClosedRedemptionRequests(args.$event, request);
+    }
+
+    override handleRedemptionPoolFeeMinted(args: EvmEventArgs<RedemptionPoolFeeMinted>): void {
+        super.handleRedemptionPoolFeeMinted(args);
+        this.addBalanceTrackingRow(args.$event, { mintFeePool: args.poolFeeUBA });
     }
 
     override handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {
