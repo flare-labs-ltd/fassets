@@ -15,6 +15,7 @@ import "./CoreVault.sol";
 
 library RedemptionConfirmations {
     using SafePct for *;
+    using Agent for Agent.State;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function confirmRedemptionPayment(
@@ -64,7 +65,7 @@ library RedemptionConfirmations {
                     _payment.data.responseBody.spentAmount);
             }
             // charge the redemption pool fee share by re-minting some fassets
-            _mintPoolFee(agent, request);
+            _mintPoolFee(agent, request, _redemptionRequestId);
         } else {
             // We do not allow retrying failed payments, so just default or cancel here if not defaulted already.
             if (request.status == Redemption.Status.ACTIVE) {
@@ -95,7 +96,8 @@ library RedemptionConfirmations {
 
     function _mintPoolFee(
         Agent.State storage _agent,
-        Redemption.Request storage _request
+        Redemption.Request storage _request,
+        uint64 _redemptionRequestId
     )
         private
     {
@@ -104,6 +106,7 @@ library RedemptionConfirmations {
             Agents.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
             Globals.getFAsset().mint(address(_agent.collateralPool), poolFeeUBA);
             _agent.collateralPool.fAssetFeeDeposited(poolFeeUBA);
+            emit IAssetManagerEvents.RedemptionPoolFeeMinted(_agent.vaultAddress(), _redemptionRequestId, poolFeeUBA);
         }
     }
 

@@ -107,9 +107,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         context.skipToExpiration(currentBlock.addn(20), currentTimestamp.addn(1 * HOURS));
         await expectRevert(cv.redemptionPaymentDefault(rdreqs[0]), "overflow block not found");
         // perform transfer of underlying
-        const resps = await agent.performRedemptions(rdreqs);
+        const [transferRes] = await agent.performRedemptions(rdreqs);
         // check that TransferToCoreVaultSuccessful event was emitted
-        const transferRes = resps[String(rdreqs[0].requestId)];
         assert(transferRes != null);
         expectEvent(transferRes, "TransferToCoreVaultSuccessful");
         await expectEvent.inTransaction(transferRes.tx, coreVaultManager, "PaymentConfirmed", { amount: transferAmount });

@@ -341,7 +341,7 @@ export class Agent extends AssetContextClient {
     }
 
     static async performRedemptions(agents: Agent[], requests: EventArgs<RedemptionRequested>[]) {
-        const results: Record<string, Truffle.TransactionResponse<AssetManagerEvents>> = {};
+        const results: Truffle.TransactionResponse<AssetManagerEvents>[] = [];
         for (const request of requests) {
             const agent = agents.find(ag => ag.vaultAddress === request.agentVault);
             if (!agent) assert.fail(`No agent for redemption ${request.paymentReference}`);
@@ -349,7 +349,7 @@ export class Agent extends AssetContextClient {
             const txHash = await agent.performRedemptionPayment(request);
             const proof = await agent.attestationProvider.provePayment(txHash, agent.underlyingAddress, request.paymentAddress);
             const res = await agent.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
-            results[String(request.requestId)] = res;
+            results.push(res);
         }
         return results;
     }

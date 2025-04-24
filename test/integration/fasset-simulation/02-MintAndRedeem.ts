@@ -1,4 +1,4 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { BN_ZERO, deepFormat, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -819,12 +819,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //
             const [rrqs] = await redeemer.requestRedemption(lots);
             await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA), redeemingUBA: toBN(minted.mintedAmountUBA) });
-            // assert.equal(rrqs.length, 1);
+            assert.equal(rrqs.length, 1);
             const poolBalanceBefore = await context.fAsset.balanceOf(agent.collateralPool.address);
-            await agent.performRedemptions(rrqs);
+            const [rresp0] = await agent.performRedemptions(rrqs);
             const poolBalanceAfter = await context.fAsset.balanceOf(agent.collateralPool.address);
             const totalRedemptionFee = context.convertLotsToUBA(lots).mul(toBN(context.settings.redemptionFeeBIPS)).divn(MAX_BIPS);
             const poolRedemptionFee = totalRedemptionFee.muln(redemptionPoolFeeShareBIPS).divn(MAX_BIPS);
+            expectEvent(rresp0, "RedemptionPoolFeeMinted", { poolFeeUBA: poolRedemptionFee })
             assertWeb3Equal(poolBalanceAfter.sub(poolBalanceBefore), poolRedemptionFee);
             await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA).add(poolRedemptionFee), redeemingUBA: 0 });
         });
