@@ -1,10 +1,12 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { BN_ZERO, ZERO_ADDRESS, formatBN, requireNotNull } from "../../../lib/utils/helpers";
+import { BN_ZERO, ZERO_ADDRESS, formatBN, toWei } from "../../../lib/utils/helpers";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
 import { RedemptionPaymentReceiver } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
+
+const MIN_POOL_ENTER_EXIT = toWei(1);
 
 enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
@@ -41,7 +43,7 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
             }
             const natPrice = this.state.prices.getNat();
             const lotSizeWei = natPrice.convertUBAToTokenWei(this.state.lotSize());
-            const amount = randomBN(lotSizeWei.muln(3));
+            const amount = randomBN(MIN_POOL_ENTER_EXIT, lotSizeWei.muln(3));
             this.comment(`${this.formatAddress(this.address)}: entering pool ${this.formatAddress(this.poolInfo.pool.address)} (${formatBN(amount)})`);
             await this.poolInfo.pool.enter(0, false, { from: this.address, value: amount })
                 .catch(e => scope.exitOnExpectedError(e, ['invalid agent vault address']));
