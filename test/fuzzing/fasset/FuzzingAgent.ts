@@ -304,7 +304,7 @@ export class FuzzingAgent extends FuzzingActor {
             this.comment(`Redeeming fAssets backed by ${this.name(agent)} before destroy...`);
             // wait until all the agent's tickets are redeemed
             while (!(agentState.mintedUBA.lte(agentState.dustUBA) && agentState.reservedUBA.isZero() && agentState.redeemingUBA.isZero())) {
-                if (this.runner.waitingToFinish) scope.exit();
+                this.runner.checkForBreak(scope);
                 await sleep(1000);
             }
             // self-close dust - must buy some fassets
@@ -320,6 +320,7 @@ export class FuzzingAgent extends FuzzingActor {
         const poolTokenBalance = await agent.poolTokenBalance();
         if (poolTokenBalance.gt(BN_ZERO)) {
             while ((await agent.poolTimelockedBalance()).gt(BN_ZERO)) {
+                this.runner.checkForBreak(scope);
                 await this.timeline.flareSeconds(toBN(this.context.settings.collateralPoolTokenTimelockSeconds)).then(e => e.wait(scope));
             }
             const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
@@ -335,7 +336,7 @@ export class FuzzingAgent extends FuzzingActor {
         if (waitForTokenHolderExit) {
             this.comment(`Waiting for pool token holders of ${this.name(agent)} to exit before destroy, pool token supply = ${formatBN(agentState.poolTokenBalances.total())}...`);
             while (!agentState.poolTokenBalances.total().isZero()) {
-                if (this.runner.waitingToFinish) scope.exit();
+                this.runner.checkForBreak(scope);
                 await sleep(1000);
             }
         } else {

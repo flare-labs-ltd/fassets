@@ -158,7 +158,7 @@ export class FuzzingTimeline {
 
     // Skip `seconds` of time unless a triggger is reached before.
     // While skipping, mines underlying blocks at the rate of chain.secondsPerBlock.
-    async skipTime(seconds: number) {
+    async skipTime(seconds: number, skipUnderlyingBlocks: boolean = false) {
         const startFlareTime = await latestBlockTimestamp();
         const startUnderlyingTime = this.chain.currentTimestamp();
         // calculate first trigger times
@@ -177,7 +177,11 @@ export class FuzzingTimeline {
             // mine next block unless skip of `seconds` is reached
             let nextBlockSkip = skippedTime + this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
             if (nextBlockSkip <= seconds) {
-                this.chain.mine();
+                if (skipUnderlyingBlocks) {
+                    this.chain.skipTimeTo(this.chain.lastBlockTimestamp() + seconds);
+                } else {
+                    this.chain.mine();
+                }
                 skippedTime = this.chain.lastBlockTimestamp() - startUnderlyingTime;
             } else {
                 skippedTime = seconds;

@@ -3,7 +3,9 @@ import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { ExtractedEventArgs } from "../../../lib/utils/events/common";
 import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
+import { sleep } from "../../../lib/utils/helpers";
 import { AssetContext } from "../../integration/utils/AssetContext";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { FAssetMarketplace } from "./FAssetMarketplace";
@@ -40,6 +42,12 @@ export class FuzzingRunner extends ScopedRunner {
         this.availableAgents = _availableAgents;
     }
 
+    checkForBreak(scope: EventScope, message: string = "Waiting for finish") {
+        if (this.waitingToFinish) {
+            scope.exit(message);
+        }
+    }
+
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         return this.truffleEvents.event(this.context.assetManager, event, filter);
     }
@@ -50,5 +58,15 @@ export class FuzzingRunner extends ScopedRunner {
 
     comment(text: string) {
         this.interceptor.comment(text);
+    }
+
+    async waitForThreadsToFinish(threadIds: number[], skipSeconds: number, skipUnderlyingBlocks: boolean = false, sleepMs = 20) {
+        while (threadIds.some(id => this.runningThreads.has(id))) {
+            await this.timeline.skipTime(skipSeconds, skipUnderlyingBlocks);
+            await this.timeline.executeTriggers();
+            this.timeline.eventQueue.runAll();
+            await sleep(sleepMs);
+            await this.interceptor.allHandled();
+        }
     }
 }
