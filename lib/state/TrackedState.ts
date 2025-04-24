@@ -124,6 +124,10 @@ export class TrackedState {
             // trigger event
             this.pricesUpdated.trigger();
         });
+        // core vault
+        this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.add(toBN(args.remintedUBA));
+        });
         // agents
         this.registerAgentHandlers();
     }
@@ -171,6 +175,13 @@ export class TrackedState {
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleDustChanged(args));
         // liquidation
         this.assetManagerEvent('LiquidationPerformed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleLiquidationPerformed(args));
+        // core vault
+        this.assetManagerEvent('TransferToCoreVaultStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultStarted(args));
+        this.assetManagerEvent('TransferToCoreVaultSuccessful').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultSuccessful(args));
+        this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultDefaulted(args));
+        this.assetManagerEvent('ReturnFromCoreVaultRequested').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultRequested(args));
+        this.assetManagerEvent('ReturnFromCoreVaultConfirmed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultConfirmed(args));
+        this.assetManagerEvent('ReturnFromCoreVaultCancelled').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultCancelled(args));
     }
 
     private async addCollateralType(data: CollateralType) {

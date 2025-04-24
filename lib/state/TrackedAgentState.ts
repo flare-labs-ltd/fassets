@@ -1,7 +1,7 @@
 import {
-    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, CoreVaultRedemptionRequested, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
-    RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionTicketUpdated, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
@@ -287,6 +287,28 @@ export class TrackedAgentState {
 
     handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
+    }
+
+    // handlers: core vault
+
+    handleTransferToCoreVaultStarted(args: EvmEventArgs<TransferToCoreVaultStarted>): void {
+    }
+
+    handleTransferToCoreVaultSuccessful(args: EvmEventArgs<TransferToCoreVaultSuccessful>): void {
+    }
+
+    handleTransferToCoreVaultDefaulted(args: EvmEventArgs<TransferToCoreVaultDefaulted>): void {
+        // the transferred amount has been re-minted
+        this.mintedUBA = this.mintedUBA.add(toBN(args.remintedUBA));
+    }
+
+    handleReturnFromCoreVaultRequested(args: EvmEventArgs<ReturnFromCoreVaultRequested>): void {
+    }
+
+    handleReturnFromCoreVaultConfirmed(args: EvmEventArgs<ReturnFromCoreVaultConfirmed>): void {
+    }
+
+    handleReturnFromCoreVaultCancelled(args: EvmEventArgs<ReturnFromCoreVaultCancelled>): void {
     }
 
     // agent state changing
