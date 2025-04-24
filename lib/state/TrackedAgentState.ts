@@ -6,7 +6,7 @@ import {
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
-import { EventArgs } from "../utils/events/common";
+import { EventArgs, EvmEvent } from "../utils/events/common";
 import { BN_ONE, BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
 import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
@@ -83,6 +83,9 @@ export class TrackedAgentState {
     poolRedeemingUBA: BN = BN_ZERO;
     dustUBA: BN = BN_ZERO;
     underlyingBalanceUBA: BN = BN_ZERO;
+
+    // make sure later dust changes are not overwritten by previous
+    lastDustChangeAt: number = -1;
 
     // calculated getters
 
@@ -222,6 +225,10 @@ export class TrackedAgentState {
         return !toBN(requestId).and(BN_ONE).isZero();
     }
 
+    calcBlockIndex(event: EvmEvent) {
+        return event.blockNumber + (event.logIndex / 1000);
+    }
+
     // handlers: tickets
 
     handleRedemptionTicketCreated(args: EvmEventArgs<RedemptionTicketCreated>): void {
@@ -236,7 +243,13 @@ export class TrackedAgentState {
     // handlers: dust
 
     handleDustChanged(args: EvmEventArgs<DustChanged>): void {
-        this.dustUBA = args.dustUBA;
+        const eventAt = this.calcBlockIndex(args.$event);
+        if (eventAt > this.lastDustChangeAt) {
+            this.dustUBA = args.dustUBA;
+            this.lastDustChangeAt = eventAt;
+        } else {
+            this.parent.logger?.log(`???? ISSUE dustUBA not changed due to inconsistent event ordering: prev change at ${this.lastDustChangeAt}, this change at ${eventAt}`);
+        }
     }
 
     // handlers: status

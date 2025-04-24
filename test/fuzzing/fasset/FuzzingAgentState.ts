@@ -82,6 +82,7 @@ export class FuzzingAgentState extends TrackedAgentState {
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
     redemptionTickets: Map<number, RedemptionTicket> = new Map();
+    redemptionTicketsLastUpdateAt: Map<number, number> = new Map();
     redemptionRequests: Map<number, RedemptionRequest> = new Map();
     underlyingBalanceChanges: UnderlyingBalanceChange[] = [];
 
@@ -250,9 +251,10 @@ export class FuzzingAgentState extends TrackedAgentState {
     // handlers: dust
 
     override handleDustChanged(args: EvmEventArgs<DustChanged>): void {
+        const prevDustUBA = this.dustUBA;
         super.handleDustChanged(args);
         // log change
-        const change = args.dustUBA.sub(this.dustUBA);
+        const change = this.dustUBA.sub(prevDustUBA);
         this.logAction(`dust changed by ${change}, new dust=${formatBN(this.dustUBA)}`, args.$event);
     }
 
@@ -414,23 +416,40 @@ export class FuzzingAgentState extends TrackedAgentState {
     }
 
     addRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
-        const ticket = this.newRedemptionTicket(ticketId, amountUBA);
-        this.redemptionTickets.set(ticket.id, ticket);
-        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+        this.performRedemptionTicketChange(event, ticketId, "addRedemptionTicket", () => {
+            const ticket = this.newRedemptionTicket(ticketId, amountUBA);
+            this.redemptionTickets.set(ticket.id, ticket);
+            this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+        });
     }
 
     updateRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
-        const ticket = this.redemptionTickets.get(ticketId);
-        if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
-        this.logAction(`updated RedemptionTicket(${ticket.id}): oldAmount=${formatBN(ticket.amountUBA)} amount=${formatBN(amountUBA)}`, event);
-        ticket.amountUBA = amountUBA;
+        this.performRedemptionTicketChange(event, ticketId, "updateRedemptionTicket", () => {
+            const ticket = this.redemptionTickets.get(ticketId);
+            if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
+            this.logAction(`updated RedemptionTicket(${ticket.id}): oldAmount=${formatBN(ticket.amountUBA)} amount=${formatBN(amountUBA)}`, event);
+            ticket.amountUBA = amountUBA;
+        });
     }
 
     deleteRedemptionTicket(event: EvmEvent, ticketId: number) {
-        const ticket = this.redemptionTickets.get(ticketId);
-        if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
-        this.redemptionTickets.delete(ticketId);
-        this.logAction(`deleted RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+        this.performRedemptionTicketChange(event, ticketId, "deleteRedemptionTicket", () => {
+            const ticket = this.redemptionTickets.get(ticketId);
+            if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
+            this.redemptionTickets.delete(ticketId);
+            this.logAction(`deleted RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+        });
+    }
+
+    performRedemptionTicketChange(event: EvmEvent, ticketId: number, name: string, action: () => void) {
+        const eventAt = this.calcBlockIndex(event);
+        const lastChangeAt = this.redemptionTicketsLastUpdateAt.get(ticketId) ?? 0;
+        if (eventAt > lastChangeAt) {
+            action();
+            this.redemptionTicketsLastUpdateAt.set(ticketId, eventAt);
+        } else {
+            this.parent.logger?.log(`???? ISSUE ${name} not executed due to inconsistent event ordering: prev change at ${this.lastDustChangeAt}, this change at ${eventAt}`);
+        }
     }
 
     newRedemptionRequest(args: EvmEventArgs<RedemptionRequested>): RedemptionRequest {
