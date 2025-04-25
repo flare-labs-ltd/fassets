@@ -49,8 +49,19 @@ contract CoreVaultManager is
     uint256 public nextUnprocessedEscrowIndex;
 
     uint256 private nextTransferRequestId;
+
+    // NOTE: There is at most one cancelableTransferRequest per agent (an agent must cancel previous
+    // return request before starting a new one). The number of agents cannot increase arbitrarily,
+    // as agents that are allowed return are controlled by the governance. The total number will always be < ~10.
+    // Therefore loops over cancelableTransferRequests are actually bounded and will not run out of gas.
     uint256[] private cancelableTransferRequests;
+
+    // NOTE: The nonCancelableTransferRequests correspond to requests for direct core vault redemption.
+    // The addresses to which the redemptions can be made are controlled by governance and the requests
+    // to the same address get merged, so there will always be a limited number of requests (< ~10).
+    // Therefore loops over nonCancelableTransferRequests are actually bounded and will not run out of gas.
     uint256[] private nonCancelableTransferRequests;
+
     mapping(uint256 transferRequestId => TransferRequest) private transferRequestById;
 
     // there will probably be no more than 10 destination addresses set in the system at any time
