@@ -89,20 +89,22 @@ library Redemptions {
         Globals.getFAsset().burn(_owner, _amountUBA);
     }
 
-    // WARNING: every call must be guarded for reentrancy!
+    // WARNING: every call must be guarded for reentrancy (otherwise transfer will fail)
     // pay executor for executor calls, otherwise burn executor fee
     function payOrBurnExecutorFee(
         Redemption.Request storage _request
     )
         internal
     {
-        if (_request.executorFeeNatGWei == 0) return;
-        if (msg.sender == _request.executor) {
-            Transfers.transferNAT(_request.executor, _request.executorFeeNatGWei * Conversion.GWEI);
-        } else if (_request.executorFeeNatGWei > 0) {
-            Agents.burnDirectNAT(_request.executorFeeNatGWei * Conversion.GWEI);
+        uint256 executorFeeNatWei = _request.executorFeeNatGWei * Conversion.GWEI;
+        if (executorFeeNatWei > 0) {
+            _request.executorFeeNatGWei = 0;
+            if (msg.sender == _request.executor) {
+                Transfers.transferNAT(_request.executor, executorFeeNatWei);
+            } else {
+                Agents.burnDirectNAT(executorFeeNatWei);
+            }
         }
-        _request.executorFeeNatGWei = 0;
     }
 
     function reCreateRedemptionTicket(
