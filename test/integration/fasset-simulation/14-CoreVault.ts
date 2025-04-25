@@ -788,6 +788,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     });
 
     it("revert if modifying core vault settings with invalid values", async () => {
+        await expectRevert(context.assetManager.setCoreVaultManager(ZERO_ADDRESS, { from: context.governance }), "cannot disable");
         await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
         await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
         await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");

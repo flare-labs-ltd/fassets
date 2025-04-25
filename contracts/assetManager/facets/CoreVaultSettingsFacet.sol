@@ -57,6 +57,9 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyGovernance
     {
+        // core vault cannot be disabled once it has been enabled (it can be disabled initially
+        // in initCoreVaultFacet method, for chains where core vault is not supported)
+        require(_coreVaultManager != address(0), "cannot disable");
         CoreVault.State storage state = CoreVault.getState();
         state.coreVaultManager = IICoreVaultManager(_coreVaultManager);
         emit IAssetManagerEvents.ContractChanged("coreVaultManager", _coreVaultManager);
