@@ -16,6 +16,7 @@ import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { MockCoreVaultBot } from "../utils/MockCoreVaultBot";
 import { assertApproximatelyEqual } from "../../utils/approximation";
+import { calculateReceivedNat } from "../../utils/eth";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -94,8 +95,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const transferAmount = info.mintedUBA;
         // calculate the transfer fee
         const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee.subn(1) }),
-            "transfer fee payment too small");
         // transfer request
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: info.mintedUBA });
@@ -120,6 +119,33 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // normal redemption requests are now impossible
         await expectRevert(context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address }),
             "redeem 0 lots");
+    });
+
+    it("should return overpaid transfer fee", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        // minter2 also deposits to pool (so some fasset fees will go to them)
+        await agent.collateralPool.enter(0, false, { from: minterAddress2, value: toWei(3e8) });
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // update time
+        await context.updateUnderlyingBlock();
+        // agent requests transfer for all backing to core vault
+        const info = await agent.getAgentInfo();
+        const transferAmount = info.mintedUBA;
+        // calculate the transfer fee
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        // paid fee must be large enough, otherwise the request fails
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee.subn(1) }),
+            "transfer fee payment too small");
+        // overpay fee in transfer request
+        const payTransferFee = cbTransferFee.add(toWei(10));
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: payTransferFee });
+        const actuallyPaidFee = (await calculateReceivedNat(res)).neg();
+        assert.isTrue(actuallyPaidFee.lt(payTransferFee));
+        assertWeb3Equal(actuallyPaidFee, cbTransferFee);
     });
 
     it("should transfer partial backing to core vault", async () => {

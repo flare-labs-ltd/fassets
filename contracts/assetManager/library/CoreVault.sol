@@ -78,8 +78,14 @@ library CoreVault {
             state.transferTimeExtensionSeconds, true);
         // set the active request
         _agent.activeTransferToCoreVault = redemptionRequestId;
-        // pay the transfer fee
-        Transfers.transferNAT(state.nativeAddress, msg.value);  // guarded by nonReentrant in the facet
+        // pay the transfer fee and return overpaid transfer fee when the difference is larger than gas use
+        // (all transfers are guarded by nonReentrant in the facet)
+        if (msg.value > transferFeeWei + Transfers.TRANSFER_GAS_ALLOWANCE) {
+            Transfers.transferNAT(state.nativeAddress, transferFeeWei);
+            Transfers.transferNATAllowFailure(payable(msg.sender), msg.value - transferFeeWei);
+        } else {
+            Transfers.transferNAT(state.nativeAddress, msg.value);
+        }
         // send event
         uint256 transferredUBA = Conversion.convertAmgToUBA(transferredAMG);
         emit ICoreVault.TransferToCoreVaultStarted(agentVault, redemptionRequestId, transferredUBA);
