@@ -25,7 +25,7 @@ export class AgentCollateral {
         const poolCollateral = await assetManager.getCollateralType(CollateralClass.POOL, await collateralPool.wNat());
         const collateralDataFactory = await CollateralDataFactory.create(settings);
         const vaultCollateralCD = await collateralDataFactory.vault(vaultCollateral, agentVault);
-        const poolCD = await collateralDataFactory.pool(poolCollateral, collateralPool.address);
+        const poolCD = await collateralDataFactory.pool(poolCollateral, collateralPool);
         const agetPoolTokenCD = await collateralDataFactory.agentPoolTokens(poolCD, collateralPoolToken, agentVault);
         return new AgentCollateral(settings, agentInfo, vaultCollateralCD, poolCD, agetPoolTokenCD);
     }
