@@ -264,6 +264,26 @@ library Agents {
         vault.payout(collateral.token, _receiver, _amountPaid);
     }
 
+    function tryPayoutFromVault(
+        Agent.State storage _agent,
+        address _receiver,
+        uint256 _amountWei
+    )
+        internal
+        returns (bool _success, uint256 _amountPaid)
+    {
+        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
+        // don't want the calling method to fail due to too small balance for payout
+        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
+        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
+        try vault.payout(collateral.token, _receiver, _amountPaid) {
+            _success = true;
+        } catch {
+            _success = false;
+            _amountPaid = 0;
+        }
+    }
+
     function payoutFromPool(
         Agent.State storage _agent,
         address _receiver,

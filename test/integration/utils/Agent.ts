@@ -178,9 +178,11 @@ export class Agent extends AssetContextClient {
         const ac = await this.getAgentCollateral();
         const vaultCollateralReq = ac.mintingLotCollateralWei(ac.vault, true).mul(toBN(lots));
         const poolCollateralReq = ac.mintingLotCollateralWei(ac.pool, true).mul(toBN(lots));
+        const agentPoolTokensReq = ac.mintingLotCollateralWei(ac.agentPoolTokens, true).mul(toBN(lots));
         const vaultCollateral = vaultCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
         const poolCollateral = poolCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
-        return { vault: vaultCollateral, pool: poolCollateral  };
+        const agentPoolTokens = agentPoolTokensReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
+        return { vault: vaultCollateral, pool: poolCollateral, agentPoolTokens: agentPoolTokens };
     }
 
     async announceExitAvailable() {

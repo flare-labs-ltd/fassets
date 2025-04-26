@@ -133,7 +133,12 @@ library RedemptionFailures {
         if (!_request.transferToCoreVault) {
             // ordinary redemption default - pay redeemer in one or both collaterals
             (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request);
-            Agents.payoutFromVault(_agent, _request.redeemer, paidC1Wei);
+            (bool successVault,) = Agents.tryPayoutFromVault(_agent, _request.redeemer, paidC1Wei);
+            if (!successVault) {
+                // agent vault payment has failed - replace with pool payment (but see method comment for conditions)
+                paidPoolWei = _replaceFailedVaultPaymentWithPool(_agent, _request, paidC1Wei, paidPoolWei);
+                paidC1Wei = 0;
+            }
             if (paidPoolWei > 0) {
                 Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
             }
@@ -151,6 +156,43 @@ library RedemptionFailures {
             // core vault transfer default - re-create tickets
             CoreVault.cancelTransferToCoreVault(_agent, _request, _redemptionRequestId);
         }
+    }
+
+    /**
+     * Vault payment has failed, possible reason is that the redeemer address is blacklisted by the
+     * stablecoin. This has to be resolved somehow, otherwise the redeemer gets nothing and the agent's
+     * collateral stays locked forever. Therefore we pay from the pool, but only if the agent has
+     * enough pool tokens to cover the vault payment (plus the required percentage for the remaining
+     * backing). We also require that the whole payment does not lower pool CR (possibly triggering liquidation).
+     * In this way the pool providers aren't at loss and the agent can always unlock
+     * the collateral by buying more collateral pool tokens.
+     */
+    function _replaceFailedVaultPaymentWithPool(
+        Agent.State storage _agent,
+        Redemption.Request storage _request,
+        uint256 _paidC1Wei,
+        uint256 _paidPoolWei
+    )
+        private view
+        returns (uint256)
+    {
+        Collateral.CombinedData memory cd = AgentCollateral.combinedData(_agent);
+        // check that there are enough agent pool tokens
+        uint256 poolTokenEquiv = _paidC1Wei
+            .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
+        uint256 requiredPoolTokensForRemainder =
+            (_agent.reservedAMG + _agent.mintedAMG + _agent.redeemingAMG - _request.valueAMG)
+                .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, Conversion.AMG_TOKEN_WEI_PRICE_SCALE)
+                .mulBips(Globals.getSettings().mintingPoolHoldingsRequiredBIPS);
+        require(requiredPoolTokensForRemainder + poolTokenEquiv <= cd.agentPoolTokens.fullCollateral,
+            "not enough agent pool tokens to cover failed vault payment");
+        // check that pool CR won't be lowered
+        uint256 poolWeiEquiv = _paidC1Wei
+            .mulDiv(cd.poolCollateral.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
+        uint256 combinedPaidPoolWei = _paidPoolWei + poolWeiEquiv;
+        require(combinedPaidPoolWei <= cd.poolCollateral.maxRedemptionCollateral(_agent, _request.valueAMG),
+            "not enough pool collateral to cover failed vault payment");
+        return combinedPaidPoolWei;
     }
 
     function _othersCanConfirmDefault(

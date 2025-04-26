@@ -1,7 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { DAYS, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, deepFormat, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
@@ -694,6 +694,93 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(lotsUBA3).add(request2.feeUBA), redeemingUBA: 0 });
 
             await agent.exitAndDestroy(fullAgentCollateral.sub(defaultArgs.redeemedVaultCollateralWei));
+        });
+
+        it("redeemer that is on stablecoin sanction list should be paid from pool in case of default", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolFeeShareBIPS: 0 });
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            //
+            const redemptionDefaultFactorVaultBIPS = toBN(context.settings.redemptionDefaultFactorVaultCollateralBIPS);
+            const redemptionDefaultFactorPoolBIPS = toBN(context.settings.redemptionDefaultFactorPoolBIPS);
+            const mintingPoolHoldingsRequiredBIPS = toBN(context.settings.mintingPoolHoldingsRequiredBIPS);
+            // add redeemer to usdc sanction list
+            await context.usdc.addToSanctionList(redeemer.address);
+            // deposit minimum required collateral for agent
+            const requiredCollateral = await agent.requiredCollateralForLots(10);
+            await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.agentPoolTokens);
+            const poolProvider = accounts[15];
+            await agent.collateralPool.enter(0, false, { from: poolProvider, value: requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens) });
+            // mint
+            await minter.performMinting(agent.vaultAddress, 10);
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(10));
+            //
+            const [[request]] = await redeemer.requestRedemption(10);
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // the default should fail because vault collateral cannot be paid to redeemer and there are not enough agent pool tokens to cover pool payment
+            await expectRevert(redeemer.redemptionPaymentDefault(request), "not enough agent pool tokens to cover failed vault payment");
+            // buy extra pool tokens
+            const ac = await agent.getAgentCollateral();
+            const poolEquivWei = ac.pool.convertUBAToTokenWei(toBN(request.valueUBA));
+            const requiredExtraPoolTokensShareBIPS = redemptionDefaultFactorVaultBIPS.sub(mintingPoolHoldingsRequiredBIPS);
+            const requiredExtraPoolTokens = poolEquivWei.mul(requiredExtraPoolTokensShareBIPS).divn(MAX_BIPS);
+            await agent.buyCollateralPoolTokens(requiredExtraPoolTokens);
+            // now the payment should succeed
+            const res = await redeemer.redemptionPaymentDefault(request);
+            assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS.add(redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS), "absolute", 10);
+            assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
+        });
+
+        it("test sanctioned redemption payment pool token requirements checks", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolFeeShareBIPS: 0 });
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // add redeemer to usdc sanction list
+            await context.usdc.addToSanctionList(redeemer.address);
+            // deposit minimum required collateral for agent
+            const requiredCollateral = await agent.requiredCollateralForLots(10);
+            await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.agentPoolTokens);
+            const poolProvider = accounts[15];
+            await agent.collateralPool.enter(0, false, { from: poolProvider, value: requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens) });
+            // mint
+            await minter.performMinting(agent.vaultAddress, 10);
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(10));
+            //
+            const redemptionDefaultFactorVaultBIPS = toBN(context.settings.redemptionDefaultFactorVaultCollateralBIPS);
+            const redemptionDefaultFactorPoolBIPS = toBN(context.settings.redemptionDefaultFactorPoolBIPS);
+            const mintingPoolHoldingsRequiredBIPS = toBN(context.settings.mintingPoolHoldingsRequiredBIPS);
+            //
+            async function redeemAndDefaultSanctioned(lots: number) {
+                const [[request]] = await redeemer.requestRedemption(lots);
+                context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+                // the default should fail because vault collateral cannot be paid to redeemer and there are not enough agent pool tokens to cover pool payment
+                await expectRevert(redeemer.redemptionPaymentDefault(request), "not enough agent pool tokens to cover failed vault payment");
+                // agent pool tokens must cover vault share of payment
+                const ac = await agent.getAgentCollateral();
+                const poolEquivWei = ac.pool.convertUBAToTokenWei(toBN(request.valueUBA));
+                // console.log("POOL EQ", deepFormat(poolEquivWei.div(toWei(1))));
+                // console.log("C1 EQ", deepFormat(poolEquivWei.mul(redemptionDefaultFactorVaultBIPS).divn(MAX_BIPS).div(toWei(1))));
+                // console.log("AC", deepFormat(ac.pool.amgPrice.amgToTokenWei), deepFormat(ac.agentPoolTokens.amgPrice.amgToTokenWei));
+                const backedAmountInPoolTokens = ac.agentPoolTokens.convertUBAToTokenWei(toBN(ac.agentInfo.reservedUBA).add(toBN(ac.agentInfo.mintedUBA)).add(toBN(ac.agentInfo.redeemingUBA)));
+                const currentAgentPoolTokenHoldingBIPS = ac.agentPoolTokens.balance.muln(MAX_BIPS).div(backedAmountInPoolTokens);
+                // console.log("currentAgentPoolTokenHoldingBIPS", deepFormat(currentAgentPoolTokenHoldingBIPS));
+                const requiredExtraPoolTokensShareBIPS = redemptionDefaultFactorVaultBIPS.sub(mintingPoolHoldingsRequiredBIPS);
+                let requiredExtraPoolTokens = poolEquivWei.mul(requiredExtraPoolTokensShareBIPS).divn(MAX_BIPS);
+                if (currentAgentPoolTokenHoldingBIPS.lt(mintingPoolHoldingsRequiredBIPS)) {
+                    requiredExtraPoolTokens = requiredExtraPoolTokens.add(backedAmountInPoolTokens.mul(mintingPoolHoldingsRequiredBIPS.sub(currentAgentPoolTokenHoldingBIPS)).divn(MAX_BIPS));
+                }
+                await agent.buyCollateralPoolTokens(requiredExtraPoolTokens.sub(toWei(1)));
+                await expectRevert(redeemer.redemptionPaymentDefault(request), "not enough agent pool tokens to cover failed vault payment");
+                // once enough is added, the payment default should succeed
+                await agent.buyCollateralPoolTokens(toWei(1));
+                const res = await redeemer.redemptionPaymentDefault(request);
+                assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS.add(redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS), "absolute", 10);
+                assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
+            }
+            // first redeem and default - price ratio pool_token:NAT is still 1
+            await redeemAndDefaultSanctioned(5);
+            // second redeem and default - price ratio pool_token:NAT should be cca 0.9 due to paid pool redemption fee share
+            await redeemAndDefaultSanctioned(3);
         });
     });
 });
