@@ -761,7 +761,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
                 // console.log("POOL EQ", deepFormat(poolEquivWei.div(toWei(1))));
                 // console.log("C1 EQ", deepFormat(poolEquivWei.mul(redemptionDefaultFactorVaultBIPS).divn(MAX_BIPS).div(toWei(1))));
                 // console.log("AC", deepFormat(ac.pool.amgPrice.amgToTokenWei), deepFormat(ac.agentPoolTokens.amgPrice.amgToTokenWei));
-                const backedAmountInPoolTokens = ac.agentPoolTokens.convertUBAToTokenWei(toBN(ac.agentInfo.reservedUBA).add(toBN(ac.agentInfo.mintedUBA)).add(toBN(ac.agentInfo.redeemingUBA)));
+                const backedAmountUBA = toBN(ac.agentInfo.reservedUBA).add(toBN(ac.agentInfo.mintedUBA)).add(toBN(ac.agentInfo.redeemingUBA));
+                const backedAmountInPoolTokens = ac.agentPoolTokens.convertUBAToTokenWei(backedAmountUBA);
                 const currentAgentPoolTokenHoldingBIPS = ac.agentPoolTokens.balance.muln(MAX_BIPS).div(backedAmountInPoolTokens);
                 // console.log("currentAgentPoolTokenHoldingBIPS", deepFormat(currentAgentPoolTokenHoldingBIPS));
                 const requiredExtraPoolTokensShareBIPS = redemptionDefaultFactorVaultBIPS.sub(mintingPoolHoldingsRequiredBIPS);
@@ -776,10 +777,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
                 const res = await redeemer.redemptionPaymentDefault(request);
                 assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS.add(redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS), "absolute", 10);
                 assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
+                // pool token price should not change due to agent's token burning
+                const ac2 = await agent.getAgentCollateral();
+                assertWeb3Equal(ac2.agentPoolTokens.amgPrice.amgToTokenWei, ac.agentPoolTokens.amgPrice.amgToTokenWei);
             }
-            // first redeem and default - price ratio pool_token:NAT is still 1
+            // First redeem and default - price ratio pool_token:NAT is still 1.
             await redeemAndDefaultSanctioned(5);
-            // second redeem and default - price ratio pool_token:NAT should be cca 0.9 due to paid pool redemption fee share
+            // Second redeem and default - price ratio pool_token:NAT is still 1 because agent pool tokens were burned.
+            // However, agent's pool token holdings will be lower, because of 10% pool participation which is also charged to the agent.
             await redeemAndDefaultSanctioned(3);
         });
     });
