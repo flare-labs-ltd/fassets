@@ -65,6 +65,7 @@ library CollateralReservations {
         cr.valueAMG = valueAMG;
         cr.underlyingFeeUBA = underlyingFeeUBA.toUint128();
         cr.reservationFeeNatWei = reservationFee.toUint128();
+        // 1 is added for backward compatibility where 0 means "value not stored" - it is subtracted when used
         cr.poolFeeShareBIPS = agent.poolFeeShareBIPS + 1;
         cr.agentVault = _agentVault;
         cr.minter = _minter;

@@ -843,6 +843,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.updateUnderlyingBlock();
             await agent.depositCollateralLotsAndMakeAvailable(10);
+            const agentInfo = await agent.getAgentInfo();
             // mint
             const mintReq = await minter.reserveCollateral(agent.vaultAddress, 5, executorAddress1, toWei("0.01"));
             const crInfo = await context.assetManager.collateralReservationInfo(mintReq.collateralReservationId);
@@ -857,6 +858,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(crInfo.firstUnderlyingBlock, mintReq.firstUnderlyingBlock);
             assertWeb3Equal(crInfo.lastUnderlyingBlock, mintReq.lastUnderlyingBlock);
             assertWeb3Equal(crInfo.lastUnderlyingTimestamp, mintReq.lastUnderlyingTimestamp);
+            assertWeb3Equal(crInfo.poolFeeShareBIPS, agentInfo.poolFeeShareBIPS);
             assertWeb3Equal(crInfo.executor, mintReq.executor);
             assertWeb3Equal(crInfo.executorFeeNatWei, mintReq.executorFeeNatWei);
             assertWeb3Equal(crInfo.handshakeStartTimestamp, 0);
