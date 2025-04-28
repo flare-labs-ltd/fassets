@@ -48,9 +48,7 @@ library CollateralReservations {
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
-        uint256 underlyingValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        _reserveCollateral(agent, valueAMG, Minting.calculateCurrentPoolFee(agent, underlyingValueUBA));
+        _reserveCollateral(agent, valueAMG + _currentPoolFeeAMG(agent, valueAMG));
         // - only charge reservation fee for public minting, not for alwaysAllowedMinters on non-public agent
         // - poolCollateral is WNat, so we can use its price for calculation of CR fee
         uint256 reservationFee = agent.availableAgentsPos != 0
@@ -63,7 +61,7 @@ library CollateralReservations {
         // create in-memory cr and then put it to storage to not go out-of-stack
         CollateralReservation.Data memory cr;
         cr.valueAMG = valueAMG;
-        cr.underlyingFeeUBA = underlyingFeeUBA.toUint128();
+        cr.underlyingFeeUBA = Conversion.convertAmgToUBA(valueAMG).mulBips(agent.feeBIPS).toUint128();
         cr.reservationFeeNatWei = reservationFee.toUint128();
         // 1 is added for backward compatibility where 0 means "value not stored" - it is subtracted when used
         cr.poolFeeShareBIPS = agent.poolFeeShareBIPS + 1;
@@ -171,7 +169,7 @@ library CollateralReservations {
             "minting non-payment proof window too short");
 
         // send event
-        uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt);
+        uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // share collateral reservation fee between the agent's vault and pool
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
@@ -206,7 +204,7 @@ library CollateralReservations {
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnVaultCollateral(agent, reservedCollateral);
         // send event
-        uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFee(agent, crt);
+        uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
@@ -244,7 +242,7 @@ library CollateralReservations {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(crt.agentVault);
-        uint64 reservationAMG = crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFee(agent, crt));
+        uint64 reservationAMG = crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFeeUBA(agent, crt));
         agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, reservationAMG, "invalid reservation");
         state.totalReservedCollateralAMG -= reservationAMG;
         delete state.crts[_crtId];
@@ -263,16 +261,14 @@ library CollateralReservations {
 
     function _reserveCollateral(
         Agent.State storage _agent,
-        uint64 _valueAMG,
-        uint256 _poolFeeUBA
+        uint64 _reservationAMG
     )
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint64 reservationAMG = _valueAMG + Conversion.convertUBAToAmg(_poolFeeUBA);
-        Minting.checkMintingCap(reservationAMG);
-        _agent.reservedAMG += reservationAMG;
-        state.totalReservedCollateralAMG += reservationAMG;
+        Minting.checkMintingCap(_reservationAMG);
+        _agent.reservedAMG += _reservationAMG;
+        state.totalReservedCollateralAMG += _reservationAMG;
     }
 
     function _emitHandshakeRequiredEvent(
@@ -336,6 +332,18 @@ library CollateralReservations {
         } else if (totalFee > returnFee) {
             Agents.burnDirectNAT(totalFee - returnFee);
         }
+    }
+
+    function _currentPoolFeeAMG(
+        Agent.State storage _agent,
+        uint64 _valueAMG
+    )
+        private view
+        returns (uint64)
+    {
+        uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_valueAMG);
+        uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(_agent, underlyingValueUBA);
+        return Conversion.convertUBAToAmg(poolFeeUBA);
     }
 
     function _lastPaymentBlock()
