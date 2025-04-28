@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBIPS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -1134,4 +1134,60 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // request transfer to core vault again
         await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
     })
+
+    it("should allow transferring 70% of the backing to core vault at max recommended minting CR", async () => {
+        const usdcCollateral = context.collaterals.find(c => c.token === context.usdc.address)!;
+        const poolCollateral = context.collaterals.find(c => c.token === context.wNat.address)!;
+        // set minting CR to 1.5 times minimal CR (recommended  at high volatility)
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
+            vaultCollateralToken: usdcCollateral.token,
+            mintingVaultCollateralRatioBIPS: toBN(usdcCollateral.minCollateralRatioBIPS).muln(15).divn(10),
+            mintingPoolCollateralRatioBIPS: toBN(poolCollateral.minCollateralRatioBIPS).muln(15).divn(10),
+        });
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // coreVaultMinimumAmountLeftBIPS set to 20%
+        await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(2000, { from: context.governance });
+        await agent.depositCollateralLotsAndMakeAvailable(10);
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        const info = await agent.getAgentInfo();
+        const { 0: maximumTransferUBA, 1: minimumLeftAmountUBA } = await context.assetManager.maximumTransferToCoreVault(agent.vaultAddress);
+        console.log(deepFormat({
+            maximumTransferUBA,
+            minimumLeftAmountUBA,
+            vaultCollateralRatioBIPS: Number(info.vaultCollateralRatioBIPS) / MAX_BIPS,
+            poolCollateralRatioBIPS: Number(info.poolCollateralRatioBIPS) / MAX_BIPS,
+            maxTransferRatio: Number(maximumTransferUBA) / Number(info.mintedUBA),
+            minAmountLeftRatio: Number(minimumLeftAmountUBA) / Number(info.mintedUBA),
+        }));
+        assert.approximately(Number(maximumTransferUBA) / Number(info.mintedUBA), 0.7, 1e-3);
+        assert.approximately(Number(minimumLeftAmountUBA) / Number(info.mintedUBA), 0.3, 1e-3);
+    });
+
+    it("should allow transferring 76% of the backing to core vault at min recommended minting CR", async () => {
+        const usdcCollateral = context.collaterals.find(c => c.token === context.usdc.address)!;
+        const poolCollateral = context.collaterals.find(c => c.token === context.wNat.address)!;
+        // set minting CR to 1.2 times minimal CR (minimum recommended)
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
+            vaultCollateralToken: usdcCollateral.token,
+            mintingVaultCollateralRatioBIPS: toBN(usdcCollateral.minCollateralRatioBIPS).muln(12).divn(10),
+            mintingPoolCollateralRatioBIPS: toBN(poolCollateral.minCollateralRatioBIPS).muln(12).divn(10),
+        });
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // coreVaultMinimumAmountLeftBIPS set to 20%
+        await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(2000, { from: context.governance });
+        await agent.depositCollateralLotsAndMakeAvailable(10);
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        const info = await agent.getAgentInfo();
+        const { 0: maximumTransferUBA, 1: minimumLeftAmountUBA } = await context.assetManager.maximumTransferToCoreVault(agent.vaultAddress);
+        console.log(deepFormat({
+            maximumTransferUBA,
+            minimumLeftAmountUBA,
+            vaultCollateralRatioBIPS: Number(info.vaultCollateralRatioBIPS) / MAX_BIPS,
+            poolCollateralRatioBIPS: Number(info.poolCollateralRatioBIPS) / MAX_BIPS,
+            maxTransferRatio: Number(maximumTransferUBA) / Number(info.mintedUBA),
+            minAmountLeftRatio: Number(minimumLeftAmountUBA) / Number(info.mintedUBA),
+        }));
+        assert.approximately(Number(maximumTransferUBA) / Number(info.mintedUBA), 0.76, 1e-3);
+        assert.approximately(Number(minimumLeftAmountUBA) / Number(info.mintedUBA), 0.24, 1e-3);
+    });
 });
