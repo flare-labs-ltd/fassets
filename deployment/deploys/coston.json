@@ -367,57 +367,57 @@
   {
     "name": "AgentInfoFacet",
     "contractName": "AgentInfoFacet.sol",
-    "address": "0xa3C38e2302F60C730fA4b4292e58BBbb46BF9c77"
+    "address": "0xbA4E2f4F35e6F659403689d1Cb3F28024cA8513E"
   },
   {
     "name": "AvailableAgentsFacet",
     "contractName": "AvailableAgentsFacet.sol",
-    "address": "0xe9F3be6B0a17F604eD9A78A242E2b3B7E8484495"
+    "address": "0x47C8fEd6b3aB257720554A655422f31e9DaB5B0b"
   },
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0xC3DEF35C5aeF43306a613B377357a07BadEe0937"
+    "address": "0x939e8dCaC11d450e29F42A69B30774347fe62Ff5"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x2134bbcb10FfCFf166Ba6b59e7723fC884b9E8f0"
+    "address": "0x1330CABE5E3597d1aA3204D3C1c97484e845356E"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x017A4F140ca8344dff94a205A0eC35fb3aA15aC1"
+    "address": "0x33d623cF2C19b97d8f593f7ce74756B1387D8091"
   },
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0x42633Fa3F2977daCB2102AA47649B9058C7E3dFd"
+    "address": "0x4d3F7E141A4AdcD4f0FfDDDAfa28CD4FdF49E6CA"
   },
   {
     "name": "RedemptionDefaultsFacet",
     "contractName": "RedemptionDefaultsFacet.sol",
-    "address": "0x345700e30e8595BF574eC03289A2295c2fF214cc"
+    "address": "0x961D00B461DaBECA28BbE54148EEC25fa8738ef4"
   },
   {
     "name": "RedemptionHandshakeFacet",
     "contractName": "RedemptionHandshakeFacet.sol",
-    "address": "0x84D01442F264A49426c537Fe441D525FDD009E9F"
+    "address": "0x0ad3c951709B65542be8B23f7F4b48cd7dE6c370"
   },
   {
     "name": "LiquidationFacet",
     "contractName": "LiquidationFacet.sol",
-    "address": "0x51AD425D86fFe2347cCd46bAFc2EB70a286C7f2e"
+    "address": "0x5D26E43F711b0Db582efd8B79639663f209f4357"
   },
   {
     "name": "ChallengesFacet",
     "contractName": "ChallengesFacet.sol",
-    "address": "0x381C6FCc6186B6fBB3712c0c2440638177AFD110"
+    "address": "0xA359EBD6C55953beeaeE9a50De49D67372Cd9f83"
   },
   {
     "name": "UnderlyingBalanceFacet",
     "contractName": "UnderlyingBalanceFacet.sol",
-    "address": "0x34FE1b0e3fEf64039Dce8045Bde76aE97F2eDD05"
+    "address": "0x2DBd7C5B1b93Cb07D1719d5f733E394AEEAACBcc"
   },
   {
     "name": "UnderlyingTimekeepingFacet",
@@ -427,12 +427,12 @@
   {
     "name": "AgentVaultManagementFacet",
     "contractName": "AgentVaultManagementFacet.sol",
-    "address": "0x62CDFC79766cf77Ca7e9426b671AEc76268b9894"
+    "address": "0x3C661d203710274d5A2D9b27FD2730aE6F52BaF6"
   },
   {
     "name": "AgentSettingsFacet",
     "contractName": "AgentSettingsFacet.sol",
-    "address": "0x9bf43a9D02783d69e9c2Fb89559c071622BA8256"
+    "address": "0x4DBcA5aa20988AfefBe9f873AFe20D0E69C06588"
   },
   {
     "name": "CollateralTypesFacet",
@@ -442,17 +442,17 @@
   {
     "name": "AgentCollateralFacet",
     "contractName": "AgentCollateralFacet.sol",
-    "address": "0x0066617199ECf623fd2b86F7E06eD8C38bD2f341"
+    "address": "0xFCB106b717cFF3c1f57c39cA81Ae676aD45F1C1f"
   },
   {
     "name": "SettingsReaderFacet",
     "contractName": "SettingsReaderFacet.sol",
-    "address": "0xE8ddEa2273d5F02c61CFCc9568859BB2665ad438"
+    "address": "0x8039Abf3A8F1204023FCea3837f5678f27CBb03f"
   },
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0x73ACEbf1ad0D05c14d579661C0998A35AE028ad7"
+    "address": "0x8C2176E1cE9aBe4Df510ECebD067468AFE15D3EE"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",
@@ -467,7 +467,7 @@
   {
     "name": "SystemInfoFacet",
     "contractName": "SystemInfoFacet.sol",
-    "address": "0xB14bCB564B7c593F8DDb25F53eADF1FcB20b8fa2"
+    "address": "0x17F6ee22ef6d66DE71F9303CF7351b74E8168720"
   },
   {
     "name": "EmergencyPauseFacet",
@@ -487,7 +487,7 @@
   {
     "name": "TransferFeeFacet",
     "contractName": "TransferFeeFacet.sol",
-    "address": "0xad07eaE2ab1370F52C1209A372CBD57fE5a9F344"
+    "address": "0x0B15033cEaf41edbE1555fD2349e288593B9e5bC"
   },
   {
     "name": "EmergencyPauseTransfersFacet",
@@ -508,16 +508,16 @@
   {
     "name": "AgentAlwaysAllowedMintersFacet",
     "contractName": "AgentAlwaysAllowedMintersFacet.sol",
-    "address": "0xe929C8C7f9Ec2C3d96a713e3A4f1B9F8aE4Ee718"
+    "address": "0x790Ca6E0085BFb7DDB4dF72dDd226F9c7e3B925d"
   },
   {
     "name": "CoreVaultFacet",
     "contractName": "CoreVaultFacet.sol",
-    "address": "0x4569F799180a9D8F35ba176d070CB90F5ABFFc3E"
+    "address": "0x9fE3Dd141e91FA0DF5EdcAE4Cf2bD14fF3d2F054"
   },
   {
     "name": "CoreVaultSettingsFacet",
     "contractName": "CoreVaultSettingsFacet.sol",
-    "address": "0xC8A63616886B570DbB3599A109e0b079BD49204a"
+    "address": "0xfC4eb60bC127008c3b499a1476BC24863ef3Be00"
   }
 ]

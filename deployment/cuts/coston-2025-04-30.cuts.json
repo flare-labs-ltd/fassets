@@ -1,0 +1,94 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestBTC", "AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"],
+    "facets": [
+        {
+            "contract": "AgentAlwaysAllowedMintersFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "AgentCollateralFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "AgentInfoFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "AgentSettingsFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "AgentVaultManagementFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "AvailableAgentsFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "ChallengesFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "LiquidationFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "RedemptionHandshakeFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "SettingsManagementFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "SettingsReaderFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "SystemInfoFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "UnderlyingBalanceFacet",
+            "exposedInterfaces": ["IAssetManager"]
+        },
+        {
+            "contract": "TransferFeeFacet",
+            "exposedInterfaces": ["ITransferFees"]
+        },
+        {
+            "contract": "CoreVaultFacet",
+            "exposedInterfaces": ["ICoreVault"]
+        },
+        {
+            "contract": "CoreVaultSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultSettings"]
+        }
+    ],
+    "init": {
+        "contract": "CoreVaultSettingsFacet",
+        "method": "updateInterfacesAtCoreVaultDeploy"
+    }
+}

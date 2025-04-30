@@ -28,10 +28,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     )
         external
     {
-        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
-        ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
-        ds.supportedInterfaces[type(ICoreVaultSettings).interfaceId] = true;
+        updateInterfacesAtCoreVaultDeploy();
         // init settings
         require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
@@ -46,6 +43,18 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
         state.minimumRedeemLots = _minimumRedeemLots.toUint64();
+    }
+
+    function updateInterfacesAtCoreVaultDeploy()
+        public
+    {
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
+        // IAssetManager has new methods (at CoreVault deploy on Songbird)
+        ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
+        // Core Vault interfaces added
+        ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
+        ds.supportedInterfaces[type(ICoreVaultSettings).interfaceId] = true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
