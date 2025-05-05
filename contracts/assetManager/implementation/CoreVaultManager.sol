@@ -244,7 +244,7 @@ contract CoreVaultManager is
             }
             index++;
         }
-        require (index < cancelableTransferRequests.length, "request not found");
+        require (index < cancelableTransferRequests.length, "not found");
         uint256 transferRequestId = cancelableTransferRequests[index];
         TransferRequest storage req = transferRequestById[transferRequestId];
         uint128 amount = req.amount;
@@ -263,14 +263,14 @@ contract CoreVaultManager is
     /**
      * @inheritdoc ICoreVaultManager
      */
-    function processEscrows(uint256 _maxCount) external returns(bool){
+    function processEscrows(uint256 _maxCount) external returns (bool) {
         return _processEscrows(_maxCount);
     }
 
     /**
      * @inheritdoc ICoreVaultManager
      */
-    function triggerInstructions() external notPaused {
+    function triggerInstructions() external notPaused returns (uint256 _numberOfInstructions) {
         require(triggeringAccounts.contains(msg.sender), "not authorized");
         _processEscrows(type(uint256).max); // process all escrows
         uint128 availableFundsTmp = availableFunds;
@@ -296,6 +296,7 @@ contract CoreVaultManager is
                     feeTmp,
                     req.paymentReference
                 );
+                _numberOfInstructions++;
                 // remove the transfer request - keep the order
                 for (uint256 i = index; i < length - 1; i++) { // length > 0
                     cancelableTransferRequests[i] = cancelableTransferRequests[i + 1]; // shift left
@@ -327,6 +328,7 @@ contract CoreVaultManager is
                     feeTmp,
                     req.paymentReference
                 );
+                _numberOfInstructions++;
                 // remove the transfer request - keep the order
                 for (uint256 i = index; i < length - 1; i++) { // length > 0
                     nonCancelableTransferRequests[i] = nonCancelableTransferRequests[i + 1]; // shift left
@@ -345,7 +347,7 @@ contract CoreVaultManager is
             // update the state but skip creating new escrows
             availableFunds = availableFundsTmp;
             nextSequenceNumber = sequenceNumberTmp;
-            return;
+            return _numberOfInstructions;
         }
 
         // create escrows
@@ -376,6 +378,7 @@ contract CoreVaultManager is
                     feeTmp,
                     escrowEndTimestamp
                 );
+                _numberOfInstructions++;
                 // next escrow end timestamp
                 escrowEndTimestamp += 1 days;
             }
@@ -570,7 +573,7 @@ contract CoreVaultManager is
         for (uint256 i = 0; i < _preimageHashes.length; i++) {
             uint256 escrowIndex = preimageHashToEscrowIndex[_preimageHashes[i]];
             Escrow storage escrow = _getEscrow(escrowIndex);
-            require(!escrow.finished, "escrow already finished");
+            require(!escrow.finished, "already finished");
             escrow.finished = true;
             if (escrowIndex <= nextUnprocessedEscrowIndex) {
                 availableFundsTmp -= escrow.amount;
@@ -840,7 +843,7 @@ contract CoreVaultManager is
      * @param _maxCount Maximum number of escrows to process.
      * @return _allProcessed True if all escrows were processed, false otherwise.
      */
-    function _processEscrows(uint256 _maxCount) internal returns(bool _allProcessed) {
+    function _processEscrows(uint256 _maxCount) internal returns (bool _allProcessed) {
         uint128 availableFundsTmp = availableFunds;
         uint128 escrowedFundsTmp = escrowedFunds;
         // process all expired or finished escrows
@@ -875,7 +878,7 @@ contract CoreVaultManager is
      * @return Escrow.
      */
     function _getEscrow(uint256 _index) internal view returns (Escrow storage) {
-        require(_index != 0, "escrow not found");
+        require(_index != 0, "not found");
         return escrows[_index - 1];
     }
 

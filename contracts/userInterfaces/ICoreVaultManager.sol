@@ -142,10 +142,11 @@ interface ICoreVaultManager {
 
     /**
      * Triggers instructions - payment and escrow.
+     * @return _numberOfInstructions Number of instructions triggered.
      * NOTE: cannot be called if the contract is paused.
      * NOTE: may only be called by the triggering accounts.
      */
-    function triggerInstructions() external;
+    function triggerInstructions() external returns (uint256 _numberOfInstructions);
 
     /**
      * Returns the available funds.
