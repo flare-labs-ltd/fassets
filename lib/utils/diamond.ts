@@ -79,6 +79,10 @@ export class DiamondSelectors {
         return this.filter(sel => !removeSelectors.has(sel));
     }
 
+    removeExisting(existing: DiamondSelectors) {
+        return this.filter(sel => this.selectorMap.get(sel) !== existing.selectorMap.get(sel));
+    }
+
     createCuts(addedOrUpdated: DiamondSelectors, deleted?: DiamondSelectors) {
         const addSelectors = addedOrUpdated.remove(this);
         const replaceSelectors = addedOrUpdated.restrict(this);

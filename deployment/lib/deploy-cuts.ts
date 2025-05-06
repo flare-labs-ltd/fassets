@@ -30,7 +30,8 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const diamondLoupeInstance = await IDiamondLoupe.at(diamondAddress);
     const deployedSelectors = await DiamondSelectors.fromLoupe(diamondLoupeInstance);
     // create cuts
-    const newSelectors = await createNewSelectors(hre, contracts, cuts.facets, deployer);
+    const newSelectorsPossiblyExisting = await createNewSelectors(hre, contracts, cuts.facets, deployer);
+    const newSelectors = newSelectorsPossiblyExisting.removeExisting(deployedSelectors);
     const deletedSelectors = createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
     const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
     // create init
@@ -47,6 +48,7 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
         console.log("INIT (decoded):", cuts.init);
     }
     if (executeCuts) {
+        await diamondCutInstance.diamondCut.call(diamondCuts, initAddress, initCalldata, { from: deployer });
         await waitFinalize(hre, deployer, () => diamondCutInstance.diamondCut(diamondCuts, initAddress, initCalldata, { from: deployer }));
     } else {
         console.log(`---- Diamond cut not executed. Data for manual execution on ${cuts.diamond}: ----`);
