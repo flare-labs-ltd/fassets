@@ -1,0 +1,11 @@
+{
+    "$schema": "../core-vault-manager-parameters.schema.json",
+    "assetManager": "AssetManager_FXRP",
+    "underlyingAddress": "rpWpGbeMQSQLhitEHVtfTrArByj3xh5Rt1",
+    "initialSequenceNumber": 95855925,
+    "custodianAddress": "rDvuj6yYU6sT1waeaqW2f2pVQkvDUaDKrg",
+    "escrowAmount": "150 000 000000",
+    "escrowEndTimeSeconds": 50400,
+    "minimalAmountLeft": "150 000 000000",
+    "chainPaymentFee": "400"
+}
