@@ -36,4 +36,18 @@ contract AgentSettingsFacet is AssetManagerBase {
     {
         AgentSettingsUpdater.executeUpdate(_agentVault, _name);
     }
+
+    /**
+     * Get agent's setting by name. Setting names are the same as for the updates.
+     * This allows reading individual settings.
+     */
+    function getAgentSetting(
+        address _agentVault,
+        string memory _name
+    )
+        external view
+        returns (uint256)
+    {
+        return AgentSettingsUpdater.getSetting(_agentVault, _name);
+    }
 }

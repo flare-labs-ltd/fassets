@@ -176,11 +176,13 @@ export class Agent extends AssetContextClient {
 
     async requiredCollateralForLots(lots: BNish, multiplier: number = 1) {
         const ac = await this.getAgentCollateral();
-        const vaultCollateralReq = ac.mintingLotCollateralWei(ac.vault).mul(toBN(lots));
-        const poolCollateralReq = ac.mintingLotCollateralWei(ac.pool).mul(toBN(lots));
+        const vaultCollateralReq = ac.mintingLotCollateralWei(ac.vault, true).mul(toBN(lots));
+        const poolCollateralReq = ac.mintingLotCollateralWei(ac.pool, true).mul(toBN(lots));
+        const agentPoolTokensReq = ac.mintingLotCollateralWei(ac.agentPoolTokens, true).mul(toBN(lots));
         const vaultCollateral = vaultCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
         const poolCollateral = poolCollateralReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
-        return { vault: vaultCollateral, pool: poolCollateral  };
+        const agentPoolTokens = agentPoolTokensReq.mul(toBIPS(multiplier)).divn(MAX_BIPS);
+        return { vault: vaultCollateral, pool: poolCollateral, agentPoolTokens: agentPoolTokens };
     }
 
     async announceExitAvailable() {
@@ -341,7 +343,7 @@ export class Agent extends AssetContextClient {
     }
 
     static async performRedemptions(agents: Agent[], requests: EventArgs<RedemptionRequested>[]) {
-        const results: Record<string, Truffle.TransactionResponse<AssetManagerEvents>> = {};
+        const results: Truffle.TransactionResponse<AssetManagerEvents>[] = [];
         for (const request of requests) {
             const agent = agents.find(ag => ag.vaultAddress === request.agentVault);
             if (!agent) assert.fail(`No agent for redemption ${request.paymentReference}`);
@@ -349,7 +351,7 @@ export class Agent extends AssetContextClient {
             const txHash = await agent.performRedemptionPayment(request);
             const proof = await agent.attestationProvider.provePayment(txHash, agent.underlyingAddress, request.paymentAddress);
             const res = await agent.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
-            results[String(request.requestId)] = res;
+            results.push(res);
         }
         return results;
     }
@@ -389,15 +391,24 @@ export class Agent extends AssetContextClient {
     }
 
     async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {
-        const proof = await this.attestationProvider.proveReferencedPaymentNonexistence(
+        const res = await Agent.executeRedemptionPaymentDefault(this.context, request, this.ownerWorkAddress);
+        return requiredEventArgs(res, 'RedemptionDefault');
+    }
+
+    async transferToCoreVaultDefault(request: EventArgs<RedemptionRequested>, from = this.ownerWorkAddress) {
+        const res = await Agent.executeRedemptionPaymentDefault(this.context, request, from);
+        return requiredEventArgs(res, 'TransferToCoreVaultDefaulted');
+    }
+
+    static async executeRedemptionPaymentDefault(context: AssetContext, request: EventArgs<RedemptionRequested>, from: string) {
+        const proof = await context.attestationProvider.proveReferencedPaymentNonexistence(
             request.paymentAddress,
             request.paymentReference,
             request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(),
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
-        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.ownerWorkAddress });
-        return requiredEventArgs(res, 'RedemptionDefault');
+        return await context.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: from });
     }
 
     async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault>> {
@@ -514,6 +525,20 @@ export class Agent extends AssetContextClient {
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null, options?: MockTransactionOptionsWithFee) {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
+    }
+
+    async transferToCoreVault(transferAmount: BNish) {
+        const cbTransferFee = await this.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await this.assetManager.transferToCoreVault(this.vaultAddress, transferAmount, { from: this.ownerWorkAddress, value: cbTransferFee });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assert.isAtLeast(rdreqs.length, 1);
+        // perform transfer of underlying
+        await this.performRedemptions(rdreqs);
+    }
+
+    async confirmReturnFromCoreVault(txHash: string) {
+        const proof = await this.attestationProvider.provePayment(txHash, null, this.underlyingAddress);
+        await this.assetManager.confirmReturnFromCoreVault(proof, this.vaultAddress, { from: this.ownerWorkAddress });
     }
 
     async getCurrentVaultCollateralRatioBIPS() {
@@ -700,7 +725,7 @@ export class Agent extends AssetContextClient {
         return this.context.convertUBAToLots(toMintUBA);
     }
 
-    async getRedemptionQueue(pageSize: BNish) {
+    async getRedemptionQueue(pageSize: BNish = 20) {
         const result: RedemptionTicketInfo[] = [];
         let firstTicketId = BN_ZERO;
         do {

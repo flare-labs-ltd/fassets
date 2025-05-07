@@ -281,6 +281,11 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const iconUrl = "https://some.address/icon.jpg";
             const touUrl = "https://some.address/tos.html";
             await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: accounts[1] }), "only governance or manager");
+
+            await expectRevert(agentOwnerRegistry.setAgentName(agentOwner1, name), "only governance or manager");
+            await expectRevert(agentOwnerRegistry.setAgentDescription(agentOwner1, description), "only governance or manager");
+            await expectRevert(agentOwnerRegistry.setAgentIconUrl(agentOwner1, iconUrl), "only governance or manager");
+            await expectRevert(agentOwnerRegistry.setAgentTermsOfUseUrl(agentOwner1, touUrl), "only governance or manager");
         });
 
         it("manager can also set agent data", async () => {

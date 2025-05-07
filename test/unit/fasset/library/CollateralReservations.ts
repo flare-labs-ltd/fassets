@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BNish, deepFormat, MAX_BIPS, toBN, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, MinterMockInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -14,6 +14,7 @@ import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDat
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
 
 contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralReservations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -380,6 +381,107 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 500000000;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
+        // assert
+        await expectRevert(promise, "not enough free collateral");
+    });
+
+    it("should reserve collateral when agent has minimum required amount of all types of collateral", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
+        const ac = await AgentCollateral.create(assetManager, settings, agentVault.address);
+        const collateralPool = await artifacts.require("CollateralPool").at(ac.agentInfo.collateralPool);
+        //
+        const lots = 10;
+        const mintValueAMG = toBN(settings.lotSizeAMG).muln(lots);
+        // deposit collaterals
+        const vaultCollateral = ac.collateralRequiredToMintAmountAMG(ac.vault, mintValueAMG);
+        const poolCollateral = ac.collateralRequiredToMintAmountAMG(ac.pool, mintValueAMG);
+        const poolTokens = ac.collateralRequiredToMintAmountAMG(ac.agentPoolTokens, mintValueAMG);
+        // // debug
+        // const poolTokensCorrect = ac.agentPoolTokens.amgPrice.convertAmgToTokenWei(mintValueAMG).mul(toBN(settings.mintingPoolHoldingsRequiredBIPS)).divn(MAX_BIPS);
+        // console.log(deepFormat({ vaultCollateral, poolCollateral, poolTokens, poolTokensCorrect, amountWei: ac.agentPoolTokens.amgPrice.convertAmgToTokenWei(mintValueAMG) }));
+        // separately deposit vault collateral, buy pool tokens, and enter pool - all at minimum required amount
+        await depositCollateral(agentOwner1, agentVault, vaultCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens });
+        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens) });
+        //
+        await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
+        // act
+        const crFee = await assetManager.collateralReservationFee(lots);
+        await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
+    });
+
+    it("should not reserve collateral if not enough free agent pool tokens", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
+        const ac = await AgentCollateral.create(assetManager, settings, agentVault.address);
+        const collateralPool = await artifacts.require("CollateralPool").at(ac.agentInfo.collateralPool);
+        //
+        const lots = 10;
+        const mintValueAMG = toBN(settings.lotSizeAMG).muln(lots);
+        // deposit collaterals
+        const vaultCollateral = ac.collateralRequiredToMintAmountAMG(ac.vault, mintValueAMG);
+        const poolCollateral = ac.collateralRequiredToMintAmountAMG(ac.pool, mintValueAMG);
+        const poolTokens = ac.collateralRequiredToMintAmountAMG(ac.agentPoolTokens, mintValueAMG);
+        // separately deposit vault collateral, buy pool tokens, and enter pool
+        await depositCollateral(agentOwner1, agentVault, vaultCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens.subn(100) });
+        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens) });
+        //
+        await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
+        // act
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
+        // assert
+        await expectRevert(promise, "not enough free collateral");
+    });
+
+    it("should not reserve collateral if not enough free vault collateral", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
+        const ac = await AgentCollateral.create(assetManager, settings, agentVault.address);
+        const collateralPool = await artifacts.require("CollateralPool").at(ac.agentInfo.collateralPool);
+        //
+        const lots = 10;
+        const mintValueAMG = toBN(settings.lotSizeAMG).muln(lots);
+        // deposit collaterals
+        const vaultCollateral = ac.collateralRequiredToMintAmountAMG(ac.vault, mintValueAMG);
+        const poolCollateral = ac.collateralRequiredToMintAmountAMG(ac.pool, mintValueAMG);
+        const poolTokens = ac.collateralRequiredToMintAmountAMG(ac.agentPoolTokens, mintValueAMG);
+        // separately deposit vault collateral, buy pool tokens, and enter pool
+        await depositCollateral(agentOwner1, agentVault, vaultCollateral.subn(100));
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens });
+        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens) });
+        //
+        await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
+        // act
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
+        // assert
+        await expectRevert(promise, "not enough free collateral");
+    });
+
+    it("should not reserve collateral if not enough free pool collateral", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
+        const ac = await AgentCollateral.create(assetManager, settings, agentVault.address);
+        const collateralPool = await artifacts.require("CollateralPool").at(ac.agentInfo.collateralPool);
+        //
+        const lots = 10;
+        const mintValueAMG = toBN(settings.lotSizeAMG).muln(lots);
+        // deposit collaterals
+        const vaultCollateral = ac.collateralRequiredToMintAmountAMG(ac.vault, mintValueAMG);
+        const poolCollateral = ac.collateralRequiredToMintAmountAMG(ac.pool, mintValueAMG);
+        const poolTokens = ac.collateralRequiredToMintAmountAMG(ac.agentPoolTokens, mintValueAMG);
+        // separately deposit vault collateral, buy pool tokens, and enter pool
+        await depositCollateral(agentOwner1, agentVault, vaultCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens });
+        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens).subn(100) });
+        //
+        await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
+        // act
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
         // assert

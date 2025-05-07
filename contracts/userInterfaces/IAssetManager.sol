@@ -10,10 +10,15 @@ import "./data/AgentInfo.sol";
 import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
 import "./data/RedemptionTicketInfo.sol";
+import "./data/RedemptionRequestInfo.sol";
+import "./data/CollateralReservationInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
 import "./ITransferFees.sol";
+import "./ICoreVault.sol";
+import "./ICoreVaultSettings.sol";
+import "./IAgentAlwaysAllowedMinters.sol";
 
 
 /**
@@ -25,7 +30,10 @@ interface IAssetManager is
     IAssetManagerEvents,
     IAgentPing,
     IRedemptionTimeExtension,
-    ITransferFees
+    ITransferFees,
+    ICoreVault,
+    ICoreVaultSettings,
+    IAgentAlwaysAllowedMinters
 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
@@ -284,6 +292,8 @@ interface IAssetManager is
      * Due to the effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     * @param _name setting name, same as for `getAgentSetting`
      * @return _updateAllowedAt the timestamp at which the update can be executed
      */
     function announceAgentSettingUpdate(
@@ -297,6 +307,8 @@ interface IAssetManager is
      * Due to the effect on the pool, all agent settings are timelocked.
      * This method executes a setting change after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     * @param _name setting name, same as for `getAgentSetting`
      */
     function executeAgentSettingUpdate(
         address _agentVault,
@@ -454,6 +466,19 @@ interface IAssetManager is
     function getAgentInfo(address _agentVault)
         external view
         returns (AgentInfo.Info memory);
+
+    /**
+     * Get agent's setting by name.
+     * This allows reading individual settings.
+     * @param _agentVault agent vault address
+     * @param _name setting name, one of: `feeBIPS`, `poolFeeShareBIPS`, `redemptionPoolFeeShareBIPS`,
+     *  `mintingVaultCollateralRatioBIPS`, `mintingPoolCollateralRatioBIPS`,`buyFAssetByAgentFactorBIPS`,
+     *  `poolExitCollateralRatioBIPS`, `poolTopupCollateralRatioBIPS`, `poolTopupTokenPriceFactorBIPS`,
+     *  `handshakeType`
+     */
+    function getAgentSetting(address _agentVault, string memory _name)
+        external view
+        returns (uint256);
 
     /**
      * Returns the collateral pool address of the agent identified by `_agentVault`.
@@ -638,16 +663,25 @@ interface IAssetManager is
 
     /**
      * Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
-     * NOTE: the *exact* amount of the collateral fee must be paid. Even if the amount paid in `reserveCollateral` is
-     * more than required, the transaction will revert. This is intentional to protect the minter from accidentally
-     * overpaying, but may cause unexpected reverts if the FTSO prices get published between calls to
-     * `collateralReservationFee` and `reserveCollateral`.
+     * NOTE: the amount paid may be larger than the required amount, but the difference is not returned.
+     * It is advised that the minter pays the exact amount, but when the amount is so small that the revert
+     * would cost more than the lost difference, the minter may want to send a slightly larger amount to compensate
+     * for the possibility of a FTSO price change between obtaining this value and calling `reserveCollateral`.
      * @param _lots the number of lots for which to reserve collateral
      * @return _reservationFeeNATWei the amount of reservation fee in NAT wei
      */
     function collateralReservationFee(uint256 _lots)
         external view
         returns (uint256 _reservationFeeNATWei);
+
+    /**
+     * Returns the data about the collateral reservation for an ongoing minting.
+     * Note: once the minting is executed or defaulted, the collateral reservation is deleted and this method fails.
+     * @param _collateralReservationId the collateral reservation id, as used for executing or defaulting the minting
+     */
+    function collateralReservationInfo(uint256 _collateralReservationId)
+        external view
+        returns (CollateralReservationInfo.Data memory);
 
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
@@ -860,6 +894,16 @@ interface IAssetManager is
     ) external;
 
     /**
+     * Returns the data about an ongoing redemption request.
+     * Note: once the redemptions is confirmed, the request is deleted and this method fails.
+     * However, if there is no payment and the redemption defaults, the method works and returns status DEFAULTED.
+     * @param _redemptionRequestId the redemption request id, as used for confirming or defaulting the redemption
+     */
+    function redemptionRequestInfo(uint256 _redemptionRequestId)
+        external view
+        returns (RedemptionRequestInfo.Data memory);
+
+    /**
      * Agent can "redeem against himself" by calling `selfClose`, which burns agent's own f-assets
      * and unlocks agent's collateral. The underlying funds backing the f-assets are released
      * as agent's free underlying funds and can be later withdrawn after announcement.
@@ -876,7 +920,7 @@ interface IAssetManager is
         returns (uint256 _closedAmountUBA);
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Redemption info
+    // Redemption queue info
 
     /**
      * Return (part of) the redemption queue.

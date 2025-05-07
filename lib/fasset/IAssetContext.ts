@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetManagerControllerInstance, CoreVaultManagerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -27,6 +27,7 @@ export type AgentVaultEvents = import('../../typechain-truffle/IAgentVault').All
 export type CollateralPoolEvents = import('../../typechain-truffle/ICollateralPool').AllEvents;
 export type CollateralPoolTokenEvents = import('../../typechain-truffle/ICollateralPoolToken').AllEvents;
 export type AgentOwnerRegistryEvents = import('../../typechain-truffle/IAgentOwnerRegistry').AllEvents;
+export type CoreVaultManagerEvents = import('../../typechain-truffle/CoreVaultManager').AllEvents;
 
 export interface IAssetContext {
     chainInfo: ChainInfo;
@@ -41,4 +42,5 @@ export interface IAssetContext {
     stablecoins: Record<string, ContractWithEvents<IERC20Instance, ERC20Events>>;
     priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>;
     priceStore: ContractWithEvents<FtsoV2PriceStoreInstance, FtsoV2PriceStoreEvents>;
+    coreVaultManager?: ContractWithEvents<CoreVaultManagerInstance, CoreVaultManagerEvents>;
 }

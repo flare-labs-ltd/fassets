@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "../../userInterfaces/IWhitelist.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/Globals.sol";
+import "../library/Agents.sol";
 
 
 abstract contract AssetManagerBase {
@@ -24,6 +25,11 @@ abstract contract AssetManagerBase {
 
     modifier notEmergencyPaused {
         _checkEmergencyPauseNotActive();
+        _;
+    }
+
+    modifier onlyAgentVaultOwner(address _agentVault) {
+        Agents.requireAgentVaultOwner(_agentVault);
         _;
     }
 

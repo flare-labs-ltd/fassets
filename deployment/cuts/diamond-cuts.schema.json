@@ -51,6 +51,12 @@
         "$schema": {
             "type": "string"
         },
+        "deleteMethods": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "diamond": {
             "anyOf": [
                 {

@@ -1,10 +1,11 @@
 import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { abiEncodeCall, erc165InterfaceId, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { FAssetInstance } from "../../../../typechain-truffle";
+import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { abiEncodeCall, BNish, erc165InterfaceId, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { ERC20PermitInstance, FAssetInstance, IERC20PermitInstance, IERC5267Instance } from "../../../../typechain-truffle";
 import { impersonateContract } from "../../../utils/contract-test-helpers";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { Permit, signPermit } from "../../../utils/erc20permits";
 
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
@@ -349,6 +350,63 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await expectRevert(fAssetProxy.upgradeTo(newFAssetImpl.address), "only asset manager");
             const callData = abiEncodeCall(fAsset, f => f.mint(accounts[18], 1234));
             await expectRevert(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData), "only asset manager");
+        });
+    });
+
+    describe("Transfers via ERC20Permit", () => {
+        const wallet = web3.eth.accounts.create();
+        const spender = accounts[5];
+        const target = accounts[6];
+
+        async function createPermit(owner: string, spender: string, value: BNish, deadline: BNish = constants.MAX_UINT256): Promise<Permit> {
+            const nonce = await fAsset.nonces(owner);
+            return { owner, spender, value: toBN(value), nonce, deadline: toBN(deadline) };
+        }
+
+        async function signAndExecutePermit(privateKey: string, permit: Permit) {
+            const { v, r, s } = await signPermit(fAsset, privateKey, permit);
+            await fAsset.permit(permit.owner, permit.spender, permit.value, permit.deadline, v, r, s);
+        }
+
+        beforeEach(async () => {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+        });
+
+        it("should transfer FAsset by erc20 permit", async () => {
+            await fAsset.mint(wallet.address, 1000, { from: assetManager });
+            // cannot transfer without permit
+            await expectRevert(fAsset.transferFrom(wallet.address, target, 500, { from: spender }), "ERC20: insufficient allowance");
+            // sign and execute permit
+            const permit = await createPermit(wallet.address, spender, 500);
+            await signAndExecutePermit(wallet.privateKey, permit);
+            // now transfer should work
+            await fAsset.transferFrom(wallet.address, target, 500, { from: spender });
+            assertWeb3Equal(await fAsset.balanceOf(wallet.address), 500);
+            assertWeb3Equal(await fAsset.balanceOf(target), 500);
+        });
+
+        it("should limit time for executing permit", async () => {
+            await fAsset.mint(wallet.address, 1000, { from: assetManager });
+            // quick permit execution works
+            const deadline1 = (await time.latest()).addn(1000);
+            const permit1 = await createPermit(wallet.address, spender, 500, deadline1);
+            await deterministicTimeIncrease(500);
+            await signAndExecutePermit(wallet.privateKey, permit1);
+            // but going over deadline fails
+            const deadline2 = (await time.latest()).addn(1000);
+            const permit2 = await createPermit(wallet.address, spender, 500, deadline2);
+            await deterministicTimeIncrease(1001);
+            await expectRevert(signAndExecutePermit(wallet.privateKey, permit2), "ERC20Permit: expired deadline");
+        });
+
+        it("should not execute same permit twice", async () => {
+            await fAsset.mint(wallet.address, 1000, { from: assetManager });
+            // first execution works
+            const permit = await createPermit(wallet.address, spender, 500);
+            await signAndExecutePermit(wallet.privateKey, permit);
+            await fAsset.transferFrom(wallet.address, target, 500, { from: spender });
+            // trying again should fail
+            await expectRevert(signAndExecutePermit(wallet.privateKey, permit), "ERC20Permit: invalid signature");
         });
     });
 

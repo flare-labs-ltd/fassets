@@ -56,6 +56,9 @@ export async function executeTimelockedGovernanceCall(contract: Truffle.Contract
         const timelock = timelockEvent.args;
         await time.increaseTo(timelock.allowedAfterTimestamp.toNumber() + 1);
         await contractGoverned.executeGovernanceCall(timelock.encodedCall, { from: executor });
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -70,4 +73,9 @@ export async function testDeployGovernanceSettings(governance: string, timelock:
     const governanceSettings = await GovernanceSettings.at(GOVERNANCE_SETTINGS_ADDRESS);
     await governanceSettings.initialise(governance, timelock, executors, { from: GENESIS_GOVERNANCE_ADDRESS });
     return governanceSettings;
+}
+
+export async function getChainId() {
+    const chainIdHex = await network.provider.send('eth_chainId', []);
+    return Number(chainIdHex);
 }

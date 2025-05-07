@@ -12,7 +12,7 @@ import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
 import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
-import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
+import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
 export class TrackedState {
     constructor(
@@ -50,7 +50,7 @@ export class TrackedState {
 
     // async initialization part
     async initialize() {
-        this.settings = await this.context.assetManager.getSettings();
+        this.settings = { ...await this.context.assetManager.getSettings() };
         const collateralTypes = await this.context.assetManager.getCollateralTypes();
         for (const collateralToken of collateralTypes) {
             const collateral = await this.addCollateralType(collateralToken);
@@ -78,6 +78,9 @@ export class TrackedState {
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+        });
+        this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.add(toBN(args.poolFeeUBA));
         });
         this.assetManagerEvent('RedeemedInCollateral').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.redemptionAmountUBA));
@@ -114,12 +117,16 @@ export class TrackedState {
             collateral.validUntil = toBN(args.validUntil);
         });
         // track price changes
-        this.truffleEvents.event(this.context.priceStore, 'PricesPublished').subscribe(async args => {
+        this.truffleEvents.event(this.context.priceStore, 'PricesPublished').immediate().subscribe(async args => {
             const [prices, trustedPrices] = await this.getPrices();
             this.logger?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);
             [this.prices, this.trustedPrices] = [prices, trustedPrices];
             // trigger event
             this.pricesUpdated.trigger();
+        });
+        // core vault
+        this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.add(toBN(args.remintedUBA));
         });
         // agents
         this.registerAgentHandlers();
@@ -152,6 +159,7 @@ export class TrackedState {
         this.assetManagerEvent('RedemptionDefault').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionDefault(args));
         this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentBlocked(args));
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentFailed(args));
+        this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPoolFeeMinted(args));
         this.assetManagerEvent('RedeemedInCollateral').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedeemedInCollateral(args));
         this.assetManagerEvent('SelfClose').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSelfClose(args));
         // underlying topup and withdrawal
@@ -167,6 +175,13 @@ export class TrackedState {
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleDustChanged(args));
         // liquidation
         this.assetManagerEvent('LiquidationPerformed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleLiquidationPerformed(args));
+        // core vault
+        this.assetManagerEvent('TransferToCoreVaultStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultStarted(args));
+        this.assetManagerEvent('TransferToCoreVaultSuccessful').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultSuccessful(args));
+        this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultDefaulted(args));
+        this.assetManagerEvent('ReturnFromCoreVaultRequested').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultRequested(args));
+        this.assetManagerEvent('ReturnFromCoreVaultConfirmed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultConfirmed(args));
+        this.assetManagerEvent('ReturnFromCoreVaultCancelled').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultCancelled(args));
     }
 
     private async addCollateralType(data: CollateralType) {
@@ -210,7 +225,7 @@ export class TrackedState {
     }
 
     async createAgentVaultWithCurrentState(address: string) {
-        const agentInfo = await this.context.assetManager.getAgentInfo(address);
+        const agentInfo = await this.getExtendedAgentInfo(address);
         const agent = this.createAgentVault({
             agentVault: address,
             owner: agentInfo.ownerManagementAddress,
@@ -257,8 +272,30 @@ export class TrackedState {
 
     // helpers
 
+    async getExtendedAgentInfo(vaultAddress: string): Promise<ExtendedAgentInfo> {
+        return {
+            ...await this.context.assetManager.getAgentInfo(vaultAddress),
+            redemptionPoolFeeShareBIPS: await this.context.assetManager.getAgentSetting(vaultAddress, "redemptionPoolFeeShareBIPS"),
+        }
+    }
+
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
-        return this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
+        const emitter = this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
+        emitter.subscribe((args) => this.checkEventOrder(args.$event));
+        return emitter;
+    }
+
+    lastEventHandled?: EvmEvent;
+
+    checkEventOrder(event: EvmEvent) {
+        const last = this.lastEventHandled;
+        if (last) {
+            if (last.blockNumber > event.blockNumber || (last.blockNumber === event.blockNumber && last.logIndex > event.logIndex)) {
+                this.logger?.log(`???? ISSUE Inconsistent event ordering: previous event ${last.event} at ${last.blockNumber}.${last.logIndex}, ` +
+                    `current event ${event.event} at ${event.blockNumber}.${event.logIndex}.`);
+            }
+        }
+        this.lastEventHandled = event;
     }
 
     // getters

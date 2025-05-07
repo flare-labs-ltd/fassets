@@ -2,7 +2,7 @@ import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { DiamondCut, FacetCutAction } from "../../../lib/utils/diamond";
 import { findEvent } from "../../../lib/utils/events/truffle";
-import { abiEncodeCall, BNish, contractMetadata } from "../../../lib/utils/helpers";
+import { abiEncodeCall, BNish, contractMetadata, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance, AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondLoupeInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
@@ -15,12 +15,18 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     transferFeeClaimFirstEpochStartTs: BNish;
     transferFeeClaimEpochDurationSeconds: BNish;
     transferFeeClaimMaxUnexpiredEpochs: BNish;
+    // core vault
+    coreVaultNativeAddress: string;
+    coreVaultTransferFeeBIPS: BNish;
+    coreVaultTransferTimeExtensionSeconds: BNish;
+    coreVaultRedemptionFeeBIPS: BNish;
+    coreVaultMinimumAmountLeftBIPS: BNish;
+    coreVaultMinimumRedeemLots: BNish;
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AssetManager = artifacts.require('AssetManager');
 const AssetManagerInit = artifacts.require('AssetManagerInit');
-const GovernedProxyImplementation = artifacts.require('GovernedProxyImplementation');
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -45,6 +51,7 @@ export async function newAssetManager(
     options?: {
         governanceSettings?: string | GovernanceSettingsInstance,
         updateExecutor?: string,
+        coreVaultCustodian?: string,
     }
 ): Promise<[IIAssetManagerInstance, FAssetInstance]> {
     // 0x8... is not a contract, but it is valid non-zero address so it will work in tests where we don't switch to production mode
@@ -70,6 +77,11 @@ export async function newAssetManager(
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("TransferFeeFacet"), ["ITransferFees"],
         (c) => c.initTransferFeeFacet(assetManagerSettings.transferFeeMillionths, assetManagerSettings.transferFeeClaimFirstEpochStartTs,
             assetManagerSettings.transferFeeClaimEpochDurationSeconds, assetManagerSettings.transferFeeClaimMaxUnexpiredEpochs));
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"]);
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultSettingsFacet"), ["ICoreVaultSettings"],
+        (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
+            assetManagerSettings.coreVaultTransferFeeBIPS, assetManagerSettings.coreVaultTransferTimeExtensionSeconds, assetManagerSettings.coreVaultRedemptionFeeBIPS,
+            assetManagerSettings.coreVaultMinimumAmountLeftBIPS, assetManagerSettings.coreVaultMinimumRedeemLots));
     // verify interface implementation
     await checkAllMethodsImplemented(assetManager, interfaceSelectors);
     // add to controller
@@ -94,27 +106,17 @@ export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetMan
     return await IIAssetManager.at(assetManagerDiamond.address);
 }
 
-async function deployRedemptionTimeExtensionFacet(governanceAddress: string, assetManager: IIAssetManagerInstance, assetManagerSettings: AssetManagerInitSettings, interfaceSelectors: Map<string, AbiItem>) {
-    const governedFacet = await GovernedProxyImplementation.at(assetManager.address);
-    const governedFacetSelectors = getInterfaceSelectorMap(governedFacet.abi);
-    const diamondCuts = [
-        await deployFacet('RedemptionTimeExtensionFacet', interfaceSelectors, governedFacetSelectors),
-    ];
-    const RedemptionTimeExtensionFacet = artifacts.require("RedemptionTimeExtensionFacet");
-    const redemptionTimeExtensionFacet = await RedemptionTimeExtensionFacet.at(diamondCuts[0].facetAddress);
-    const initParameters = abiEncodeCall(redemptionTimeExtensionFacet,
-        c => c.initRedemptionTimeExtensionFacet(assetManagerSettings.redemptionPaymentExtensionSeconds));
-    console.log(`redemptionPaymentExtensionSeconds = ${assetManagerSettings.redemptionPaymentExtensionSeconds}`)
-    await assetManager.diamondCut(diamondCuts, redemptionTimeExtensionFacet.address, initParameters, { from: governanceAddress });
-}
-
-async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init: (c: T) => Promise<any>) {
+async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init?: (c: T) => Promise<any>) {
     const interfaceAbis: AbiItem[] = interfaces.flatMap(it => contractMetadata(artifacts.require(it as any)).abi);
     const interfaceSelectors = getInterfaceSelectorMap(interfaceAbis);
     const facetCut = await deployFacet(facetContract, interfaceSelectors);
-    const initFacet = await facetContract.at(facetCut.facetAddress);
-    const initParameters = abiEncodeCall(initFacet, init);
-    await assetManager.diamondCut([facetCut], initFacet.address, initParameters, { from: governanceAddress });
+    if (init) {
+        const initFacet = await facetContract.at(facetCut.facetAddress);
+        const initParameters = abiEncodeCall(initFacet, init);
+        await assetManager.diamondCut([facetCut], initFacet.address, initParameters, { from: governanceAddress });
+    } else {
+        await assetManager.diamondCut([facetCut], ZERO_ADDRESS, "0x00000000", { from: governanceAddress });
+    }
 }
 
 // simulate waiting for governance timelock
@@ -163,6 +165,7 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
         await deployFacet('EmergencyPauseFacet', interfaceSelectors),
         await deployFacet('EmergencyPauseTransfersFacet', interfaceSelectors),
         await deployFacet('AgentPingFacet', interfaceSelectors),
+        await deployFacet('AgentAlwaysAllowedMintersFacet', interfaceSelectors),
     ];
     // verify every required selector is included in some cut
     return [diamondCuts, assetManagerInit, interfaceSelectors];

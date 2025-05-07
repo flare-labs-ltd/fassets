@@ -12,6 +12,7 @@ library AgentSettingsUpdater {
 
     bytes32 internal constant FEE_BIPS = keccak256("feeBIPS");
     bytes32 internal constant POOL_FEE_SHARE_BIPS = keccak256("poolFeeShareBIPS");
+    bytes32 internal constant REDEMPTION_POOL_FEE_SHARE_BIPS = keccak256("redemptionPoolFeeShareBIPS");
     bytes32 internal constant MINTING_VAULT_COLLATERAL_RATIO_BIPS = keccak256("mintingVaultCollateralRatioBIPS");
     bytes32 internal constant MINTING_POOL_COLLATERAL_RATIO_BIPS = keccak256("mintingPoolCollateralRatioBIPS");
     bytes32 internal constant BUY_FASSET_BY_AGENT_FACTOR_BIPS = keccak256("buyFAssetByAgentFactorBIPS");
@@ -67,6 +68,7 @@ library AgentSettingsUpdater {
     {
         delete _agent.settingUpdates[FEE_BIPS];
         delete _agent.settingUpdates[POOL_FEE_SHARE_BIPS];
+        delete _agent.settingUpdates[REDEMPTION_POOL_FEE_SHARE_BIPS];
         delete _agent.settingUpdates[MINTING_VAULT_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[MINTING_POOL_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_FACTOR_BIPS];
@@ -74,6 +76,40 @@ library AgentSettingsUpdater {
         delete _agent.settingUpdates[POOL_TOPUP_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS];
         delete _agent.settingUpdates[HAND_SHAKE_TYPE];
+    }
+
+    function getSetting(
+        address _agentVault,
+        string memory _name
+    )
+        internal view
+        returns (uint256 _value)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        bytes32 hash = _getAndCheckHash(_name);
+        if (hash == FEE_BIPS) {
+            return agent.feeBIPS;
+        } else if (hash == POOL_FEE_SHARE_BIPS) {
+            return agent.poolFeeShareBIPS;
+        } else if (hash == REDEMPTION_POOL_FEE_SHARE_BIPS) {
+            return agent.redemptionPoolFeeShareBIPS;
+        } else if (hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS) {
+            return agent.mintingVaultCollateralRatioBIPS;
+        } else if (hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
+            return agent.mintingPoolCollateralRatioBIPS;
+        } else if (hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
+            return agent.buyFAssetByAgentFactorBIPS;
+        } else if (hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
+            return agent.collateralPool.exitCollateralRatioBIPS();
+        } else if (hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS) {
+            return agent.collateralPool.topupCollateralRatioBIPS();
+        } else if (hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
+            return agent.collateralPool.topupTokenPriceFactorBIPS();
+        } else if (hash == HAND_SHAKE_TYPE) {
+            return agent.handshakeType;
+        } else {
+            assert(false);
+        }
     }
 
     function _executeUpdate(
@@ -87,6 +123,8 @@ library AgentSettingsUpdater {
             Agents.setFeeBIPS(_agent, _value);
         } else if (_hash == POOL_FEE_SHARE_BIPS) {
             Agents.setPoolFeeShareBIPS(_agent, _value);
+        } else if (_hash == REDEMPTION_POOL_FEE_SHARE_BIPS) {
+            Agents.setRedemptionPoolFeeShareBIPS(_agent, _value);
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS) {
             Agents.setMintingVaultCollateralRatioBIPS(_agent, _value);
         } else if (_hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
@@ -108,7 +146,7 @@ library AgentSettingsUpdater {
 
     function _getTimelock(bytes32 _hash) private view returns (uint64) {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS ||
+        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == REDEMPTION_POOL_FEE_SHARE_BIPS ||
             _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS || _hash == HAND_SHAKE_TYPE) {
             return settings.agentFeeChangeTimelockSeconds;
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS || _hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
@@ -123,6 +161,7 @@ library AgentSettingsUpdater {
         bool settingNameValid =
             hash == FEE_BIPS ||
             hash == POOL_FEE_SHARE_BIPS ||
+            hash == REDEMPTION_POOL_FEE_SHARE_BIPS ||
             hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS ||
             hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
             hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||

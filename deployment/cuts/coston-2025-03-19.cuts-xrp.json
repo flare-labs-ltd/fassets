@@ -1,0 +1,55 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestXRP"],
+    "facets": [
+        {
+            "contract": "AgentAlwaysAllowedMintersFacet",
+            "exposedInterfaces": ["IAgentAlwaysAllowedMinters"]
+        },
+        {
+            "contract": "CoreVaultFacet",
+            "exposedInterfaces": ["ICoreVault"]
+        },
+        {
+            "contract": "CoreVaultSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultSettings"]
+        },
+        {
+            "contract": "AgentVaultManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentSettingsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionHandshakeFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ],
+    "init": {
+        "contract": "CoreVaultSettingsFacet",
+        "method": "initCoreVaultFacet",
+        "args": ["0xCC9206d850fb9140019E78e6b2B309193a34DA3c", "0xfeC5BF0a64963E6b2EbA8153235E40f9e5a8c8Ae", 0, 7200, 0, 2000, 10]
+    }
+}

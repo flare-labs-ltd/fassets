@@ -53,7 +53,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
     let redeemer: Redeemer;
 
     async function waitThreadsToFinish() {
-        while (runner.runningThreads > 0 || eventQueue.length > 0) {
+        while (runner.runningThreadCount > 0 || eventQueue.length > 0) {
             chain.mine();
             await sleep(20);
             eventQueue.runAll();

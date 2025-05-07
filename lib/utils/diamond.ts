@@ -79,6 +79,10 @@ export class DiamondSelectors {
         return this.filter(sel => !removeSelectors.has(sel));
     }
 
+    removeExisting(existing: DiamondSelectors) {
+        return this.filter(sel => this.selectorMap.get(sel) !== existing.selectorMap.get(sel));
+    }
+
     createCuts(addedOrUpdated: DiamondSelectors, deleted?: DiamondSelectors) {
         const addSelectors = addedOrUpdated.remove(this);
         const replaceSelectors = addedOrUpdated.restrict(this);
@@ -97,7 +101,7 @@ export class DiamondSelectors {
     }
 }
 
-function toSelectorSet(items: Iterable<string | AbiItem>) {
+export function toSelectorSet(items: Iterable<string | AbiItem>) {
     const result = new Set<string>();
     for (const item of items) {
         result.add(toSelector(item));
@@ -105,7 +109,7 @@ function toSelectorSet(items: Iterable<string | AbiItem>) {
     return result;
 }
 
-function toSelector(item: string | AbiItem) {
+export function toSelector(item: string | AbiItem) {
     // already a selector?
     if (typeof item === "string" && /^0x[0-9a-f]{8}$/i.test(item)) return item;
     // function signature string or abi item

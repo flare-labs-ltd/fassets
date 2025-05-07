@@ -78,8 +78,8 @@ export class CommonContext {
         const priceStore = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, testChainInfo);
         // add some addresses to address updater
         await addressUpdater.addOrUpdateContractNamesAndAddresses(
-            ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FtsoV2PriceStore", "WNat"],
-            [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, priceStore.address, wNat.address],
+            ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FdcVerification", "FtsoV2PriceStore", "WNat"],
+            [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, priceStore.address, wNat.address],
             { from: governance });
         // create agent vault factory
         const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);

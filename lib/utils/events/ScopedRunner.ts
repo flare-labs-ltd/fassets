@@ -5,9 +5,15 @@ export class ScopedRunner {
     logError: (e: any) => void = reportError;
 
     scopes = new Set<EventScope>();
-    runningThreads = 0;
+
+    lastThreadId = 0;
+    runningThreads = new Map<number, Function>();
 
     uncaughtErrors: any[] = [];
+
+    get runningThreadCount() {
+        return this.runningThreads.size;
+    }
 
     newScope(parentScope?: EventScope) {
         const scope = new EventScope(parentScope);
@@ -20,9 +26,10 @@ export class ScopedRunner {
         this.scopes.delete(scope);
     }
 
-    startThread(method: (scope: EventScope) => Promise<void>): void {
+    startThread(method: (scope: EventScope) => Promise<void>): number {
         const scope = this.newScope();
-        ++this.runningThreads;
+        const threadId = ++this.lastThreadId;
+        this.runningThreads.set(threadId, method);
         void method(scope)
             .catch(e => {
                 if (e instanceof ExitScope) {
@@ -32,9 +39,10 @@ export class ScopedRunner {
                 this.uncaughtErrors.push(e);
             })
             .finally(() => {
-                --this.runningThreads;
+                this.runningThreads.delete(threadId)
                 return this.finishScope(scope);
             });
+        return threadId;
     }
 
     async startScope(method: (scope: EventScope) => Promise<void>): Promise<void> {

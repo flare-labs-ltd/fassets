@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../../interfaces/IICollateralPool.sol";
 
 
@@ -166,6 +167,25 @@ library Agent {
         // Agent's handshake type - minting or redeeming can be rejected.
         // 0 - no verification, 1 - manual verification, ...
         uint32 handshakeType;
+
+        // There can only be one transfer to core vault per agent active at any time.
+        uint64 activeTransferToCoreVault;
+
+        // the request id of the active return from core vault
+        uint64 activeReturnFromCoreVaultId;
+
+        // part of the agent's reservedAMG for the core vault return
+        uint64 returnFromCoreVaultReservedAMG;
+
+        // The redemption fee share paid to the pool (as FAssets).
+        // In redemption dominated situations (when agent requests return from core vault to earn
+        // from redemption fees), pool can get some share to make it sustainble for pool users.
+        // NOTE: the pool fee share is locked at the redemption request time, but is charged at the redemption
+        // confirmation time. If agent uses all the redemption fee for transaction fees, this could make the
+        // agent's free underlying balance negative.
+        uint16 redemptionPoolFeeShareBIPS;
+
+        EnumerableSet.AddressSet alwaysAllowedMinters;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

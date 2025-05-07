@@ -55,7 +55,7 @@ library Minting {
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // execute minting
         _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
-            uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt));
+            uint256(_payment.data.responseBody.receivedAmount), calculatePoolFeeUBA(agent, crt));
         // pay to executor if they called this method
         uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
         if (msg.sender == crt.executor) {
@@ -63,7 +63,7 @@ library Minting {
             Transfers.transferNAT(crt.executor, unclaimedExecutorFee);
             unclaimedExecutorFee = 0;
         }
-        // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
+        // pay the collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         CollateralReservations.distributeCollateralReservationFee(agent,
             crt.reservationFeeNatWei + unclaimedExecutorFee);
         // cleanup
@@ -89,7 +89,7 @@ library Minting {
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        uint256 poolFeeUBA = calculateCurrentPoolFee(agent, mintValueUBA);
+        uint256 poolFeeUBA = calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
@@ -128,7 +128,7 @@ library Minting {
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        uint256 poolFeeUBA = calculateCurrentPoolFee(agent, mintValueUBA);
+        uint256 poolFeeUBA = calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
         require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
         _performMinting(agent, MintingType.FROM_FREE_UNDERLYING, 0, msg.sender, valueAMG, 0, poolFeeUBA);
@@ -148,7 +148,7 @@ library Minting {
         require(totalAMG + _increaseAMG <= mintingCapAMG, "minting cap exceeded");
     }
 
-    function calculatePoolFee(
+    function calculatePoolFeeUBA(
         Agent.State storage _agent,
         CollateralReservation.Data storage _crt
     )
@@ -159,10 +159,10 @@ library Minting {
         // To allow for backward compatibility, value 0 in this field indicates use of old _agent.poolFeeShareBIPS.
         uint16 storedPoolFeeShareBIPS = _crt.poolFeeShareBIPS;
         uint16 poolFeeShareBIPS = storedPoolFeeShareBIPS > 0 ? storedPoolFeeShareBIPS - 1 : _agent.poolFeeShareBIPS;
-        return _calculatePoolFee(_crt.underlyingFeeUBA, poolFeeShareBIPS);
+        return _calculatePoolFeeUBA(_crt.underlyingFeeUBA, poolFeeShareBIPS);
     }
 
-    function calculateCurrentPoolFee(
+    function calculateCurrentPoolFeeUBA(
         Agent.State storage _agent,
         uint256 _mintingValueUBA
     )
@@ -170,10 +170,10 @@ library Minting {
         returns (uint256)
     {
         uint256 mintingFeeUBA = _mintingValueUBA.mulBips(_agent.feeBIPS);
-        return _calculatePoolFee(mintingFeeUBA, _agent.poolFeeShareBIPS);
+        return _calculatePoolFeeUBA(mintingFeeUBA, _agent.poolFeeShareBIPS);
     }
 
-    function _calculatePoolFee(
+    function _calculatePoolFeeUBA(
         uint256 _mintingFee,
         uint16 _poolFeeShareBIPS
     )
@@ -195,21 +195,8 @@ library Minting {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible
-        // to the created ticket. At the end, there will always be less than 1 lot of dust left.
         uint64 poolFeeAMG = Conversion.convertUBAToAmg(_poolFeeUBA);
-        uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
-        uint64 ticketValueAMG = _mintValueAMG;
-        if (newDustAMG >= settings.lotSizeAMG) {
-            uint64 remainder = newDustAMG % settings.lotSizeAMG;
-            ticketValueAMG += newDustAMG - remainder;
-            newDustAMG = remainder;
-        }
-        // create ticket and change dust
-        Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
-        Agents.createRedemptionTicket(_agent, ticketValueAMG);
-        Agents.changeDust(_agent, newDustAMG);
+        Agents.createNewMinting(_agent, _mintValueAMG + poolFeeAMG);
         // update agent balance with deposited amount (received amount is 0 in mintFromFreeUnderlying)
         UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
         // perform minting

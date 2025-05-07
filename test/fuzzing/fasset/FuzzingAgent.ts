@@ -1,4 +1,4 @@
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentSetting, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { isVaultCollateral } from "../../../lib/state/CollateralIndexedList";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -105,7 +105,8 @@ export class FuzzingAgent extends FuzzingActor {
             const cheatOnPayment = coinFlip(0.2);
             const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
-            const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
+            // const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
+            const amountToMyself = takeFee;
             this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amountToMyself);
             const txHash = await agent.wallet.addMultiTransaction({ [agent.underlyingAddress]: paymentAmount.add(amountToMyself) },
                 { [request.paymentAddress]: paymentAmount, [this.ownerUnderlyingAddress]: amountToMyself },
@@ -264,6 +265,13 @@ export class FuzzingAgent extends FuzzingActor {
         await agent.wallet.addTransaction(agent.underlyingAddress, this.ownerUnderlyingAddress, amount, redemption.paymentReference);
     }
 
+    async changeSetting(scope: EventScope, name: AgentSetting, value: BN) {
+        const res = await this.context.assetManager.announceAgentSettingUpdate(this.agent.vaultAddress, name, value, { from: this.ownerWorkAddress });
+        const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
+        await this.timeline.flareTimestamp(announcement.validAt).wait(scope);
+        await this.context.assetManager.executeAgentSettingUpdate(this.agent.vaultAddress, name, { from: this.ownerWorkAddress });
+    }
+
     checkForFullLiquidationEnd(): void {
         const agentState = this.agentState(this.agent);
         if (agentState.status !== AgentStatus.FULL_LIQUIDATION) return;
@@ -292,7 +300,8 @@ export class FuzzingAgent extends FuzzingActor {
         // pull out fees
         const poolFeeBalance = await agent.poolFeeBalance();
         if (poolFeeBalance.gt(BN_ZERO)) {
-            await agent.withdrawPoolFees(poolFeeBalance);
+            await agent.withdrawPoolFees(poolFeeBalance)
+                .catch(e => scope.handleExpectedErrors(e, { exit: ['free f-asset balance too small'] }));
             // self-close agent fee fassets
             await agent.selfClose(poolFeeBalance);
         }
@@ -302,7 +311,7 @@ export class FuzzingAgent extends FuzzingActor {
             this.comment(`Redeeming fAssets backed by ${this.name(agent)} before destroy...`);
             // wait until all the agent's tickets are redeemed
             while (!(agentState.mintedUBA.lte(agentState.dustUBA) && agentState.reservedUBA.isZero() && agentState.redeemingUBA.isZero())) {
-                if (this.runner.waitingToFinish) scope.exit();
+                this.runner.checkForBreak(scope);
                 await sleep(1000);
             }
             // self-close dust - must buy some fassets
@@ -318,6 +327,7 @@ export class FuzzingAgent extends FuzzingActor {
         const poolTokenBalance = await agent.poolTokenBalance();
         if (poolTokenBalance.gt(BN_ZERO)) {
             while ((await agent.poolTimelockedBalance()).gt(BN_ZERO)) {
+                this.runner.checkForBreak(scope);
                 await this.timeline.flareSeconds(toBN(this.context.settings.collateralPoolTokenTimelockSeconds)).then(e => e.wait(scope));
             }
             const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
@@ -333,7 +343,7 @@ export class FuzzingAgent extends FuzzingActor {
         if (waitForTokenHolderExit) {
             this.comment(`Waiting for pool token holders of ${this.name(agent)} to exit before destroy, pool token supply = ${formatBN(agentState.poolTokenBalances.total())}...`);
             while (!agentState.poolTokenBalances.total().isZero()) {
-                if (this.runner.waitingToFinish) scope.exit();
+                this.runner.checkForBreak(scope);
                 await sleep(1000);
             }
         } else {

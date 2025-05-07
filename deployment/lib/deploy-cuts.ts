@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DiamondSelectors } from "../../lib/utils/diamond";
+import { DiamondSelectors, toSelector } from "../../lib/utils/diamond";
 import { DiamondCutJson, DiamondCutJsonFacet, DiamondCutJsonInit } from "./DiamondCutJson";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { ContractStore } from "./contracts";
@@ -30,10 +30,12 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const diamondLoupeInstance = await IDiamondLoupe.at(diamondAddress);
     const deployedSelectors = await DiamondSelectors.fromLoupe(diamondLoupeInstance);
     // create cuts
-    const newSelectors = await createNewSelectors(hre, contracts, cuts.facets, deployer);
-    const diamondCuts = deployedSelectors.createCuts(newSelectors);
+    const newSelectorsPossiblyExisting = await createNewSelectors(hre, contracts, cuts.facets, deployer);
+    const newSelectors = newSelectorsPossiblyExisting.removeExisting(deployedSelectors);
+    const deletedSelectors = createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
+    const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
     // create init
-    const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init);
+    const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init, deployer);
     // perform or print cuts
     const IDiamondCut = artifacts.require("DiamondCutFacet");
     const diamondCutInstance = await IDiamondCut.at(diamondAddress);
@@ -46,6 +48,7 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
         console.log("INIT (decoded):", cuts.init);
     }
     if (executeCuts) {
+        await diamondCutInstance.diamondCut.call(diamondCuts, initAddress, initCalldata, { from: deployer });
         await waitFinalize(hre, deployer, () => diamondCutInstance.diamondCut(diamondCuts, initAddress, initCalldata, { from: deployer }));
     } else {
         console.log(`---- Diamond cut not executed. Data for manual execution on ${cuts.diamond}: ----`);
@@ -103,10 +106,23 @@ async function createFacetSelectors(hre: HardhatRuntimeEnvironment, contracts: C
     return facetSelectors;
 }
 
-async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: ContractStore, init?: DiamondCutJsonInit) {
+function createDeletedSelectors(deployedSelectors: DiamondSelectors, deleteMethods: string[]) {
+    const selectorMap: Map<string, string> = new Map();
+    for (const methodSig of deleteMethods) {
+        const selector = toSelector(methodSig);
+        const facet = deployedSelectors.selectorMap.get(selector);
+        if (facet == null) {
+            throw new Error(`Unknown method to delete '${methodSig}'`);
+        }
+        selectorMap.set(selector, ZERO_ADDRESS);    // diamondCut operation requires 0 facet address for deleted methods
+    }
+    return new DiamondSelectors(selectorMap);
+}
+
+async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: ContractStore, init: DiamondCutJsonInit | undefined, deployer: string) {
     if (!init) return [ZERO_ADDRESS, "0x00000000"];
     const contract = hre.artifacts.require(init.contract) as Truffle.Contract<Truffle.ContractInstance>;
-    const address = contracts.getAddress(init.contract);
+    const address = await deployFacet(hre, init.contract, contracts, deployer);
     const instance = await contract.at(address);
     const args = init.args ?? [];
     const encodedCall = await instance.contract.methods[init.method](...args).encodeABI() as string;

@@ -247,6 +247,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.transferFeeClaimFirstEpochStartTs = tfSettings.firstEpochStartTs;
             resInitSettings.transferFeeClaimEpochDurationSeconds = tfSettings.epochDuration;
             resInitSettings.transferFeeClaimMaxUnexpiredEpochs = tfSettings.maxUnexpiredEpochs;
+            // add CoreVault settings
+            resInitSettings.coreVaultNativeAddress = await assetManager.getCoreVaultNativeAddress();
+            resInitSettings.coreVaultTransferFeeBIPS = await assetManager.getCoreVaultTransferFeeBIPS();
+            resInitSettings.coreVaultTransferTimeExtensionSeconds = await assetManager.getCoreVaultTransferTimeExtensionSeconds();
+            resInitSettings.coreVaultRedemptionFeeBIPS = await assetManager.getCoreVaultRedemptionFeeBIPS();
+            resInitSettings.coreVaultMinimumAmountLeftBIPS = await assetManager.getCoreVaultMinimumAmountLeftBIPS();
+            resInitSettings.coreVaultMinimumRedeemLots = await assetManager.getCoreVaultMinimumRedeemLots();
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
@@ -296,6 +303,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.feeBIPS.toString(), "2000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "feeBIPS"), agentInfo.feeBIPS);
         });
 
         it("should fail if the agent setting is executed too early or too late", async () => {
@@ -330,6 +338,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolFeeShareBIPS.toString(), "2000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolFeeShareBIPS"), agentInfo.poolFeeShareBIPS);
         });
 
         it("should not update agent setting pool fee share BIPS if value too high", async () => {
@@ -349,6 +358,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "mintingVaultCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.mintingVaultCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "mintingVaultCollateralRatioBIPS"), agentInfo.mintingVaultCollateralRatioBIPS);
         });
 
         it("should correctly update agent setting minting pool collateral ratio BIPS", async () => {
@@ -359,6 +369,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.mintingPoolCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "mintingPoolCollateralRatioBIPS"), agentInfo.mintingPoolCollateralRatioBIPS);
         });
 
         it("should not update agent setting minting pool collateral ratio BIPS if value too small", async () => {
@@ -378,6 +389,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.buyFAssetByAgentFactorBIPS.toString(), "9300");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "buyFAssetByAgentFactorBIPS"), agentInfo.buyFAssetByAgentFactorBIPS);
         });
 
         it("should not update agent setting buy fasset by agent factor BIPS if value is too low or too high", async () => {
@@ -399,6 +411,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolExitCollateralRatioBIPS"), agentInfo.poolExitCollateralRatioBIPS);
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
@@ -449,14 +462,26 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 25000, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolExitCollateralRatioBIPS"), agentInfo.poolExitCollateralRatioBIPS);
+        });
+
+        it("should correctly update agent setting pool topup collateral ratio BIPS", async () => {
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupCollateralRatioBIPS.toString(), "25000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolTopupCollateralRatioBIPS"), agentInfo.poolTopupCollateralRatioBIPS);
         });
 
-        it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
+        it("should not update agent setting pool topup collateral ratio BIPS if value too low", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 2, { from: agentOwner1 });
@@ -473,6 +498,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolTopupTokenPriceFactorBIPS"), agentInfo.poolTopupTokenPriceFactorBIPS);
         });
 
         it("should correctly update agent setting handshake type", async () => {
@@ -483,6 +509,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "handshakeType", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.handshakeType.toString(), "1");
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "handshakeType"), agentInfo.handshakeType);
+        });
+
+        it("should correctly update agent setting redemptionPoolFeeShareBIPS", async () => {
+            const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "redemptionPoolFeeShareBIPS"), 0);   // always 0 initially
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "redemptionPoolFeeShareBIPS", 2000, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentFeeChangeTimelockSeconds);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "redemptionPoolFeeShareBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "redemptionPoolFeeShareBIPS"), 2000);
         });
     });
 
@@ -1235,12 +1273,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Announce exit
             let annRes = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
             let exitTime = requiredEventArgs(annRes, 'AvailableAgentExitAnnounced').exitAllowedAt;
-            // announce twice returns the same time for exit
-            await deterministicTimeIncrease(1);
+            // announce twice start new countdown
+            await deterministicTimeIncrease(10);
             let annRes2 = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
-            expectEvent.notEmitted(annRes2, 'AvailableAgentExitAnnounced');
-            let exitTime2 = await assetManager.announceExitAvailableAgentList.call(agentVault.address, { from: agentOwner1 });
-            assertWeb3Equal(exitTime, exitTime2);
+            let exitTime2 = requiredEventArgs(annRes2, 'AvailableAgentExitAnnounced').exitAllowedAt;
+            assert.isTrue(exitTime2.gt(exitTime));
             //Must wait agentExitAvailableTimelockSeconds before agent can exit
             res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
             await expectRevert(res, "exit too soon");
@@ -1831,10 +1868,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agents[0][1], agentVault2.address);
             assert.equal(agents[1].toString(), "2");
         });
+
         it("should announce and destroy agent", async () => {
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
-            await deterministicTimeIncrease(2 * time.duration.hours(2));
+            await deterministicTimeIncrease(time.duration.hours(3));
             await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
             const tx = assetManager.getAgentInfo(agentVault.address);
             await expectRevert(tx, "invalid agent vault address");
@@ -1856,7 +1894,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("ERC-165 interface identification", () => {
-        it("should properly respond to supportsInterface", async () => {
+        function erc165InterfaceIdLog(verbose: boolean, mainInterface: Truffle.Contract<any>, inheritedInterfaces: Truffle.Contract<any>[] = []) {
+            const interfaceId = erc165InterfaceId(mainInterface, inheritedInterfaces);
+            if (verbose) {
+                console.log(`${(mainInterface as any)._json?.contractName}: ${interfaceId}`);
+            }
+            return interfaceId;
+        }
+
+        async function checkSupportInterfaceWorks(verbose: boolean) {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAssetManager = artifacts.require("IAssetManager");
             const IIAssetManager = artifacts.require("IIAssetManager");
@@ -1866,17 +1912,39 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IAgentPing = artifacts.require("IAgentPing");
             const IRedemptionTimeExtension = artifacts.require("IRedemptionTimeExtension");
             const ITransferFees = artifacts.require("ITransferFees");
+            const ICoreVault = artifacts.require("ICoreVault");
+            const ICoreVaultSettings = artifacts.require("ICoreVaultSettings");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IERC165)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondLoupe)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IDiamondCut)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IGoverned)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAgentPing)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IRedemptionTimeExtension)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(ITransferFees)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IAssetManager, [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees])));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(IIAssetManager, [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
-            assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+            const IAgentAlwaysAllowedMinters = artifacts.require("IAgentAlwaysAllowedMinters");
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IERC165)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDiamondLoupe)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDiamondCut)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IGoverned)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAgentPing)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionTimeExtension)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ITransferFees)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVault)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultSettings)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager,
+                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IIAssetManager,
+                [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
+            assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));     // must not support invalid interface
+        }
+
+        it("should properly respond to supportsInterface", async () => {
+            await checkSupportInterfaceWorks(true);
+        });
+
+        it("calling AssetManagerInit.upgradeERC165Identifiers on initialized asset manager should work", async () => {
+            const AssetManagerInit = artifacts.require("AssetManagerInit");
+            const assetManagerInit = await AssetManagerInit.new();
+            // upgrade should fail if called directly
+            await expectRevert(assetManagerInit.upgradeERC165Identifiers(), "not initialized");
+            // but it should work in diamond cut on existing asset manager
+            await assetManager.diamondCut([], assetManagerInit.address, abiEncodeCall(assetManagerInit, (c) => c.upgradeERC165Identifiers()), { from: governance });
+            // supportInterface should work as before
+            await checkSupportInterfaceWorks(false);
         });
     });
 

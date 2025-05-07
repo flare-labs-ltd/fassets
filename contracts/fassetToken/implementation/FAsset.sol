@@ -7,10 +7,11 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IIFAsset.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../assetManager/interfaces/IIAssetManager.sol";
+import "../../openzeppelin/token/ERC20Permit.sol";
 import "./CheckPointable.sol";
 
 
-contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
+contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ERC20Permit {
     /**
      * The name of the underlying asset.
      */
@@ -53,6 +54,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
     // the address that created this contract and is allowed to set initial settings
     address private _deployer;
     bool private _initialized;
+    uint16 private _version;
 
     modifier onlyAssetManager() {
         require(msg.sender == assetManager, "only asset manager");
@@ -63,6 +65,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         ERC20("", "")
     {
         _initialized = true;
+        _version = 1000;
     }
 
     function initialize(
@@ -82,6 +85,13 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         _decimals = decimals_;
         assetName = assetName_;
         assetSymbol = assetSymbol_;
+        initializeV1r1();
+    }
+
+    function initializeV1r1() public {
+        require(_version == 0, "already upgraded");
+        _version = 1;
+        initializeEIP712(_name, "1");
     }
 
     /**
@@ -362,10 +372,19 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable {
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IERC20).interfaceId
             || _interfaceId == type(IERC20Metadata).interfaceId
+            || _interfaceId == type(IERC5267).interfaceId
+            || _interfaceId == type(IERC20Permit).interfaceId
             || _interfaceId == type(ICheckPointable).interfaceId
             || _interfaceId == type(IFAsset).interfaceId
             || _interfaceId == type(IIFAsset).interfaceId
             || _interfaceId == type(IICleanable).interfaceId;
+    }
+
+    // support for ERC20Permit
+    function _approve(address _owner, address _spender, uint256 _amount)
+        internal virtual override (ERC20, ERC20Permit)
+    {
+        ERC20._approve(_owner, _spender, _amount);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

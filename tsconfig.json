@@ -25,6 +25,7 @@
         "./test",
         "deployment/lib",
         "deployment/test",
+        "deployment/cuts",
         "./typechain-truffle"
     ],
     "files": [

@@ -1,0 +1,14 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"],
+    "facets": [
+        {
+            "contract": "CoreVaultFacet",
+            "exposedInterfaces": ["ICoreVault"]
+        },
+        {
+            "contract": "CoreVaultSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultSettings"]
+        }
+    ]
+}

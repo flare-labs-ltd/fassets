@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "./data/AssetManagerState.sol";
+import "../../utils/lib/SafePct.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
 import "./Liquidation.sol";
 import "./UnderlyingBalance.sol";
+import "./CoreVault.sol";
 
 
 library RedemptionConfirmations {
+    using SafePct for *;
+    using Agent for Agent.State;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function confirmRedemptionPayment(
@@ -51,18 +56,20 @@ library RedemptionConfirmations {
                 emit IAssetManagerEvents.RedemptionPerformed(request.agentVault, request.redeemer,
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
+                if (request.transferToCoreVault) {
+                    CoreVault.confirmTransferToCoreVault(_payment, agent, _redemptionRequestId);
+                }
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
             }
+            // charge the redemption pool fee share by re-minting some fassets
+            _mintPoolFee(agent, request, _redemptionRequestId);
         } else {
-            // We only need failure reports from agent's underlying address, so disallow others to
-            // lower the attack surface in case of report from other address.
-            // We do not allow retrying failed payments, so just default here if not defaulted already.
-            // This will also release the remaining agent's collateral.
+            // We do not allow retrying failed payments, so just default or cancel here if not defaulted already.
             if (request.status == Redemption.Status.ACTIVE) {
-                RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
+                RedemptionFailures.executeDefaultOrCancel(agent, request, _redemptionRequestId);
             }
             // notify
             emit IAssetManagerEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
@@ -76,8 +83,7 @@ library RedemptionConfirmations {
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutFromVault(agent, msg.sender,
-                Agents.convertUSD5ToVaultCollateralWei(agent, Globals.getSettings().confirmationByOthersRewardUSD5));
+            Agents.payForConfirmationByOthers(agent, msg.sender);
         }
         // burn executor fee (or pay executor if the "other" that provided proof is the executor)
         // guarded against reentrancy in RedemptionConfirmationsFacet
@@ -86,6 +92,22 @@ library RedemptionConfirmations {
         Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+    }
+
+    function _mintPoolFee(
+        Agent.State storage _agent,
+        Redemption.Request storage _request,
+        uint64 _redemptionRequestId
+    )
+        private
+    {
+        uint256 poolFeeUBA = _request.underlyingFeeUBA.mulBips(_request.poolFeeShareBIPS);
+        if (poolFeeUBA > 0) {
+            Agents.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
+            Globals.getFAsset().mint(address(_agent.collateralPool), poolFeeUBA);
+            _agent.collateralPool.fAssetFeeDeposited(poolFeeUBA);
+            emit IAssetManagerEvents.RedemptionPoolFeeMinted(_agent.vaultAddress(), _redemptionRequestId, poolFeeUBA);
+        }
     }
 
     function _othersCanConfirmPayment(
@@ -116,7 +138,8 @@ library RedemptionConfirmations {
             if (_payment.data.responseBody.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
             }
-        } else if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
+        } else if (!request.transferToCoreVault &&
+            _payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
             _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
             return (false, "redemption payment too late");
         } else if (request.status == Redemption.Status.DEFAULTED) {

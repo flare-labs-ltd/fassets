@@ -18,11 +18,6 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFee
     using TransferFeeTracking for TransferFeeTracking.Data;
     using SafeCast for *;
 
-    modifier onlyAgentVaultOwner(address _agentVault) {
-        Agents.requireAgentVaultOwner(_agentVault);
-        _;
-    }
-
     modifier onlyFAsset {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(msg.sender == settings.fAsset, "only FAsset");

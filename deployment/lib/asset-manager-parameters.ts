@@ -550,4 +550,46 @@ export interface AssetManagerParameters {
      * This setting is the number of epochs before expiration.
      */
     transferFeeClaimMaxUnexpiredEpochs: integer;
+
+    /**
+     * The address that collects the core vault transfer fee.
+     */
+    coreVaultNativeAddress: string;
+
+    /**
+     * The fee that the agent has to pay for transfer to core vault.
+     * The fee amount is proportional to the transfer amount and paid in FLR/SGB.
+     */
+    coreVaultTransferFeeBIPS: integer;
+
+    /**
+     * Extra time that transfer to core vault redemption payments get compared
+     * to ordinary redemptions.
+     */
+    coreVaultTransferTimeExtensionSeconds: integer;
+
+    /**
+     * The minimum amount that has to be left on agent's underlying address after the transfer to the core vault,
+     * to make sure that the agent stays redeemable.
+     *
+     * Expressed as a percentage of the "agent's minting capacity", which is the amount of backed assets at which
+     * the agent's vault or pool collateral ratio falls to the corresponding system minimum collateral ratio.
+     *
+     * Warning: agent minting capacity is based on the system min CR, which is typicaly 10-20% (or more) smaller
+     * than the agent's minting CR. We intentioanaly use minCR instead of mintingCR, because that would be gameable.
+     * However, this means that to make a typical agent keep about 50% of their minting capacity,
+     * this value should be set 20% lower, e.g. to 40%.
+     */
+    coreVaultMinimumAmountLeftBIPS: integer;
+
+    /**
+     * The fee charged for direct redemption from the core vault.
+     */
+    coreVaultRedemptionFeeBIPS: integer;
+
+    /**
+     * The minimum amount of lots that can be redeemed directly from the core vault, to lower the amount of transactions that
+     * the core vault has to perform.
+     */
+    coreVaultMinimumRedeemLots: integer;
 }

@@ -9,9 +9,11 @@ import { AssetManagerParameters, CollateralTypeParameters } from './asset-manage
 import { FAssetContractStore } from "./contracts";
 import { checkAllAssetManagerMethodsImplemented, createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
 import { deployCutsOnDiamond } from "./deploy-cuts";
-import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from './deploy-utils';
+import { ZERO_ADDRESS, abiEncodeCall, encodeContractNames, loadDeployAccounts, waitFinalize } from './deploy-utils';
+import { CoreVaultManagerParameters } from "./core-vault-manager-parameters";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
+export const coreVaultManagerParameters = new JsonParameterSchema<CoreVaultManagerParameters>(require('../config/core-vault-manager-parameters.schema.json'));
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, managerParameterFiles: string[]) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
@@ -97,6 +99,22 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
             },
         },
         { execute: true, verbose: false });
+    await deployCutsOnDiamond(hre, contracts,
+        {
+            diamond: assetManager.address,
+            facets: [
+                { contract: "CoreVaultFacet", exposedInterfaces: ["ICoreVault"] },
+                { contract: "CoreVaultSettingsFacet", exposedInterfaces: ["ICoreVaultSettings"] }
+            ],
+            init: {
+                contract: "CoreVaultSettingsFacet",
+                method: "initCoreVaultFacet",
+                args: [ZERO_ADDRESS, parameters.coreVaultNativeAddress,
+                    parameters.coreVaultTransferFeeBIPS, parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultRedemptionFeeBIPS,
+                    parameters.coreVaultMinimumAmountLeftBIPS, parameters.coreVaultMinimumRedeemLots]
+            },
+        },
+        { execute: true, verbose: false });
 
     // everything from IIAssetManager must be implemented now
     await checkAllAssetManagerMethodsImplemented(hre, assetManager.address);
@@ -111,6 +129,62 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     }
 
     return assetManager;
+}
+
+export async function deployCoreVaultManager(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, parametersFile: string, setOnAssetManager: boolean) {
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const IIAssetManager = artifacts.require("IIAssetManager");
+    const CoreVaultManager = artifacts.require("CoreVaultManager");
+    const CoreVaultManagerProxy = artifacts.require("CoreVaultManagerProxy");
+    const FAsset = artifacts.require("FAsset");
+
+    const { deployer } = loadDeployAccounts(hre);
+    const parameters = coreVaultManagerParameters.load(parametersFile);
+
+    const assetManager = await IIAssetManager.at(contracts.getAddress(parameters.assetManager));
+    const settings = await assetManager.getSettings();
+
+    const coreVaultManagerImpl = await deployFacet(hre, "CoreVaultManagerImplementation", contracts, deployer, "CoreVaultManager");
+    const coreVaultManagerProxy = await waitFinalize(hre, deployer,
+        () => CoreVaultManagerProxy.new(coreVaultManagerImpl, contracts.GovernanceSettings.address, deployer, deployer /* will be changed */,
+                    assetManager.address, settings.chainId, parameters.custodianAddress, parameters.underlyingAddress, parameters.initialSequenceNumber,
+                    { from: deployer }));
+    const coreVaultManager = await CoreVaultManager.at(coreVaultManagerProxy.address);
+
+    // hack to set contract addresses without governance call from AddressUpdater
+    await waitFinalize(hre, deployer,
+        () => coreVaultManager.updateContractAddresses(encodeContractNames(["AddressUpdater", "FdcVerification"]),
+                    [contracts.AddressUpdater.address, contracts.FdcVerification!.address],
+                    { from: deployer }));
+
+    // set initial settings
+    await waitFinalize(hre, deployer,
+        () => coreVaultManager.updateSettings(parameters.escrowEndTimeSeconds, parseBN(parameters.escrowAmount),
+                    parseBN(parameters.minimalAmountLeft), parseBN(parameters.chainPaymentFee),
+                    { from: deployer }));
+
+    const fAsset = await FAsset.at(settings.fAsset);
+    const fAssetSymbol = await fAsset.symbol();
+    contracts.add(`CoreVaultManager_${fAssetSymbol}`, "CoreVaultManagerProxy.sol", coreVaultManager.address, { mustSwitchToProduction: true });
+
+    if (setOnAssetManager) {
+        if (!(await assetManager.productionMode())) {
+            await waitFinalize(hre, deployer,
+                () => assetManager.setCoreVaultManager(coreVaultManager.address, { from: deployer }));
+        } else {
+            console.log("Asset manager is in production mode. Set core vault manager with governance call.");
+        }
+    } else {
+        console.log("Core vault manager deployed, but not set to asset manager.");
+    }
+}
+
+export async function redeployFacet(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, implementationName: string) {
+    const { deployer } = loadDeployAccounts(hre);
+    const implContract = contracts.getRequired(implementationName);
+    const facetName = implContract.contractName.replace(/\.sol$/, "");
+    await deployFacet(hre, implementationName, contracts, deployer, facetName);
 }
 
 export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {

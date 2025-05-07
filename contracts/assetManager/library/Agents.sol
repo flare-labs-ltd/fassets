@@ -64,6 +64,16 @@ library Agents {
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
+    function setRedemptionPoolFeeShareBIPS(
+        Agent.State storage _agent,
+        uint256 _redemptionPoolFeeShareBIPS
+    )
+        internal
+    {
+        require(_redemptionPoolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
+        _agent.redemptionPoolFeeShareBIPS = _redemptionPoolFeeShareBIPS.toUint16();
+    }
+
     function setBuyFAssetByAgentFactorBIPS(
         Agent.State storage _agent,
         uint256 _buyFAssetByAgentFactorBIPS
@@ -173,6 +183,26 @@ library Agents {
         }
     }
 
+    function createNewMinting(
+        Agent.State storage _agent,
+        uint64 _valueAMG
+    )
+        internal
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // Add value with dust, then take the whole number of lots from it to create the new ticket,
+        // and the remainder as new dust. At the end, there will always be less than 1 lot of dust left.
+        uint64 valueWithDustAMG = _agent.dustAMG + _valueAMG;
+        uint64 newDustAMG = valueWithDustAMG % settings.lotSizeAMG;
+        uint64 ticketValueAMG = valueWithDustAMG - newDustAMG;
+        // create ticket and change dust
+        allocateMintedAssets(_agent, _valueAMG);
+        if (ticketValueAMG > 0) {
+            createRedemptionTicket(_agent, ticketValueAMG);
+        }
+        changeDust(_agent, newDustAMG);
+    }
+
     function createRedemptionTicket(
         Agent.State storage _agent,
         uint64 _ticketValueAMG
@@ -209,15 +239,6 @@ library Agents {
         emit IAssetManagerEvents.DustChanged(_agent.vaultAddress(), dustUBA);
     }
 
-    function increaseDust(
-        Agent.State storage _agent,
-        uint64 _dustIncreaseAMG
-    )
-        internal
-    {
-        changeDust(_agent, _agent.dustAMG + _dustIncreaseAMG);
-    }
-
     function decreaseDust(
         Agent.State storage _agent,
         uint64 _dustDecreaseAMG
@@ -243,6 +264,26 @@ library Agents {
         vault.payout(collateral.token, _receiver, _amountPaid);
     }
 
+    function tryPayoutFromVault(
+        Agent.State storage _agent,
+        address _receiver,
+        uint256 _amountWei
+    )
+        internal
+        returns (bool _success, uint256 _amountPaid)
+    {
+        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
+        // don't want the calling method to fail due to too small balance for payout
+        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
+        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
+        try vault.payout(collateral.token, _receiver, _amountPaid) {
+            _success = true;
+        } catch {
+            _success = false;
+            _amountPaid = 0;
+        }
+    }
+
     function payoutFromPool(
         Agent.State storage _agent,
         address _receiver,
@@ -257,6 +298,17 @@ library Agents {
         _amountPaid = Math.min(_amountWei, poolBalance);
         _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
+    }
+
+    function payForConfirmationByOthers(
+        Agent.State storage _agent,
+        address _receiver
+    )
+        internal
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 amount = Agents.convertUSD5ToVaultCollateralWei(_agent, settings.confirmationByOthersRewardUSD5);
+        Agents.payoutFromVault(_agent, _receiver, amount);
     }
 
     // We cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT

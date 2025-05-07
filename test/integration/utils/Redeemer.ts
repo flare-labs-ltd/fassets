@@ -39,15 +39,8 @@ export class Redeemer extends AssetContextClient {
     }
 
     async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {
-        const proof = await this.attestationProvider.proveReferencedPaymentNonexistence(
-            request.paymentAddress,
-            request.paymentReference,
-            request.valueUBA.sub(request.feeUBA),
-            request.firstUnderlyingBlock.toNumber(),
-            request.lastUnderlyingBlock.toNumber(),
-            request.lastUnderlyingTimestamp.toNumber());
         const executorAddress = request.executor !== ZERO_ADDRESS ? request.executor : this.address;
-        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: executorAddress });
+        const res = await Agent.executeRedemptionPaymentDefault(this.context, request, executorAddress);
         return requiredEventArgs(res, 'RedemptionDefault');
     }
 }

@@ -13,6 +13,7 @@ export interface DiamondCutJsonInit {
 export interface DiamondCutJson {
     diamond: string | string[]; // address(es) of diamond(s) or name(s) in contracts.json
     facets: DiamondCutJsonFacet[];
+    deleteMethods?: string[];   // full signatures of methods that have been deleted (not replaced), eg. `methodName(uint256,bool)`
     init?: DiamondCutJsonInit;
 }
 

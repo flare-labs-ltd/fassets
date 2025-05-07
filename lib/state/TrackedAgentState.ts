@@ -1,16 +1,20 @@
 import {
-    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
-    RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, CoreVaultRedemptionRequested, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
+    RedemptionTicketUpdated, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
-import { EventArgs } from "../utils/events/common";
+import { EventArgs, EvmEvent } from "../utils/events/common";
 import { BN_ONE, BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
 import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
 import { TrackedState } from "./TrackedState";
+
+export interface ExtendedAgentInfo extends AgentInfo {
+    redemptionPoolFeeShareBIPS: BN;
+}
 
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
@@ -30,6 +34,7 @@ export class TrackedAgentState {
         this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.creationData.poolWNatToken);
         this.feeBIPS = toBN(data.creationData.feeBIPS);
         this.poolFeeShareBIPS = toBN(data.creationData.poolFeeShareBIPS);
+        this.redemptionPoolFeeShareBIPS = BN_ZERO;  // always zero initially
         this.mintingVaultCollateralRatioBIPS = toBN(data.creationData.mintingVaultCollateralRatioBIPS);
         this.mintingPoolCollateralRatioBIPS = toBN(data.creationData.mintingPoolCollateralRatioBIPS);
         this.buyFAssetByAgentFactorBIPS = toBN(data.creationData.buyFAssetByAgentFactorBIPS);
@@ -51,6 +56,7 @@ export class TrackedAgentState {
     poolWNatCollateral: CollateralType;
     feeBIPS: BN;
     poolFeeShareBIPS: BN;
+    redemptionPoolFeeShareBIPS: BN;
     mintingVaultCollateralRatioBIPS: BN;
     mintingPoolCollateralRatioBIPS: BN;
     buyFAssetByAgentFactorBIPS: BN;
@@ -78,6 +84,9 @@ export class TrackedAgentState {
     dustUBA: BN = BN_ZERO;
     underlyingBalanceUBA: BN = BN_ZERO;
 
+    // make sure later dust changes are not overwritten by previous
+    lastDustChangeAt: number = -1;
+
     // calculated getters
 
     get requiredUnderlyingBalanceUBA() {
@@ -91,9 +100,10 @@ export class TrackedAgentState {
 
     // init
 
-    initializeState(agentInfo: AgentInfo) {
+    initializeState(agentInfo: ExtendedAgentInfo) {
         this.status = Number(agentInfo.status);
         this.publiclyAvailable = agentInfo.publiclyAvailable;
+        this.redemptionPoolFeeShareBIPS = toBN(agentInfo.redemptionPoolFeeShareBIPS);
         this.totalVaultCollateralWei = toBN(agentInfo.totalVaultCollateralWei);
         this.totalPoolCollateralNATWei = toBN(agentInfo.totalPoolCollateralNATWei);
         this.ccbStartTimestamp = toBN(agentInfo.ccbStartTimestamp);
@@ -120,8 +130,9 @@ export class TrackedAgentState {
     // handlers: agent settings
 
     handleSettingChanged(name: string, value: BNish) {
-        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS", "buyFAssetByAgentFactorBIPS",
-            "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "handshakeType"].includes(name)) return;
+        const settings = ["feeBIPS", "poolFeeShareBIPS", "redemptionPoolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
+            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "handshakeType"];
+        if (!settings.includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }
 
@@ -191,6 +202,10 @@ export class TrackedAgentState {
         this.updateRedeemingUBA(args.requestId, toBN(args.redemptionAmountUBA).neg());
     }
 
+    handleRedemptionPoolFeeMinted(args: EvmEventArgs<RedemptionPoolFeeMinted>): void {
+        this.mintedUBA = this.mintedUBA.add(toBN(args.poolFeeUBA));
+    }
+
     handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.redemptionAmountUBA));
     }
@@ -210,6 +225,10 @@ export class TrackedAgentState {
         return !toBN(requestId).and(BN_ONE).isZero();
     }
 
+    calcBlockIndex(event: EvmEvent) {
+        return event.blockNumber + (event.logIndex / 1000);
+    }
+
     // handlers: tickets
 
     handleRedemptionTicketCreated(args: EvmEventArgs<RedemptionTicketCreated>): void {
@@ -224,7 +243,13 @@ export class TrackedAgentState {
     // handlers: dust
 
     handleDustChanged(args: EvmEventArgs<DustChanged>): void {
-        this.dustUBA = args.dustUBA;
+        const eventAt = this.calcBlockIndex(args.$event);
+        if (eventAt > this.lastDustChangeAt) {
+            this.dustUBA = args.dustUBA;
+            this.lastDustChangeAt = eventAt;
+        } else {
+            this.parent.logger?.log(`???? ISSUE dustUBA not changed due to inconsistent event ordering: prev change at ${this.lastDustChangeAt}, this change at ${eventAt}`);
+        }
     }
 
     // handlers: status
@@ -262,6 +287,28 @@ export class TrackedAgentState {
 
     handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
+    }
+
+    // handlers: core vault
+
+    handleTransferToCoreVaultStarted(args: EvmEventArgs<TransferToCoreVaultStarted>): void {
+    }
+
+    handleTransferToCoreVaultSuccessful(args: EvmEventArgs<TransferToCoreVaultSuccessful>): void {
+    }
+
+    handleTransferToCoreVaultDefaulted(args: EvmEventArgs<TransferToCoreVaultDefaulted>): void {
+        // the transferred amount has been re-minted
+        this.mintedUBA = this.mintedUBA.add(toBN(args.remintedUBA));
+    }
+
+    handleReturnFromCoreVaultRequested(args: EvmEventArgs<ReturnFromCoreVaultRequested>): void {
+    }
+
+    handleReturnFromCoreVaultConfirmed(args: EvmEventArgs<ReturnFromCoreVaultConfirmed>): void {
+    }
+
+    handleReturnFromCoreVaultCancelled(args: EvmEventArgs<ReturnFromCoreVaultCancelled>): void {
     }
 
     // agent state changing

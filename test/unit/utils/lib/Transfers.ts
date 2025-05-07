@@ -47,4 +47,14 @@ contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, asy
         await expectRevert(transfers.transferNATNoGuard(account.address, 1000), "ReentrancyGuard: guard required");
         await expectRevert(transfers.transferNATAllowFailureNoGuard(account.address, 1000), "ReentrancyGuard: guard required");
     });
+
+    it("transfers with 0 value should work (but do nothing)", async () => {
+        const account = web3.eth.accounts.create();
+        await transfers.transferNAT(account.address, 0);
+        assertWeb3Equal(await web3.eth.getBalance(account.address), 0);
+        await transfers.transferNATAllowFailure(account.address, 0);
+        assertWeb3Equal(await web3.eth.getBalance(account.address), 0);
+        const success = await transfers.transferNATAllowFailure.call(account.address, 0);
+        assert.isTrue(success);
+    });
 });

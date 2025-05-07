@@ -348,7 +348,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA,
                 mintedUBA: mintedAmount,
-                status: AgentStatus.FULL_LIQUIDATION });
+                status: AgentStatus.FULL_LIQUIDATION
+            });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -383,7 +384,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 mintedUBA: mintedAmount.sub(liquidateUBA),
                 ccbStartTimestamp: 0,
                 liquidationStartTimestamp: liquidationStarted.timestamp,
-                status: AgentStatus.FULL_LIQUIDATION });
+                status: AgentStatus.FULL_LIQUIDATION
+            });
             // wait some time to get next premium
             await deterministicTimeIncrease(90);
             // liquidate agent (second part)
@@ -414,7 +416,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(2)),
                 ccbStartTimestamp: 0,
                 liquidationStartTimestamp: liquidationStarted.timestamp,
-                status: AgentStatus.FULL_LIQUIDATION });
+                status: AgentStatus.FULL_LIQUIDATION
+            });
             // wait some time to get next premium
             await deterministicTimeIncrease(90);
             // liquidate agent (last part)

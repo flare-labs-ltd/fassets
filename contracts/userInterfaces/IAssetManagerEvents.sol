@@ -320,6 +320,15 @@ interface IAssetManagerEvents {
         string failureReason);
 
     /**
+     * At the end of a successful redemption, part of the redemption fee is re-minted as FAssets
+     * and paid to the agent's collateral pool as fee.
+     */
+    event RedemptionPoolFeeMinted(
+        address indexed agentVault,
+        uint64 indexed requestId,
+        uint256 poolFeeUBA);
+
+    /**
      * Due to self-close exit, some of the agent's backed fAssets were redeemed,
      * but the redemption was immediately paid in collateral so no redemption process is started.
      */

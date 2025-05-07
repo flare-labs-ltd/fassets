@@ -873,12 +873,22 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "agentTimelockedOperationWindowSeconds", value: toBN(2 * HOURS) });
         });
 
+        it("should not set agent timelocked ops window seconds if not from governance", async () => {
+            await expectRevert(assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 2 * HOURS, { from: accounts[1] }),
+                "only governance");
+        });
+
         it("should set collateral pool token timelocked seconds", async () => {
             await expectRevert(assetManagerController.setCollateralPoolTokenTimelockSeconds([assetManager.address], 0.5 * MINUTES, { from: governance }),
                 "value too small");
             const res = await assetManagerController.setCollateralPoolTokenTimelockSeconds([assetManager.address], 2 * HOURS, { from: governance });
             expectEvent(res, "SettingChanged", { name: "collateralPoolTokenTimelockSeconds", value: toBN(2 * HOURS) });
             assertWeb3Equal(await assetManager.getCollateralPoolTokenTimelockSeconds(), toBN(2 * HOURS));
+        });
+
+        it("should not set collateral pool token timelocked seconds if not from governance", async () => {
+            await expectRevert(assetManagerController.setCollateralPoolTokenTimelockSeconds([assetManager.address], 2 * HOURS, { from: accounts[1] }),
+                "only governance");
         });
 
         it("should revert setting agent whitelist after timelock when address 0 is provided", async () => {
@@ -912,6 +922,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = await assetManagerController.setCleanerContract([assetManager.address], addr, { from: governance });
             expectEvent(res, "ContractChanged", { name: "cleanerContract", value: addr });
             assert.equal(await fAsset.cleanerContract(), addr);
+        });
+
+        it("should not set cleaner contract if not from governance", async () => {
+            const addr = randomAddress();
+            const res = assetManagerController.setCleanerContract([assetManager.address], addr, { from: accounts[1] });
+            await expectRevert(res, "only governance");
         });
 
         it("should set cleanup block number manager after timelock", async () => {
@@ -1226,6 +1242,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "redemptionPaymentExtensionSeconds", value: toBN(redemptionPaymentExtensionSeconds_new) });
         });
 
+        it("should not set redemption payment extension seconds if not from governance", async () => {
+            const redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
+            let redemptionPaymentExtensionSeconds_new = redemptionPaymentExtensionSeconds.muln(2);
+            let res = assetManagerController.setRedemptionPaymentExtensionSeconds([assetManager.address], redemptionPaymentExtensionSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
         it("should set transfer fee millionths with schedule", async () => {
             const transferFeeMillionths = await assetManager.transferFeeMillionths();
             let transferFeeMillionths_new = transferFeeMillionths.muln(2);
@@ -1236,6 +1259,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(await assetManager.transferFeeMillionths(), transferFeeMillionths);
             await deterministicTimeIncrease(3600);
             assertWeb3Equal(await assetManager.transferFeeMillionths(), transferFeeMillionths_new);
+        });
+
+        it("should not set transfer fee millionths if not from governance", async () => {
+            await expectRevert(assetManagerController.setTransferFeeMillionths([assetManager.address], 1000, 0, { from: accounts[12] }), "only governance");
         });
 
         // emergency pause
@@ -1262,6 +1289,28 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             // remove sender
             await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
             await expectRevert(assetManagerController.emergencyPause([assetManager.address], 10, { from: sender }), "only governance or emergency pause senders");
+        });
+
+        it("governance set emergency pause", async () => {
+            await assetManagerController.emergencyPause([assetManager.address], 10, { from: governance });
+            assert.isTrue(await assetManager.emergencyPaused());
+        });
+
+        it("only governance can add emergency pause sender", async () => {
+            await expectRevert(assetManagerController.addEmergencyPauseSender(accounts[80], { from: accounts[1] }), "only governance");
+        });
+
+        it("only governance can remove emergency pause sender", async () => {
+            await expectRevert(assetManagerController.removeEmergencyPauseSender(accounts[80], { from: accounts[1] }), "only governance");
+        });
+
+        it("governance sets emergency pause transfer", async () => {
+            await assetManagerController.emergencyPauseTransfers([assetManager.address], 10, { from: governance });
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+        });
+
+        it("only governance or emergency pause senders can set emergency pause transfer", async () => {
+            await expectRevert(assetManagerController.emergencyPauseTransfers([assetManager.address], 10, { from: accounts[80] }), "only governance or emergency pause senders");
         });
 
         // max emergency pause duration seconds

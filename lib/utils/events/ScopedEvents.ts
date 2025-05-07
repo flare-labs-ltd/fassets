@@ -43,8 +43,8 @@ class ScopedSubscription implements EventSubscription {
 }
 
 export class ExitScope extends Error {
-    constructor(public scope?: EventScope) {
-        super("no matching scope");
+    constructor(public scope: EventScope, message: string) {
+        super(message);
     }
 }
 
@@ -82,20 +82,20 @@ export class EventScope {
         this.subscriptions.delete(subscription);
     }
 
-    exit(): never {
-        throw new ExitScope(this);
+    exit(message: string): never {
+        throw new ExitScope(this, message);
     }
 
     exitOnExpectedError(error: unknown, expectedErrors: ErrorFilter[]): never {
         expectErrors(error, expectedErrors);
-        throw new ExitScope(this);
+        throw new ExitScope(this, String(error));
     }
 
     handleExpectedErrors(error: unknown, filters: { continue?: ErrorFilter[], exit?: ErrorFilter[] }) {
         if (filters.continue && errorIncluded(error, filters.continue)) {
             return undefined;
         } else if (filters.exit && errorIncluded(error, filters.exit)) {
-            throw new ExitScope(this);
+            throw new ExitScope(this, String(error));
         } else {
             throw error;    // unexpected error
         }

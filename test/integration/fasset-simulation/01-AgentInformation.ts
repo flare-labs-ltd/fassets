@@ -252,6 +252,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent should not go to liquidation
             await expectRevert(context.assetManager.startLiquidation(agent.vaultAddress), "liquidation not started");
             await agent.checkAgentInfo({ status: 0 }, "reset");
+        });
     });
-});
 });

@@ -1,0 +1,26 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestBTC", "AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"],
+    "facets": [
+        {
+            "contract": "AvailableAgentsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CoreVaultFacet",
+            "exposedInterfaces": ["ICoreVault"]
+        },
+        {
+            "contract": "AgentInfoFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
-import { AgentOwnerRegistryEvents, AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
+import { AgentOwnerRegistryEvents, AssetManagerEvents, CoreVaultManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { Prices } from "../../../lib/state/Prices";
 import { TokenPriceReader } from "../../../lib/state/TokenPrice";
@@ -12,11 +12,11 @@ import { IFlareDataConnectorClient } from "../../../lib/underlying-chain/interfa
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AgentOwnerRegistryInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
-import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
+import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { createTestCollaterals, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
+import { assignCoreVaultManager, CoreVaultManagerInitSettings, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -49,10 +49,12 @@ export class AssetContext implements IAssetContext {
         public assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
-        public settings: AssetManagerSettings,
+        public initSettings: AssetManagerInitSettings,
         public collaterals: CollateralType[],
     ) {
     }
+
+    settings: AssetManagerSettings = this.initSettings;
 
     governance = this.common.governance;
     addressUpdater = this.common.addressUpdater;
@@ -73,6 +75,8 @@ export class AssetContext implements IAssetContext {
     usdt = this.stablecoins.USDT;
 
     chainId = this.chainInfo.chainId;
+
+    coreVaultManager: ContractWithEvents<CoreVaultManagerInstance, CoreVaultManagerEvents> | undefined;
 
     /**
      * Convert underlying amount to base units (e.g. eth to wei)
@@ -139,6 +143,11 @@ export class AssetContext implements IAssetContext {
         const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance, true);
         await agentOwnerRegistry.switchToProductionMode({ from: this.governance });
         await this.setAgentOwnerRegistry(agentOwnerRegistry);
+    }
+
+    async assignCoreVaultManager(options?: Partial<CoreVaultManagerInitSettings>) {
+        const settings = createTestCoreVaultManagerSettings(this.chainInfo, options);
+        this.coreVaultManager = await assignCoreVaultManager(this.assetManager, this.addressUpdater, settings);
     }
 
     async updateUnderlyingBlock() {
@@ -274,7 +283,8 @@ export class AssetContext implements IAssetContext {
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
-            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol);
+            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol,
+            { governanceSettings: common.governanceSettings.address });
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, flareDataConnectorClient, attestationProvider,
             options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);

@@ -88,5 +88,11 @@
     "transferFeeMillionths": 0,
     "transferFeeClaimFirstEpochStartTs": 1733122800,
     "transferFeeClaimEpochDurationSeconds": 302400,
-    "transferFeeClaimMaxUnexpiredEpochs": 30
+    "transferFeeClaimMaxUnexpiredEpochs": 30,
+    "coreVaultNativeAddress": "0x000000000000000000000000000000000000dEaD",
+    "coreVaultTransferFeeBIPS": 0,
+    "coreVaultTransferTimeExtensionSeconds": 900,
+    "coreVaultMinimumAmountLeftBIPS": 1500,
+    "coreVaultRedemptionFeeBIPS": 0,
+    "coreVaultMinimumRedeemLots": 1000
 }
