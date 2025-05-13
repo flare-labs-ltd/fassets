@@ -1,5 +1,12 @@
 # FAsset contracts
 
+## Repository Transferred
+
+The development of FAsset protocol was commissioned for and on behalf of the Flare Foundation, accordingly all completed repos for the protocol have been moved to [Flare Foundation Github](https://github.com/flare-foundation), the protocol's ultimate owner.
+[New repository](https://github.com/flare-foundation/fassets)
+
+# FAssets
+
 Solidity contracts for *Flare Labs* FAsset system.
 
 ## Overview
